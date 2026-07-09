@@ -1,0 +1,6 @@
+rootProject.name = 'gm'
+include 'api'
+include 'core'
+include 'client'
+include 'storage:db'
+include 'storage:redis'

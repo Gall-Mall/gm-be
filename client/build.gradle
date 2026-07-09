@@ -1,0 +1,10 @@
+// client — 외부 API 호출 계층 (네이버/카카오 등)
+// core 도메인에 의존하며, 외부 응답을 도메인으로 변환
+// 공통 의존성은 root build.gradle의 subprojects에서 상속
+
+dependencies {
+    implementation project(':core')
+    implementation 'org.springframework:spring-web'   // RestClient
+}
+
+tasks.register("prepareKotlinBuildScriptModel"){}

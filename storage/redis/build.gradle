@@ -1,0 +1,10 @@
+// storage:redis — Redis 저장 계층 (세션/초대코드 TTL, 투표 실시간 집계)
+// core 도메인에 의존하며, 도메인 인터페이스의 Redis 구현을 담당
+// 공통 의존성은 root build.gradle의 subprojects에서 상속
+
+dependencies {
+    implementation project(':core')
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+}
+
+tasks.register("prepareKotlinBuildScriptModel"){}
