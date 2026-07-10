@@ -36,12 +36,23 @@ out/
 ### VS Code ###
 .vscode/
 
-### .env ###
+### Local configuration / secrets ###
 .env
-/*/**/.env
+.env.*
+!.env.example
+
+**/application.yml
+**/application.yaml
+**/application-*.yml
+**/application-*.yaml
+**/application.properties
+**/application-*.properties
+
+# Shareable templates must contain placeholders only.
+!**/application-example.yml
+!**/application-example.yaml
+!**/application-example.properties
 
 ###DS_store###
 .DS_Store
 modules/.DS_Store
-
-**/application.yml
