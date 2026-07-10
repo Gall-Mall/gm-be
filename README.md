@@ -54,6 +54,8 @@ api ───────────────→ core
 
 모든 작업은 GitHub Issue에서 시작한다. 하나의 Issue는 하나의 명확한 목적과 완료 조건을 가진다.
 
+새 Issue를 만들면 단일 Issue Form인 `.github/ISSUE_TEMPLATE/issue.yml`을 사용한다. 일반 기여자에게는 빈 Issue 선택지를 표시하지 않는다.
+
 ### Issue 제목
 
 ```text
@@ -152,6 +154,8 @@ docs: add package convention
 ## Pull Request 컨벤션
 
 PR 제목은 커밋과 같은 형식을 사용한다.
+
+새 PR을 만들면 `.github/pull_request_template.md`의 본문이 자동으로 채워진다.
 
 ```text
 <type>: <summary>

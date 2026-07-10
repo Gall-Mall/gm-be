@@ -1,0 +1,67 @@
+name: 작업 이슈
+description: 기능, 버그, 문서, 설정 작업을 등록합니다.
+body:
+  - type: markdown
+    attributes:
+      value: |
+        제목은 README 컨벤션에 맞춰 `[feat] 작업 요약`처럼 작성하세요.
+  - type: dropdown
+    id: work_type
+    attributes:
+      label: 작업 유형
+      options:
+        - feat
+        - fix
+        - refactor
+        - docs
+        - test
+        - chore
+    validations:
+      required: true
+  - type: textarea
+    id: purpose
+    attributes:
+      label: 목적
+      description: 이 작업이 필요한 이유를 작성하세요.
+      placeholder: 사용자 또는 시스템에 어떤 문제가 있고, 이 작업으로 무엇을 해결하는지 작성합니다.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: 작업 범위
+      description: 구현하거나 수정할 항목을 작성하세요.
+      placeholder: |
+        - 수정할 모듈 또는 기능
+        - 추가하거나 변경할 API, 데이터, 설정
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: 완료 조건
+      description: 검증 가능한 완료 기준을 체크리스트로 작성하세요.
+      placeholder: |
+        - [ ]
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: 재현 방법 및 관찰 내용
+      description: 버그일 때 재현 방법, 기대 동작, 실제 동작을 작성하세요.
+      placeholder: |
+        1.
+
+        기대 동작:
+
+        실제 동작:
+    validations:
+      required: false
+  - type: textarea
+    id: references
+    attributes:
+      label: 참고
+      description: 관련 문서, API 명세, 디자인, 논의 링크를 작성하세요.
+    validations:
+      required: false
