@@ -13,7 +13,7 @@ import com.gm.db.config.JpaAuditingConfig;
  *
  * <p>DB 엔티티·Repository 검색 범위를 명시하고 JPA 감사 설정을 가져온다.</p>
  */
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = "com.gm")
 @EntityScan(basePackages = "com.gm.db")
 @EnableJpaRepositories(basePackages = "com.gm.db")
 @Import(JpaAuditingConfig.class)

@@ -41,7 +41,7 @@ public class GlobalExceptionHandler {
         }
 
         return ResponseEntity.status(errorCode.getStatus())
-                .body(ResponseEnvelope.fail(errorCode, Instant.now()));
+                .body(ResponseEnvelope.fail(errorCode));
     }
 
     /**
@@ -55,6 +55,6 @@ public class GlobalExceptionHandler {
         log.error("Unhandled exception", exception);
         ErrorCode errorCode = CommonErrorCode.INTERNAL_ERROR;
         return ResponseEntity.status(errorCode.getStatus())
-                .body(ResponseEnvelope.fail(errorCode, Instant.now()));
+                .body(ResponseEnvelope.fail(errorCode));
     }
 }

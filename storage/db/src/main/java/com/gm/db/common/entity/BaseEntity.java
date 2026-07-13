@@ -1,15 +1,18 @@
-package com.gm.db.entity;
+package com.gm.db.common.entity;
 
 import java.time.Instant;
+import java.util.UUID;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.EntityListeners;
+import jakarta.persistence.Id;
 import jakarta.persistence.MappedSuperclass;
 
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import org.hibernate.annotations.UuidGenerator;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -25,6 +28,12 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 @EntityListeners(AuditingEntityListener.class)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public abstract class BaseEntity {
+
+    /** 영속화 시 생성되며 이후 변경되지 않는 엔티티 식별자이다. */
+    @Id
+    @UuidGenerator(style = UuidGenerator.Style.VERSION_7)
+    @Column(nullable = false, updatable = false)
+    private UUID id;
 
     /** 엔티티가 최초로 영속화된 시각이다. */
     @CreatedDate

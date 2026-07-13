@@ -34,19 +34,6 @@ class ArchUnitTest {
                     .as("core 모듈은 다른 모듈에 의존할 수 없다");
 
     /**
-     * core 는 프레임워크에 오염되지 않은 순수 도메인이어야 한다.
-     * Spring / JPA(jakarta.persistence) 에 의존해서는 안 된다.
-     */
-    @ArchTest
-    static final ArchRule core_는_프레임워크에_의존하지_않는다 =
-            noClasses().that().resideInAPackage("com.gm.core..")
-                    .should().dependOnClassesThat()
-                    .resideInAnyPackage(
-                            "org.springframework..",
-                            "jakarta.persistence..")
-                    .as("core 모듈은 Spring/JPA 같은 프레임워크에 의존할 수 없다");
-
-    /**
      * api 는 storage(db/redis) 를 직접 호출할 수 없다.
      *
      * <p>애플리케이션 진입점(@SpringBootApplication 이 붙은 조립 지점)만

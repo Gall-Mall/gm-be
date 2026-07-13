@@ -11,15 +11,13 @@ import com.gm.core.exception.ErrorCode;
  * @param code 클라이언트가 분기에 사용할 응답 코드
  * @param message 사용자에게 제공할 응답 메시지
  * @param data 성공 시 반환할 실제 응답 데이터
- * @param timestamp 응답이 생성된 절대 시각
  * @param <T> 실제 응답 데이터 타입
  */
 public record ResponseEnvelope<T>(
         boolean success,
         String code,
         String message,
-        T data,
-        Instant timestamp
+        T data
 ) {
 
     private static final String SUCCESS_CODE = "SUCCESS";
@@ -29,12 +27,11 @@ public record ResponseEnvelope<T>(
      * 실제 DTO를 공통 성공 응답으로 감싼다.
      *
      * @param data 반환할 실제 응답 데이터
-     * @param timestamp 응답 생성 시각
      * @param <T> 응답 데이터 타입
      * @return 성공 상태와 공통 코드가 포함된 응답
      */
-    public static <T> ResponseEnvelope<T> success(T data, Instant timestamp) {
-        return new ResponseEnvelope<>(true, SUCCESS_CODE, SUCCESS_MESSAGE, data, timestamp);
+    public static <T> ResponseEnvelope<T> success(T data) {
+        return new ResponseEnvelope<>(true, SUCCESS_CODE, SUCCESS_MESSAGE, data);
     }
 
     /**
@@ -43,16 +40,14 @@ public record ResponseEnvelope<T>(
      * <p>실패 응답은 성공 응답과 같은 JSON 구조를 유지하며 {@code data}는 {@code null}이다.</p>
      *
      * @param errorCode 실패 상태·코드·메시지를 제공하는 오류 코드
-     * @param timestamp 응답 생성 시각
      * @return 데이터가 없는 공통 실패 응답
      */
-    public static ResponseEnvelope<Void> fail(ErrorCode errorCode, Instant timestamp) {
+    public static ResponseEnvelope<Void> fail(ErrorCode errorCode) {
         return new ResponseEnvelope<>(
                 false,
                 errorCode.getCode(),
                 errorCode.getMessage(),
-                null,
-                timestamp
+                null
         );
     }
 }
