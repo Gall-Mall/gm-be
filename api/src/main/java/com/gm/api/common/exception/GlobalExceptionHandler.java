@@ -1,0 +1,60 @@
+package com.gm.api.common.exception;
+
+import java.time.Instant;
+
+import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+import com.gm.api.common.response.ResponseEnvelope;
+import com.gm.core.exception.BusinessException;
+import com.gm.core.exception.CommonErrorCode;
+import com.gm.core.exception.ErrorCode;
+
+/**
+ * Controller 경계까지 전파된 예외를 공통 HTTP 응답으로 변환한다.
+ *
+ * <p>예상 가능한 비즈니스 예외는 지정된 오류 계약을 사용하고,
+ * 예상하지 못한 예외는 내부 상세를 숨긴 공통 500 응답으로 변환한다.</p>
+ */
+@Slf4j
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+    /**
+     * 비즈니스 예외를 오류 코드에 지정된 상태와 공통 실패 응답으로 변환한다.
+     *
+     * @param exception 처리할 비즈니스 예외
+     * @return 오류 코드의 HTTP 상태와 실패 응답
+     */
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<ResponseEnvelope<Void>> handleBusinessException(
+            BusinessException exception
+    ) {
+        ErrorCode errorCode = exception.getErrorCode();
+        if (errorCode.getStatus() >= 500) {
+            log.error("[{}] {}", errorCode.getCode(), exception.getMessage(), exception);
+        } else {
+            log.warn("[{}] {}", errorCode.getCode(), exception.getMessage());
+        }
+
+        return ResponseEntity.status(errorCode.getStatus())
+                .body(ResponseEnvelope.fail(errorCode, Instant.now()));
+    }
+
+    /**
+     * 별도로 처리되지 않은 예외를 내부 정보가 노출되지 않는 500 응답으로 변환한다.
+     *
+     * @param exception 처리되지 않은 예외
+     * @return 공통 서버 오류 응답
+     */
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ResponseEnvelope<Void>> handleUnexpected(Exception exception) {
+        log.error("Unhandled exception", exception);
+        ErrorCode errorCode = CommonErrorCode.INTERNAL_ERROR;
+        return ResponseEntity.status(errorCode.getStatus())
+                .body(ResponseEnvelope.fail(errorCode, Instant.now()));
+    }
+}

@@ -48,6 +48,9 @@ out/
 **/application.properties
 **/application-*.properties
 
+# Public defaults only; secrets and environment-specific files remain ignored.
+**/application.yml
+
 # Shareable templates must contain placeholders only.
 !**/application-example.yml
 !**/application-example.yaml
