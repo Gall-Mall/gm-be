@@ -12,7 +12,7 @@ public class LocalClientConfig {
     private String apiKey;
 
     @Bean
-    public RestClient localClient() {
+    public RestClient restClient() {
 
         return   RestClient.builder()
                 .baseUrl("https://dapi.kakao.com")

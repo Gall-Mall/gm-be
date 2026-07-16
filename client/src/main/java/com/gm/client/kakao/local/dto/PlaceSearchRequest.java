@@ -1,10 +1,10 @@
 package com.gm.client.kakao.local.dto;
 
-public record SearchRequest(
+public record PlaceSearchRequest(
         String menuName,
         double longitude,
         double latitude,
-        int radius
+        double radius
 )
 {
 }

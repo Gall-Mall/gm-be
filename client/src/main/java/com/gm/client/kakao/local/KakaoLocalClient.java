@@ -1,8 +1,8 @@
 package com.gm.client.kakao.local;
 
-import com.gm.client.kakao.local.dto.SearchRequest;
-import com.gm.client.kakao.local.dto.SearchResponse;
-import com.gm.client.kakao.local.dto.SearchResponseWrapper;
+import com.gm.client.kakao.local.dto.PlaceSearchRequest;
+import com.gm.client.kakao.local.dto.PlaceSearchResponse;
+import com.gm.client.kakao.local.util.SearchResponseWrapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.client.RestClient;
 
@@ -11,11 +11,11 @@ import java.util.List;
 @RequiredArgsConstructor
 public class KakaoLocalClient {
 
-    private final RestClient localClient;
+    private final RestClient restClient;
 
-    public List<SearchResponse> callLocal(SearchRequest searchRequest) {
+    public List<PlaceSearchResponse> callLocal(PlaceSearchRequest searchRequest) {
 
-        SearchResponseWrapper responseWrapper = localClient
+        SearchResponseWrapper responseWrapper = restClient
                 .get()
                 .uri(uriBuilder -> uriBuilder.path("/v2/local/search/keyword.json")
                         .queryParam("query", searchRequest.menuName())

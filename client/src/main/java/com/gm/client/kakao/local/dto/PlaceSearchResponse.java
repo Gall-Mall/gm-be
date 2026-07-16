@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record SearchResponse (
+public record PlaceSearchResponse(
         @JsonProperty(value = "address_name")
         String addressName,
         @JsonProperty(value = "category_group_name")
@@ -23,6 +23,12 @@ public record SearchResponse (
 
 )
 {
+//        public SearchResponse from(Place place){
+//                return new SearchResponse(
+//                        place.name(),
+//                        place.
+//                )
+//        }
 }
 
 /*
