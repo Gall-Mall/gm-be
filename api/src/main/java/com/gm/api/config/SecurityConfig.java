@@ -11,32 +11,21 @@ import org.springframework.security.web.SecurityFilterChain;
 public class SecurityConfig {
 
     @Bean
-    public SecurityFilterChain securityFilterChain(
-            HttpSecurity http
-    ) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             .httpBasic(AbstractHttpConfigurer::disable)
             .formLogin(AbstractHttpConfigurer::disable)
             .csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(
                     session ->
-                        session.sessionCreationPolicy(
-                            SessionCreationPolicy.STATELESS
-                        )
+                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
 
             .authorizeHttpRequests(
                     auth ->
                         auth
-                        .requestMatchers(
-                                "/",
-                                "/login",
-                                "/oauth2/**",
-                                "/login/oauth2/**"
-                        )
-                        .permitAll()
                         .anyRequest()
-                        .authenticated()
+                        .permitAll()
             );
 
         return http.build();
