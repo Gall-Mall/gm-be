@@ -1,6 +1,7 @@
 package com.gm.db.common.entity;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 import jakarta.persistence.Column;
@@ -38,11 +39,11 @@ public abstract class BaseEntity {
     /** 엔티티가 최초로 영속화된 시각이다. */
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
-    private Instant createdAt;
+    private LocalDateTime createdAt;
 
     /** 엔티티가 마지막으로 변경된 시각이다. */
     @LastModifiedDate
     @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt;
+    private LocalDateTime updatedAt;
 
 }

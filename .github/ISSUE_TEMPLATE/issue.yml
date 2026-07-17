@@ -17,7 +17,7 @@ body:
         - test
         - chore
     validations:
-      required: true
+      required: false
   - type: textarea
     id: purpose
     attributes:
@@ -25,7 +25,7 @@ body:
       description: 이 작업이 필요한 이유를 작성하세요.
       placeholder: 사용자 또는 시스템에 어떤 문제가 있고, 이 작업으로 무엇을 해결하는지 작성합니다.
     validations:
-      required: true
+      required: false
   - type: textarea
     id: scope
     attributes:
@@ -35,7 +35,7 @@ body:
         - 수정할 모듈 또는 기능
         - 추가하거나 변경할 API, 데이터, 설정
     validations:
-      required: true
+      required: false
   - type: textarea
     id: acceptance_criteria
     attributes:
@@ -44,7 +44,7 @@ body:
       placeholder: |
         - [ ]
     validations:
-      required: true
+      required: false
   - type: textarea
     id: reproduction
     attributes:
