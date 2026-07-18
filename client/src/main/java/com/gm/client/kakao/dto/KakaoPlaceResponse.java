@@ -3,6 +3,8 @@ package com.gm.client.kakao.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.gm.client.kakao.exception.KakaoApiException;
+import com.gm.client.kakao.exception.KakaoErrorCode;
 import com.gm.core.domain.store.model.Coordinate;
 import com.gm.core.domain.store.model.Store;
 
@@ -33,18 +35,26 @@ public record KakaoPlaceResponse(
             String distance
 ) {
         public Store toStore() {
+
             return new Store(
                     id,
                     placeName,
-                    roadAddressName,
+                    validated(roadAddressName),
                     categoryName,
-                    placeUrl,
+                    validated(placeUrl),
                     new Coordinate(
                             Double.parseDouble(x),
                             Double.parseDouble(y)
                     ),
-                    distance
+                    validated(distance)
             );
+        }
+
+        private String validated(String field) {
+            if(field == null || field.isBlank() ) {
+                throw new KakaoApiException(KakaoErrorCode.KAKAO_RESPONSE_ERROR);
+            }
+            return field;
         }
     }
 
