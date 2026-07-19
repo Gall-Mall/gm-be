@@ -1,0 +1,55 @@
+# api 모듈 진입 설정 예시 템플릿.
+# 이 파일을 application.yml 로 복사한 뒤 환경에 맞게 값을 채운다.
+#   cp application-example.yml application.yml
+# 실제 비밀번호 등 시크릿은 application.yml(gitignore) 또는 환경변수로만 주입하고 커밋하지 않는다.
+spring:
+  application:
+    name: gm-api
+
+  # DB 설정. 값은 환경변수로 주입하고, 로컬 기본값만 여기에 둔다.
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/gm?serverTimezone=Asia/Seoul&characterEncoding=UTF-8}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:}
+    driver-class-name: ${DB_DRIVER:com.mysql.cj.jdbc.Driver}
+    hikari:
+      maximum-pool-size: ${DB_POOL_MAX_SIZE:10}
+      connection-timeout: 3000
+
+  jpa:
+    hibernate:
+      # 로컬은 validate 로 스키마 검증만. 운영은 none, 초기 개발은 필요 시 update.
+      ddl-auto: ${JPA_DDL_AUTO:validate}
+    properties:
+      hibernate:
+        format_sql: true
+        default_batch_fetch_size: 100
+    # 트랜잭션 밖 지연로딩을 막아 영속성 경계를 명확히 한다.
+    open-in-view: false
+    show-sql: ${JPA_SHOW_SQL:false}
+
+  # RabbitMQ 설정. 값은 환경변수로 주입하고, 로컬 기본값만 여기에 둔다.
+  # 로컬 브로커: docker run -d --name rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:management
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    # 발행 신뢰성: 브로커 수신 확인(correlated) / 라우팅 실패 메시지 반송 감지
+    publisher-confirm-type: ${RABBITMQ_PUBLISHER_CONFIRM_TYPE:correlated}
+    publisher-returns: ${RABBITMQ_PUBLISHER_RETURNS:true}
+    # 소비 신뢰성: AUTO ack(기본) 유지 — 성공 시 ack, 예외 시 nack.
+    # 재시도 소진 시 재큐하지 않고(default-requeue-rejected:false) DLQ로 보낸다.
+    listener:
+      simple:
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          initial-interval: 2s
+          multiplier: 2
+          max-retries: 3
+          max-interval: 10s
+
+
+server:
+  port: ${SERVER_PORT:8080}
