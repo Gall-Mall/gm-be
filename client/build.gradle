@@ -5,6 +5,7 @@
 dependencies {
     implementation project(':core')
     implementation 'org.springframework:spring-web'   // RestClient
+    implementation 'com.fasterxml.jackson.core:jackson-annotations'
 }
 
 tasks.register("prepareKotlinBuildScriptModel"){}
