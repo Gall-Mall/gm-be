@@ -44,10 +44,18 @@ spring:
     # 발행 신뢰성: 브로커 수신 확인(correlated) / 라우팅 실패 메시지 반송 감지
     publisher-confirm-type: ${RABBITMQ_PUBLISHER_CONFIRM_TYPE:correlated}
     publisher-returns: ${RABBITMQ_PUBLISHER_RETURNS:true}
-    # 소비 신뢰성: 수동 ACK. 리스너에서 ack/nack 구현한 뒤 주석 해제한다.
-    # listener:
-    #   simple:
-    #     acknowledge-mode: manual
+    # 소비 신뢰성: AUTO ack(기본) 유지 — 성공 시 ack, 예외 시 nack.
+    # 재시도 소진 시 재큐하지 않고(default-requeue-rejected:false) DLQ로 보낸다.
+    listener:
+      simple:
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          initial-interval: 2s
+          multiplier: 2
+          max-retries: 3
+          max-interval: 10s
+
 
 server:
   port: ${SERVER_PORT:8080}

@@ -1,0 +1,10 @@
+// mq — RabbitMQ 메시징 계층 (도메인 간 공용 이벤트 브로커)
+// core 도메인에 의존하며, 이벤트 발행/소비 어댑터를 담당
+// 공통 의존성은 root build.gradle의 subprojects에서 상속
+
+dependencies {
+    implementation project(':core')
+    implementation 'org.springframework.boot:spring-boot-starter-amqp'
+}
+
+tasks.register("prepareKotlinBuildScriptModel"){}
