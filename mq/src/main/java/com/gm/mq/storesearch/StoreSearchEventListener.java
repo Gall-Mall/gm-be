@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class StoreSearchEventListener {
 
-    @RabbitListener(queues = StoreSearchQueueConfig.STORE_SEARCH_QUEUE)
+    @RabbitListener(queues = StoreSearchQueueConfig.STORE_SEARCH_QUEUE, errorHandler = "mqListenerErrorHandler")
     public void handle(Message message) {
         log.info("[store-search] store.search.requested 수신: {}", new String(message.getBody()));
         // TODO: 멱등(eventId) 체크

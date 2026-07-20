@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class NotificationEventListener {
 
-    @RabbitListener(queues = NotificationQueueConfig.NOTIFICATION_QUEUE)
+    @RabbitListener(queues = NotificationQueueConfig.NOTIFICATION_QUEUE, errorHandler = "mqListenerErrorHandler")
     public void handle(Message message) {
         log.info("[notification] vote.all.completed 수신: {}", new String(message.getBody()));
         // TODO: 멱등(eventId) 체크 — 이미 처리한 이벤트면 skip

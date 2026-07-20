@@ -18,7 +18,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class RecommendationEventListener {
 
-    @RabbitListener(queues = RecommendationQueueConfig.RECOMMENDATION_QUEUE)
+    @RabbitListener(queues = RecommendationQueueConfig.RECOMMENDATION_QUEUE, errorHandler = "mqListenerErrorHandler")
     public void handle(Message message, @Header(AmqpHeaders.RECEIVED_ROUTING_KEY) String routingKey) {
         log.info("[recommendation] {} 수신: {}", routingKey, new String(message.getBody()));
         // TODO: 멱등(eventId) 체크

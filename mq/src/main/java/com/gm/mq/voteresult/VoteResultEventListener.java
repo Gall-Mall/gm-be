@@ -18,7 +18,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class VoteResultEventListener {
 
-    @RabbitListener(queues = VoteResultQueueConfig.VOTE_RESULT_QUEUE)
+    @RabbitListener(queues = VoteResultQueueConfig.VOTE_RESULT_QUEUE, errorHandler = "mqListenerErrorHandler")
     public void handle(Message message, @Header(AmqpHeaders.RECEIVED_ROUTING_KEY) String routingKey) {
         log.info("[vote-result] {} 수신: {}", routingKey, new String(message.getBody()));
         // TODO: 멱등(eventId) 체크
