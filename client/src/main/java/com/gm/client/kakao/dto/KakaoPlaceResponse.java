@@ -1,13 +1,12 @@
 package com.gm.client.kakao.dto;
 
-
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.gm.client.kakao.exception.KakaoApiException;
 import com.gm.client.kakao.exception.KakaoErrorCode;
 import com.gm.core.domain.store.model.Coordinate;
+import com.gm.core.domain.store.model.Provider;
 import com.gm.core.domain.store.model.Store;
-
 import java.util.List;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -46,6 +45,7 @@ public record KakaoPlaceResponse(
                             Double.parseDouble(x),
                             Double.parseDouble(y)
                     ),
+                    Provider.KAKAO,
                     validated(distance)
             );
         }

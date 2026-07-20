@@ -7,6 +7,7 @@ public record Store (
         String categoryName,
         String placeUrl,
         Coordinate coordinate,
+        Provider provider,
         String distance
         ) {
 }
