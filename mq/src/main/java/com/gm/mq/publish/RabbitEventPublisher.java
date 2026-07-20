@@ -26,10 +26,10 @@ public class RabbitEventPublisher implements EventPublisher {
     @Override
     public void publish(String routingKey, Object payload) {
         rabbitTemplate.convertAndSend(
-                RabbitMQConfig.APP_EXCHANGE,   // 항상 app.events (큐가 아니라 exchange)
-                routingKey,                     // 라우팅 키 → 브로커가 바인딩 매칭
-                payload,                        // 객체 → JSON 자동 변환
-                message -> {                    // eventId를 messageId 프로퍼티에 (envelope 없이)
+                RabbitMQConfig.APP_EXCHANGE,
+                routingKey,
+                payload,
+                message -> {
                     message.getMessageProperties().setMessageId(UUID.randomUUID().toString());
                     return message;
                 }
