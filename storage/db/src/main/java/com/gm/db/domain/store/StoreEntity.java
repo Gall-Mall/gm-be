@@ -3,19 +3,14 @@ package com.gm.db.domain.store;
 import com.gm.core.domain.store.model.Store;
 import com.gm.db.common.entity.BaseEntity;
 import jakarta.persistence.*;
-import lombok.Setter;
-import java.math.BigDecimal;
-import java.util.UUID;
+import lombok.AllArgsConstructor;
+import lombok.NoArgsConstructor;
 
-@Setter
 @Entity
 @Table(name = "recommended_restaurant")
+@AllArgsConstructor
+@NoArgsConstructor
 public class StoreEntity extends BaseEntity {
-
-    @Id
-    @Column(name ="id")
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID recommendedRestaurantId;
 
     // TODO: 연관관계 매핑 UUID voteSession;
 
@@ -32,10 +27,10 @@ public class StoreEntity extends BaseEntity {
     private String address;
 
     @Column(nullable = false)
-    private BigDecimal latitude;
+    private Double latitude;
 
     @Column(nullable = false)
-    private BigDecimal longitude;
+    private Double longitude;
 
     @Column(name = "distance_m", nullable = false)
     private Integer distance;
@@ -44,17 +39,15 @@ public class StoreEntity extends BaseEntity {
     private String externalPlaceId;
 
     public static StoreEntity from(Store store) {
-        StoreEntity storeEntity = new StoreEntity();
-//      storeEntity.voteSession
-        storeEntity.selected = false;
-        storeEntity.name = store.placeName();
-        storeEntity.url = store.placeUrl();
-        storeEntity.address = store.roadAddress();
-        storeEntity.latitude = BigDecimal.valueOf(store.coordinate().y());
-        storeEntity.longitude = BigDecimal.valueOf(store.coordinate().x());
-        storeEntity.distance = Integer.parseInt(store.distance());
-        storeEntity.externalPlaceId = store.placeId();
-        return storeEntity;
-
+        return new StoreEntity(
+                false,
+                store.placeName(),
+                store.placeUrl(),
+                store.roadAddress(),
+                store.coordinate().y(),
+                store.coordinate().y(),
+                Integer.parseInt(store.distance()),
+                store.placeId()
+        );
     }
 }
