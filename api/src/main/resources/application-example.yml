@@ -16,6 +16,12 @@ spring:
       maximum-pool-size: ${DB_POOL_MAX_SIZE:10}
       connection-timeout: 3000
 
+  springdoc:
+    api-docs:
+      path: /v3/api-docs
+    swagger-ui:
+      path: /swagger-ui.html
+
   jpa:
     hibernate:
       # 로컬은 validate 로 스키마 검증만. 운영은 none, 초기 개발은 필요 시 update.
