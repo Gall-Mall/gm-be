@@ -1,16 +1,28 @@
 package com.gm.db.domain.store;
 
-import com.gm.core.domain.store.model.Store;
+import com.gm.core.domain.store.model.Provider;
 import com.gm.db.common.entity.BaseEntity;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
+import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "recommended_restaurant")
-@AllArgsConstructor
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+
 public class StoreEntity extends BaseEntity {
+
+    public StoreEntity(Boolean selected, String name, String url, String address, Double latitude, Double longitude, Integer distance, String externalPlaceId, Provider provider) {
+        this.selected = selected;
+        this.name = name;
+        this.url = url;
+        this.address = address;
+        this.latitude = latitude;
+        this.longitude = longitude;
+        this.distance = distance;
+        this.externalPlaceId = externalPlaceId;
+        this.provider = provider;
+    }
 
     // TODO: 연관관계 매핑 UUID voteSession;
 
@@ -38,16 +50,6 @@ public class StoreEntity extends BaseEntity {
     @Column(name = "external_place_id", nullable = false)
     private String externalPlaceId;
 
-    public static StoreEntity from(Store store) {
-        return new StoreEntity(
-                false,
-                store.placeName(),
-                store.placeUrl(),
-                store.roadAddress(),
-                store.coordinate().y(),
-                store.coordinate().y(),
-                Integer.parseInt(store.distance()),
-                store.placeId()
-        );
-    }
+    @Enumerated(EnumType.STRING)
+    private Provider provider;
 }
