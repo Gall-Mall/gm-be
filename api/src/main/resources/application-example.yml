@@ -59,3 +59,8 @@ spring:
 
 server:
   port: ${SERVER_PORT:8080}
+
+jwt:
+  # Base64로 인코딩된 256bit 이상의 Secret Key
+  secret: ${JWT_SECRET:YOUR_BASE64_SECRET_KEY}
+  access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION:3600}

@@ -1,17 +1,17 @@
 package com.gm.core.domain.user.service;
 
-import com.gm.core.domain.user.exception.UserNotFoundException;
-import com.gm.core.domain.user.model.Provider;
-import com.gm.core.domain.user.model.UserStatus;
+import java.util.UUID;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-
-import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.gm.core.domain.user.exception.UserNotFoundException;
+import com.gm.core.domain.user.model.Provider;
 import com.gm.core.domain.user.model.User;
+import com.gm.core.domain.user.model.UserStatus;
 import com.gm.core.domain.user.repository.UserRepository;
 
 @Slf4j
@@ -29,7 +29,8 @@ public class UserService {
      */
     @Transactional(readOnly = true)
     public User findById(UUID id) {
-        log.info("user 조회: Id: {}", id);
+        /** 인증 요청마다 발생하는 로그이므로 'info → debug'로 수정했습니다. */
+        log.debug("user 조회: Id: {}", id);
         return userRepository.findById(id).orElseThrow(UserNotFoundException::new);
     }
 
@@ -70,7 +71,6 @@ public class UserService {
             String phone,
             String email
     ) {
-
         return userRepository.save(
                 User.create(
                         name,
