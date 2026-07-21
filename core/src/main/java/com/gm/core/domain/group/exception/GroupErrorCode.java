@@ -1,10 +1,13 @@
 package com.gm.core.domain.group.exception;
 
+import lombok.Getter;
+
 import com.gm.core.exception.ErrorCode;
 
 /**
  * 그룹(GROUP) 도메인에 속하는 오류 코드를 정의한다.
  */
+@Getter
 public enum GroupErrorCode implements ErrorCode {
 
     /** 요청한 groupId에 해당하는 그룹이 없는 경우 사용한다. */
@@ -27,23 +30,5 @@ public enum GroupErrorCode implements ErrorCode {
         this.status = status;
         this.code = code;
         this.message = message;
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public int getStatus() {
-        return status;
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public String getCode() {
-        return code;
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public String getMessage() {
-        return message;
     }
 }
