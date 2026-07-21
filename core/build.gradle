@@ -2,8 +2,7 @@
 // 공통 의존성(spring-boot-starter, lombok, test)은 root build.gradle의 subprojects에서 상속
 
 dependencies {
-    // 도메인 전용 — 추가 의존성 없음(→ '@Transactional' 사용을 위해서 jpa만 추가함)
-    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework:spring-tx'
 }
 
 tasks.register("prepareKotlinBuildScriptModel"){}
