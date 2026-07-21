@@ -1,4 +1,4 @@
-package com.gm.core.domain.vote.reposiory;
+package com.gm.core.domain.vote.repository;
 
 import com.gm.core.domain.vote.model.VoteSession;
 import com.gm.core.domain.vote.model.VoteSessionStatus;

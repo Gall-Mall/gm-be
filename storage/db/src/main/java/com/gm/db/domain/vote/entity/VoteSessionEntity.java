@@ -1,5 +1,7 @@
 package com.gm.db.domain.vote.entity;
 
+import com.gm.core.domain.vote.exception.VoteSessionErrorCode;
+import com.gm.core.domain.vote.exception.VoteSessionException;
 import com.gm.core.domain.vote.model.VoteSessionStatus;
 import com.gm.db.common.entity.BaseEntity;
 import jakarta.persistence.Column;
@@ -23,7 +25,7 @@ import java.util.UUID;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class VoteSessionEntity extends BaseEntity {
 
-    @Column(name = "dining_group_id", nullable = false)
+    @Column(nullable = false)
     private UUID diningGroupId;
 
     @Enumerated(EnumType.STRING)
@@ -39,11 +41,9 @@ public class VoteSessionEntity extends BaseEntity {
     @Column(length = 255)
     private String dislikeKeyword;
 
-    @Column(name = "started_at")
-    private LocalDateTime startAt;
+    private LocalDateTime startedAt;
 
-    @Column(name = "closed_at")
-    private LocalDateTime closeAt;
+    private LocalDateTime closedAt;
 
     /**
      * 새 투표 세션 엔티티를 생성한다.
@@ -53,8 +53,8 @@ public class VoteSessionEntity extends BaseEntity {
      * @param title 세션 제목
      * @param likeKeyword 종합 선호 키워드
      * @param dislikeKeyword 종합 비선호 키워드
-     * @param startAt 투표 시작 시각
-     * @param closeAt 투표 종료 시각
+     * @param startedAt 투표 시작 시각
+     * @param closedAt 투표 종료 시각
      */
     public VoteSessionEntity(
             UUID diningGroupId,
@@ -62,16 +62,16 @@ public class VoteSessionEntity extends BaseEntity {
             String title,
             String likeKeyword,
             String dislikeKeyword,
-            LocalDateTime startAt,
-            LocalDateTime closeAt
+            LocalDateTime startedAt,
+            LocalDateTime closedAt
     ) {
         this.diningGroupId = diningGroupId;
         this.voteSessionStatus = voteSessionStatus;
         this.title = title;
         this.likeKeyword = likeKeyword;
         this.dislikeKeyword = dislikeKeyword;
-        this.startAt = startAt;
-        this.closeAt = closeAt;
+        this.startedAt = startedAt;
+        this.closedAt = closedAt;
     }
 
     /**
@@ -89,7 +89,11 @@ public class VoteSessionEntity extends BaseEntity {
      * @param cancelledAt 취소 시각
      */
     public void cancel(LocalDateTime cancelledAt) {
+        if (!voteSessionStatus.canTransitionTo(VoteSessionStatus.CANCELLED)) {
+            throw new VoteSessionException(VoteSessionErrorCode.INVALID_SESSION_STATUS);
+        }
+
         this.voteSessionStatus = VoteSessionStatus.CANCELLED;
-        this.closeAt = cancelledAt;
+        this.closedAt = cancelledAt;
     }
 }

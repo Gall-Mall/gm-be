@@ -17,8 +17,8 @@ import java.util.UUID;
  * @param title 세션 제목
  * @param likeKeyword 종합 선호 키워드
  * @param dislikeKeyword 종합 비선호 키워드
- * @param startAt 투표 시작 시각
- * @param closeAt 투표 종료 시각
+ * @param startedAt 투표 시작 시각
+ * @param closedAt 투표 종료 시각
  * @param createdAt 세션 생성 시각
  * @param updatedAt 세션 최종 수정 시각
  */
@@ -31,8 +31,8 @@ public record VoteSession(
         String likeKeyword,
         String dislikeKeyword,
         // 투표 시작 시간
-        LocalDateTime startAt,
-        LocalDateTime closeAt,
+        LocalDateTime startedAt,
+        LocalDateTime closedAt,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
@@ -112,7 +112,7 @@ public record VoteSession(
 
         return toBuilder()
                 .voteSessionStatus(VoteSessionStatus.CANCELLED)
-                .closeAt(cancelledAt)
+                .closedAt(cancelledAt)
                 .build();
     }
 }

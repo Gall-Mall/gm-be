@@ -4,10 +4,11 @@ import com.gm.core.domain.vote.exception.VoteSessionErrorCode;
 import com.gm.core.domain.vote.exception.VoteSessionException;
 import com.gm.core.domain.vote.model.VoteSession;
 import com.gm.core.domain.vote.model.VoteSessionStatus;
-import com.gm.core.domain.vote.reposiory.VoteSessionRepository;
+import com.gm.core.domain.vote.repository.VoteSessionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -32,6 +33,7 @@ public class VoteSessionService {
      * @return 저장된 투표 세션
      * @throws IllegalArgumentException 그룹 식별자가 없거나 제목이 비어 있는 경우
      */
+    @Transactional
     public VoteSession createManualVoteSession(
             UUID diningGroupId,
             String title,
@@ -55,6 +57,7 @@ public class VoteSessionService {
      * @return 조회된 투표 세션
      * @throws VoteSessionException 세션이 존재하지 않아 {@code SESSION-001} 오류가 발생하는 경우
      */
+    @Transactional(readOnly = true)
     public VoteSession findVoteSession(UUID voteSessionId) {
         return voteSessionRepository.findById(voteSessionId)
                 .orElseThrow(() ->
@@ -69,6 +72,7 @@ public class VoteSessionService {
      * @return 상태가 변경된 투표 세션
      * @throws VoteSessionException 세션이 없거나 변경할 수 없는 상태인 경우
      */
+    @Transactional
     public VoteSession changeVoteSessionStatus(
             UUID voteSessionId,
             VoteSessionStatus nextStatus
@@ -92,13 +96,14 @@ public class VoteSessionService {
      * @return 취소된 투표 세션
      * @throws VoteSessionException 세션이 없거나 취소할 수 없는 상태인 경우
      */
+    @Transactional
     public VoteSession cancelVoteSession(UUID voteSessionId, UUID requestId) {
         VoteSession voteSession = findVoteSession(voteSessionId);
         VoteSession cancelled = voteSession.cancel(LocalDateTime.now());
 
         // TODO: requestId 통해서 그룹 리더인지 확인
 
-        return voteSessionRepository.cancel(voteSessionId, cancelled.closeAt())
+        return voteSessionRepository.cancel(voteSessionId, cancelled.closedAt())
                 .orElseThrow(() ->
                         new VoteSessionException(VoteSessionErrorCode.SESSION_NOT_FOUND));
     }
@@ -112,6 +117,7 @@ public class VoteSessionService {
      * @param requestId 삭제를 요청한 사용자 식별자
      * @throws VoteSessionException 세션이 존재하지 않아 {@code SESSION-001} 오류가 발생하는 경우
      */
+    @Transactional
     public void deleteVoteSession(UUID voteSessionId, UUID requestId) {
 
         VoteSession voteSession = voteSessionRepository.findById(voteSessionId)

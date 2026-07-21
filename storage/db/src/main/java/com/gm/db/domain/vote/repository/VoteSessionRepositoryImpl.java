@@ -2,7 +2,7 @@ package com.gm.db.domain.vote.repository;
 
 import com.gm.core.domain.vote.model.VoteSession;
 import com.gm.core.domain.vote.model.VoteSessionStatus;
-import com.gm.core.domain.vote.reposiory.VoteSessionRepository;
+import com.gm.core.domain.vote.repository.VoteSessionRepository;
 import com.gm.db.domain.vote.entity.VoteSessionEntity;
 import com.gm.db.domain.vote.mapper.VoteSessionMapper;
 import lombok.RequiredArgsConstructor;
@@ -42,7 +42,6 @@ public class VoteSessionRepositoryImpl implements VoteSessionRepository {
 
     /** {@inheritDoc} */
     @Override
-    @Transactional
     public Optional<VoteSession> updateStatus(
             UUID voteSessionId,
             VoteSessionStatus voteSessionStatus
@@ -56,7 +55,6 @@ public class VoteSessionRepositoryImpl implements VoteSessionRepository {
 
     /** {@inheritDoc} */
     @Override
-    @Transactional
     public Optional<VoteSession> cancel(
             UUID voteSessionId,
             LocalDateTime cancelledAt
