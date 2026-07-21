@@ -16,23 +16,23 @@ import com.gm.db.common.entity.BaseEntity;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class UserEntity extends BaseEntity {
 
-    @Column(name = "name", length = 30, nullable = false)
+    @Column(length = 30, nullable = false)
     private String name;
-    @Column(name = "nickname", length = 100, nullable = false)
+    @Column(length = 100, nullable = false)
     private String nickname;
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false)
+    @Column(nullable = false)
     private UserStatus status;
     @Enumerated(EnumType.STRING)
-    @Column(name = "provider", nullable = false)
+    @Column(nullable = false)
     private Provider provider;
-    @Column(name = "provider_id", length = 255, nullable = false)
+    @Column(length = 255, nullable = false)
     private String providerId;
-    @Column(name = "phone", length = 20, nullable = false)
+    @Column(length = 20, nullable = false)
     private String phone;
-    @Column(name = "email", length = 255, nullable = false)
+    @Column(length = 255, nullable = false)
     private String email;
-    @Column(name = "terms_agreed", nullable = false)
+    @Column(nullable = false)
     private Boolean termsAgreed;
 
     public UserEntity(

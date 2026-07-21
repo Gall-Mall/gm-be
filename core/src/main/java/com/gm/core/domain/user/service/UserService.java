@@ -70,7 +70,6 @@ public class UserService {
             String phone,
             String email
     ) {
-        log.info("신규 소셜 회원 생성: provider={}", provider);
 
         return userRepository.save(
                 User.create(
