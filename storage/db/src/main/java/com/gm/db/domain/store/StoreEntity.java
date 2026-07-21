@@ -5,6 +5,7 @@ import com.gm.db.common.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
+import java.util.UUID;
 
 @Entity
 @Table(name = "recommended_restaurant")
@@ -13,6 +14,8 @@ import lombok.NoArgsConstructor;
 public class StoreEntity extends BaseEntity {
 
     // TODO: 연관관계 매핑 UUID voteSession;
+    @Column(name = "vote_session_id", nullable = false)
+    private UUID voteSession;
 
     @Column(name = "selected", nullable = false)
     private Boolean selected;
