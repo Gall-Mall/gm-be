@@ -34,7 +34,6 @@ public record KakaoPlaceResponse(
             String distance
 ) {
         public Store toStore() {
-
             return new Store(
                     id,
                     placeName,
@@ -57,7 +56,4 @@ public record KakaoPlaceResponse(
             return field;
         }
     }
-
-
-
 }

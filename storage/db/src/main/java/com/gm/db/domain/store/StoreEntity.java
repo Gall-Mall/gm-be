@@ -12,18 +12,6 @@ import lombok.NoArgsConstructor;
 
 public class StoreEntity extends BaseEntity {
 
-    public StoreEntity(Boolean selected, String name, String url, String address, Double latitude, Double longitude, Integer distance, String externalPlaceId, Provider provider) {
-        this.selected = selected;
-        this.name = name;
-        this.url = url;
-        this.address = address;
-        this.latitude = latitude;
-        this.longitude = longitude;
-        this.distance = distance;
-        this.externalPlaceId = externalPlaceId;
-        this.provider = provider;
-    }
-
     // TODO: 연관관계 매핑 UUID voteSession;
 
     @Column(name = "selected", nullable = false)
@@ -52,4 +40,16 @@ public class StoreEntity extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     private Provider provider;
+
+    public StoreEntity(Boolean selected, String name, String url, String address, Double latitude, Double longitude, Integer distance, String externalPlaceId, Provider provider) {
+        this.selected = selected;
+        this.name = name;
+        this.url = url;
+        this.address = address;
+        this.latitude = latitude;
+        this.longitude = longitude;
+        this.distance = distance;
+        this.externalPlaceId = externalPlaceId;
+        this.provider = provider;
+    }
 }
