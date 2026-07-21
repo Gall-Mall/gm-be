@@ -14,11 +14,12 @@ public class GroupRepositoryImpl implements GroupRepository {
 
     private final GroupJpaRepository groupJpaRepository;
     private final GroupMemberJpaRepository groupMemberJpaRepository;
+    private final GroupMapper groupMapper;
 
     @Override
     public Group create(NewGroup newGroup) {
-        GroupEntity group = groupJpaRepository.save(new GroupEntity(newGroup));
+        GroupEntity group = groupJpaRepository.save(groupMapper.toEntity(newGroup));
         groupMemberJpaRepository.save(GroupMemberEntity.ofOwner(group.getId(), newGroup.ownerUserId()));
-        return group.toDomainModel(1);
+        return groupMapper.toDomainModel(group, 1);
     }
 }

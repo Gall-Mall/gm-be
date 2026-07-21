@@ -1,6 +1,5 @@
 package com.gm.api.controller.group.dto.response;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.UUID;
@@ -13,8 +12,8 @@ public record GroupResponse(
         UUID ownerUserId,
         String name,
         String locationAddress,
-        BigDecimal latitude,
-        BigDecimal longitude,
+        Double latitude,
+        Double longitude,
         int searchRadiusM,
         @JsonFormat(pattern = "HH:mm")
         LocalTime recommendationTime,

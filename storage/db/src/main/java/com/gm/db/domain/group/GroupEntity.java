@@ -1,6 +1,5 @@
 package com.gm.db.domain.group;
 
-import java.math.BigDecimal;
 import java.time.LocalTime;
 import java.util.UUID;
 
@@ -12,12 +11,10 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import com.gm.core.domain.group.model.Group;
-import com.gm.core.domain.group.model.NewGroup;
 import com.gm.db.common.entity.BaseEntity;
 
 @Entity
-@Table(name = "`group`")
+@Table(name = "dining_group")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class GroupEntity extends BaseEntity {
@@ -31,11 +28,11 @@ public class GroupEntity extends BaseEntity {
     @Column(name = "location_address", nullable = false, length = 500)
     private String locationAddress;
 
-    @Column(name = "latitude", nullable = false, precision = 10, scale = 7)
-    private BigDecimal latitude;
+    @Column(name = "latitude", nullable = false)
+    private Double latitude;
 
-    @Column(name = "longitude", nullable = false, precision = 10, scale = 7)
-    private BigDecimal longitude;
+    @Column(name = "longitude", nullable = false)
+    private Double longitude;
 
     @Column(name = "search_radius_m", nullable = false)
     private int searchRadiusM;
@@ -46,31 +43,23 @@ public class GroupEntity extends BaseEntity {
     @Column(name = "max_member_count", nullable = false)
     private int maxMemberCount;
 
-    public GroupEntity(NewGroup newGroup) {
-        this.ownerUserId = newGroup.ownerUserId();
-        this.name = newGroup.name();
-        this.locationAddress = newGroup.locationAddress();
-        this.latitude = newGroup.latitude();
-        this.longitude = newGroup.longitude();
-        this.searchRadiusM = newGroup.searchRadiusM();
-        this.recommendationTime = newGroup.recommendationTime();
-        this.maxMemberCount = newGroup.maxMemberCount();
-    }
-
-    public Group toDomainModel(int memberCount) {
-        return new Group(
-                getId(),
-                ownerUserId,
-                name,
-                locationAddress,
-                latitude,
-                longitude,
-                searchRadiusM,
-                recommendationTime,
-                maxMemberCount,
-                memberCount,
-                getCreatedAt(),
-                getUpdatedAt()
-        );
+    public GroupEntity(
+            UUID ownerUserId,
+            String name,
+            String locationAddress,
+            Double latitude,
+            Double longitude,
+            int searchRadiusM,
+            LocalTime recommendationTime,
+            int maxMemberCount
+    ) {
+        this.ownerUserId = ownerUserId;
+        this.name = name;
+        this.locationAddress = locationAddress;
+        this.latitude = latitude;
+        this.longitude = longitude;
+        this.searchRadiusM = searchRadiusM;
+        this.recommendationTime = recommendationTime;
+        this.maxMemberCount = maxMemberCount;
     }
 }

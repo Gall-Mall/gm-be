@@ -1,6 +1,5 @@
 package com.gm.api.controller.group.dto.request;
 
-import java.math.BigDecimal;
 import java.time.LocalTime;
 import java.util.UUID;
 
@@ -27,12 +26,12 @@ public record GroupCreateRequest(
         @NotNull
         @DecimalMin("-90")
         @DecimalMax("90")
-        BigDecimal latitude,
+        Double latitude,
 
         @NotNull
         @DecimalMin("-180")
         @DecimalMax("180")
-        BigDecimal longitude,
+        Double longitude,
 
         @NotNull
         @Positive

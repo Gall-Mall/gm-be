@@ -1,6 +1,5 @@
 package com.gm.core.domain.group.service;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.UUID;
@@ -33,8 +32,8 @@ class GroupServiceTest {
                 ownerUserId,
                 "점심팟",
                 "서울특별시 강남구 테헤란로 123",
-                BigDecimal.valueOf(37.5012345),
-                BigDecimal.valueOf(127.0398765),
+                37.5012345,
+                127.0398765,
                 1000,
                 LocalTime.of(11, 0),
                 6
@@ -93,8 +92,8 @@ class GroupServiceTest {
         assertThat(captured.ownerUserId()).isEqualTo(ownerUserId);
         assertThat(captured.name()).isEqualTo("점심팟");
         assertThat(captured.locationAddress()).isEqualTo("서울특별시 강남구 테헤란로 123");
-        assertThat(captured.latitude()).isEqualByComparingTo(BigDecimal.valueOf(37.5012345));
-        assertThat(captured.longitude()).isEqualByComparingTo(BigDecimal.valueOf(127.0398765));
+        assertThat(captured.latitude()).isEqualTo(37.5012345);
+        assertThat(captured.longitude()).isEqualTo(127.0398765);
         assertThat(captured.searchRadiusM()).isEqualTo(1000);
         assertThat(captured.recommendationTime()).isEqualTo(LocalTime.of(11, 0));
         assertThat(captured.maxMemberCount()).isEqualTo(6);

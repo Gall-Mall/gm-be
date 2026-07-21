@@ -23,15 +23,15 @@ import com.gm.db.common.entity.BaseEntity;
         name = "group_member",
         uniqueConstraints = @UniqueConstraint(
                 name = "UK_group_member",
-                columnNames = {"group_id", "user_id"}
+                columnNames = {"dining_group_id", "user_id"}
         )
 )
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class GroupMemberEntity extends BaseEntity {
 
-    @Column(name = "group_id", nullable = false)
-    private UUID groupId;
+    @Column(name = "dining_group_id", nullable = false)
+    private UUID diningGroupId;
 
     @Column(name = "user_id", nullable = false)
     private UUID userId;
@@ -51,13 +51,13 @@ public class GroupMemberEntity extends BaseEntity {
     private GroupMemberRole role;
 
     private GroupMemberEntity(
-            UUID groupId,
+            UUID diningGroupId,
             UUID userId,
             GroupMemberStatus status,
             LocalDateTime joinedAt,
             GroupMemberRole role
     ) {
-        this.groupId = groupId;
+        this.diningGroupId = diningGroupId;
         this.userId = userId;
         this.status = status;
         this.joinedAt = joinedAt;
@@ -67,9 +67,9 @@ public class GroupMemberEntity extends BaseEntity {
     /**
      * 그룹 생성 시점의 그룹장 멤버를 생성한다.
      */
-    public static GroupMemberEntity ofOwner(UUID groupId, UUID userId) {
+    public static GroupMemberEntity ofOwner(UUID diningGroupId, UUID userId) {
         return new GroupMemberEntity(
-                groupId,
+                diningGroupId,
                 userId,
                 GroupMemberStatus.ACTIVE,
                 LocalDateTime.now(),

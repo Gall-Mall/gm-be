@@ -1,6 +1,5 @@
 package com.gm.core.domain.group.model;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.UUID;
@@ -26,8 +25,8 @@ public record Group(
         UUID ownerUserId,
         String name,
         String locationAddress,
-        BigDecimal latitude,
-        BigDecimal longitude,
+        Double latitude,
+        Double longitude,
         int searchRadiusM,
         LocalTime recommendationTime,
         int maxMemberCount,
