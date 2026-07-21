@@ -26,6 +26,9 @@ public record KakaoPlaceResponse(
             @JsonProperty("road_address_name")
             String roadAddressName,
 
+            @JsonProperty("address_name")
+            String addressName,
+
             @JsonProperty("place_url")
             String placeUrl,
 
@@ -37,7 +40,7 @@ public record KakaoPlaceResponse(
             return new Store(
                     id,
                     placeName,
-                    validated(roadAddressName),
+                    validateAddress(roadAddressName),
                     categoryName,
                     validated(placeUrl),
                     new Coordinate(
@@ -50,10 +53,17 @@ public record KakaoPlaceResponse(
         }
 
         private String validated(String field) {
-            if(field == null || field.isBlank() ) {
+            if(field == null || field.isBlank()) {
                 throw new KakaoApiException(KakaoErrorCode.KAKAO_RESPONSE_ERROR);
             }
             return field;
+        }
+
+        private String validateAddress(String roadAddressName) {
+            if(roadAddressName == null || roadAddressName.isBlank()) {
+                return validated(addressName);
+            }
+            return roadAddressName;
         }
     }
 }
