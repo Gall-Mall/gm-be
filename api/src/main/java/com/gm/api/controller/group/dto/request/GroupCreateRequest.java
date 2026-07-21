@@ -1,0 +1,61 @@
+package com.gm.api.controller.group.dto.request;
+
+import java.math.BigDecimal;
+import java.time.LocalTime;
+import java.util.UUID;
+
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.gm.core.domain.group.model.NewGroup;
+
+public record GroupCreateRequest(
+
+        @NotBlank
+        @Size(max = 150)
+        String name,
+
+        @NotBlank
+        @Size(max = 500)
+        String locationAddress,
+
+        @NotNull
+        @DecimalMin("-90")
+        @DecimalMax("90")
+        BigDecimal latitude,
+
+        @NotNull
+        @DecimalMin("-180")
+        @DecimalMax("180")
+        BigDecimal longitude,
+
+        @NotNull
+        @Positive
+        Integer searchRadiusM,
+
+        @NotNull
+        @JsonFormat(pattern = "HH:mm")
+        LocalTime recommendationTime,
+
+        @NotNull
+        @Positive
+        Integer maxMemberCount
+) {
+    public NewGroup toNewGroup(UUID ownerUserId) {
+        return new NewGroup(
+                ownerUserId,
+                name,
+                locationAddress,
+                latitude,
+                longitude,
+                searchRadiusM,
+                recommendationTime,
+                maxMemberCount
+        );
+    }
+}
