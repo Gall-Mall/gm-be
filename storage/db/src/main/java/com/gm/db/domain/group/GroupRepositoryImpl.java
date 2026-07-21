@@ -1,10 +1,14 @@
 package com.gm.db.domain.group;
 
+import java.util.List;
+import java.util.UUID;
+
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.stereotype.Repository;
 
 import com.gm.core.domain.group.model.Group;
+import com.gm.core.domain.group.model.GroupMemberStatus;
 import com.gm.core.domain.group.model.NewGroup;
 import com.gm.core.domain.group.repository.GroupRepository;
 
@@ -21,5 +25,13 @@ public class GroupRepositoryImpl implements GroupRepository {
         GroupEntity group = groupJpaRepository.save(groupMapper.toEntity(newGroup));
         groupMemberJpaRepository.save(GroupMemberEntity.ofOwner(group.getId(), newGroup.ownerUserId()));
         return groupMapper.toDomainModel(group, 1);
+    }
+
+    @Override
+    public List<Group> findAllByMemberUserId(UUID userId) {
+        return groupJpaRepository.findAllWithMemberCountByMemberUserIdAndStatus(userId, GroupMemberStatus.ACTIVE)
+                .stream()
+                .map(groupMapper::toDomainModel)
+                .toList();
     }
 }

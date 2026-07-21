@@ -1,5 +1,8 @@
 package com.gm.core.domain.group.service;
 
+import java.util.List;
+import java.util.UUID;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -27,5 +30,17 @@ public class GroupService {
     public Group create(NewGroup newGroup) {
         log.info("그룹 생성: ownerUserId: {}, name: {}", newGroup.ownerUserId(), newGroup.name());
         return groupRepository.create(newGroup);
+    }
+
+    /**
+     * 요청 회원이 활성 멤버로 참여 중인 그룹 목록을 조회한다.
+     *
+     * @param userId 요청 회원 식별자
+     * @return 참여 중인 그룹 목록
+     */
+    @Transactional(readOnly = true)
+    public List<Group> findMyGroups(UUID userId) {
+        log.info("내 그룹 목록 조회: userId: {}", userId);
+        return groupRepository.findAllByMemberUserId(userId);
     }
 }

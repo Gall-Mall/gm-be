@@ -10,12 +10,13 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * 그룹 생성(GROUP-001) API의 통합 테스트이다.
+ * 그룹 생성(GROUP-001), 내 그룹 목록 조회(GROUP-002) API의 통합 테스트이다.
  *
  * <p>실제 웹 계층부터 H2 기반 영속 계층까지 전체 스택을 거쳐,
  * 요청이 계약대로 저장되고 응답되는지 검증한다.</p>
@@ -117,6 +118,48 @@ class GroupIntegrationTest {
         mockMvc.perform(post("/api/groups")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(REQUEST_BODY))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("COMMON-002"));
+    }
+
+    @Test
+    @DisplayName("내가 참여 중인 그룹만 목록으로 조회한다")
+    void findMyGroups_returnsGroupsOfActiveMember() throws Exception {
+        UUID ownerUserId = UUID.randomUUID();
+
+        mockMvc.perform(post("/api/groups")
+                        .header("X-User-Id", ownerUserId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(REQUEST_BODY))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/groups")
+                        .header("X-User-Id", ownerUserId.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.code").value("SUCCESS"))
+                .andExpect(jsonPath("$.data.length()").value(1))
+                .andExpect(jsonPath("$.data[0].ownerUserId").value(ownerUserId.toString()))
+                .andExpect(jsonPath("$.data[0].name").value("점심팟"))
+                .andExpect(jsonPath("$.data[0].memberCount").value(1));
+    }
+
+    @Test
+    @DisplayName("참여 중인 그룹이 없으면 빈 배열을 반환한다")
+    void findMyGroups_withNoMemberships_returnsEmptyArray() throws Exception {
+        mockMvc.perform(get("/api/groups")
+                        .header("X-User-Id", UUID.randomUUID().toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.code").value("SUCCESS"))
+                .andExpect(jsonPath("$.data.length()").value(0));
+    }
+
+    @Test
+    @DisplayName("요청자 식별 헤더가 없으면 COMMON-002 오류를 반환한다")
+    void findMyGroups_withoutOwnerHeader_returnsCommon002() throws Exception {
+        mockMvc.perform(get("/api/groups"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.code").value("COMMON-002"));

@@ -2,6 +2,7 @@ package com.gm.core.domain.group.service;
 
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.List;
 import java.util.UUID;
 
 import org.junit.jupiter.api.DisplayName;
@@ -97,5 +98,34 @@ class GroupServiceTest {
         assertThat(captured.searchRadiusM()).isEqualTo(1000);
         assertThat(captured.recommendationTime()).isEqualTo(LocalTime.of(11, 0));
         assertThat(captured.maxMemberCount()).isEqualTo(6);
+    }
+
+    @Test
+    @DisplayName("내 그룹 목록 조회 요청을 그대로 리포지토리에 위임하고 조회 결과를 반환한다")
+    void findMyGroups_delegatesToRepository_andReturnsGroups() {
+        groupService = new GroupService(groupRepository);
+
+        UUID userId = UUID.randomUUID();
+        NewGroup newGroup = newGroup(userId);
+        List<Group> expected = List.of(savedGroup(UUID.randomUUID(), newGroup));
+
+        given(groupRepository.findAllByMemberUserId(userId)).willReturn(expected);
+
+        List<Group> actual = groupService.findMyGroups(userId);
+
+        assertThat(actual).isEqualTo(expected);
+    }
+
+    @Test
+    @DisplayName("참여 중인 그룹이 없으면 빈 리스트를 반환한다")
+    void findMyGroups_withNoMemberships_returnsEmptyList() {
+        groupService = new GroupService(groupRepository);
+
+        UUID userId = UUID.randomUUID();
+        given(groupRepository.findAllByMemberUserId(userId)).willReturn(List.of());
+
+        List<Group> actual = groupService.findMyGroups(userId);
+
+        assertThat(actual).isEmpty();
     }
 }
