@@ -8,11 +8,8 @@ package com.gm.core.exception;
  */
 public enum CommonErrorCode implements ErrorCode {
 
-    /** 처리되지 않은 서버 예외에 사용하는 공통 오류이다. */
     INTERNAL_ERROR(500, "COMMON-001", "서버 오류가 발생했습니다."),
-    /** 인증되지 않은 사용자의 요청에 사용하는 공통 오류이다. */
     UNAUTHORIZED(401, "COMMON-002", "인증이 필요합니다."),
-    /** 접근 권한이 없는 사용자의 요청에 사용하는 공통 오류이다. */
     ACCESS_DENIED(403, "COMMON-003", "해당 요청을 수행할 권한이 없습니다.");
 
     private final int status;

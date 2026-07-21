@@ -17,7 +17,6 @@ import org.springframework.stereotype.Component;
 
 import com.gm.api.common.response.ResponseEnvelope;
 import com.gm.core.exception.CommonErrorCode;
-import com.gm.core.exception.ErrorCode;
 
 /**
  * 인증되지 않은 사용자의 요청을 공통 실패 응답으로 변환한다.
@@ -44,21 +43,19 @@ public class CustomAuthenticationEntryPoint implements AuthenticationEntryPoint 
             AuthenticationException authException
     ) throws IOException {
 
-        ErrorCode errorCode = CommonErrorCode.UNAUTHORIZED;
-
         log.warn(
                 "[{}] 인증되지 않은 요청입니다. method={}, path={}",
-                errorCode.getCode(),
+                CommonErrorCode.UNAUTHORIZED.getCode(),
                 request.getMethod(),
                 request.getRequestURI()
         );
 
-        response.setStatus(errorCode.getStatus());
+        response.setStatus(CommonErrorCode.UNAUTHORIZED.getStatus());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding("UTF-8");
 
         ResponseEnvelope<Void> responseBody =
-                ResponseEnvelope.fail(errorCode);
+                ResponseEnvelope.fail(CommonErrorCode.UNAUTHORIZED);
 
         objectMapper.writeValue(
                 response.getWriter(),
