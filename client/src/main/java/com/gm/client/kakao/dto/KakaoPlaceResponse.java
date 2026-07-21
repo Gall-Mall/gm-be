@@ -1,13 +1,12 @@
 package com.gm.client.kakao.dto;
 
-
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.gm.client.kakao.exception.KakaoApiException;
 import com.gm.client.kakao.exception.KakaoErrorCode;
 import com.gm.core.domain.store.model.Coordinate;
+import com.gm.core.domain.store.model.Provider;
 import com.gm.core.domain.store.model.Store;
-
 import java.util.List;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -27,6 +26,9 @@ public record KakaoPlaceResponse(
             @JsonProperty("road_address_name")
             String roadAddressName,
 
+            @JsonProperty("address_name")
+            String addressName,
+
             @JsonProperty("place_url")
             String placeUrl,
 
@@ -35,29 +37,33 @@ public record KakaoPlaceResponse(
             String distance
 ) {
         public Store toStore() {
-
             return new Store(
                     id,
                     placeName,
-                    validated(roadAddressName),
+                    validateAddress(roadAddressName),
                     categoryName,
                     validated(placeUrl),
                     new Coordinate(
                             Double.parseDouble(x),
                             Double.parseDouble(y)
                     ),
+                    Provider.KAKAO,
                     validated(distance)
             );
         }
 
         private String validated(String field) {
-            if(field == null || field.isBlank() ) {
+            if(field == null || field.isBlank()) {
                 throw new KakaoApiException(KakaoErrorCode.KAKAO_RESPONSE_ERROR);
             }
             return field;
         }
+
+        private String validateAddress(String roadAddressName) {
+            if(roadAddressName == null || roadAddressName.isBlank()) {
+                return validated(addressName);
+            }
+            return roadAddressName;
+        }
     }
-
-
-
 }

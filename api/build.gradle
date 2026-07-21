@@ -20,6 +20,9 @@ dependencies {
     // 아키텍처 규칙 검증 (모듈 간 의존 방향 강제)
     testImplementation 'com.tngtech.archunit:archunit-junit5:1.4.1'
 
+    // MockMvc 테스트 지원 (Boot 4에서 spring-boot-starter-test와 분리됨)
+    testImplementation 'org.springframework.boot:spring-boot-webmvc-test'
+
     testRuntimeOnly 'com.h2database:h2'
 }
 

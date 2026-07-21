@@ -1,12 +1,13 @@
 package com.gm.core.domain.store.model;
 
 public record Store (
-        String placeId,
-        String placeName,
-        String roadAddress,
+        String externalPlaceId,
+        String name,
+        String address,
         String categoryName,
-        String placeUrl,
+        String url,
         Coordinate coordinate,
+        Provider provider,
         String distance
         ) {
 }

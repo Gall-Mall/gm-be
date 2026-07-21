@@ -6,10 +6,13 @@ import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.http.ResponseEntity;
-import org.springframework.validation.FieldError;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingRequestHeaderException;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import com.gm.api.common.response.ResponseEnvelope;
 import com.gm.core.exception.BusinessException;
@@ -40,15 +43,12 @@ public class GlobalExceptionHandler {
             );
         }
 
+        ErrorCode errorCode = CommonErrorCode.UNAUTHORIZED;
+
         log.warn("Validation failed : {}", validationErrors);
 
-        return ResponseEntity.badRequest()
-                .body(new ResponseEnvelope<>(
-                        false,
-                        "VALIDATION-001",
-                        "입력값 검증에 실패했습니다.",
-                        validationErrors
-                ));
+        return ResponseEntity.status(errorCode.getStatus())
+                .body(ResponseEnvelope.fail(errorCode, validationErrors));
     }
 
     /**
@@ -68,6 +68,27 @@ public class GlobalExceptionHandler {
             log.warn("[{}] {}", errorCode.getCode(), exception.getMessage());
         }
 
+        return ResponseEntity.status(errorCode.getStatus())
+                .body(ResponseEnvelope.fail(errorCode));
+    }
+
+    /**
+     * 요청 값 검증 실패를 공통 입력값 오류(COMMON-002) 응답으로 변환한다.
+     *
+     * <p>DTO 검증 실패, 본문 파싱 실패, 필수 헤더 누락, 파라미터 타입 불일치를 포함한다.</p>
+     *
+     * @param exception 요청 값 검증 관련 예외
+     * @return 400 상태의 공통 실패 응답
+     */
+    @ExceptionHandler({
+            MethodArgumentNotValidException.class,
+            HttpMessageNotReadableException.class,
+            MissingRequestHeaderException.class,
+            MethodArgumentTypeMismatchException.class
+    })
+    public ResponseEntity<ResponseEnvelope<Void>> handleInvalidInput(Exception exception) {
+        ErrorCode errorCode = CommonErrorCode.INVALID_INPUT;
+        log.warn("[{}] {}", errorCode.getCode(), exception.getMessage());
         return ResponseEntity.status(errorCode.getStatus())
                 .body(ResponseEnvelope.fail(errorCode));
     }

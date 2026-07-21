@@ -1,23 +1,21 @@
 package com.gm.db.domain.store;
 
-import com.gm.core.domain.store.model.Store;
+import com.gm.core.domain.store.model.Provider;
 import com.gm.db.common.entity.BaseEntity;
 import jakarta.persistence.*;
-import lombok.Setter;
-import java.math.BigDecimal;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 import java.util.UUID;
 
-@Setter
 @Entity
 @Table(name = "recommended_restaurant")
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+
 public class StoreEntity extends BaseEntity {
 
-    @Id
-    @Column(name ="id")
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID recommendedRestaurantId;
-
     // TODO: 연관관계 매핑 UUID voteSession;
+    @Column(name = "vote_session_id", nullable = false)
+    private UUID voteSession;
 
     @Column(name = "selected", nullable = false)
     private Boolean selected;
@@ -32,10 +30,10 @@ public class StoreEntity extends BaseEntity {
     private String address;
 
     @Column(nullable = false)
-    private BigDecimal latitude;
+    private Double latitude;
 
     @Column(nullable = false)
-    private BigDecimal longitude;
+    private Double longitude;
 
     @Column(name = "distance_m", nullable = false)
     private Integer distance;
@@ -43,18 +41,18 @@ public class StoreEntity extends BaseEntity {
     @Column(name = "external_place_id", nullable = false)
     private String externalPlaceId;
 
-    public static StoreEntity from(Store store) {
-        StoreEntity storeEntity = new StoreEntity();
-//      storeEntity.voteSession
-        storeEntity.selected = false;
-        storeEntity.name = store.placeName();
-        storeEntity.url = store.placeUrl();
-        storeEntity.address = store.roadAddress();
-        storeEntity.latitude = BigDecimal.valueOf(store.coordinate().y());
-        storeEntity.longitude = BigDecimal.valueOf(store.coordinate().x());
-        storeEntity.distance = Integer.parseInt(store.distance());
-        storeEntity.externalPlaceId = store.placeId();
-        return storeEntity;
+    @Enumerated(EnumType.STRING)
+    private Provider provider;
 
+    public StoreEntity(Boolean selected, String name, String url, String address, Double latitude, Double longitude, Integer distance, String externalPlaceId, Provider provider) {
+        this.selected = selected;
+        this.name = name;
+        this.url = url;
+        this.address = address;
+        this.latitude = latitude;
+        this.longitude = longitude;
+        this.distance = distance;
+        this.externalPlaceId = externalPlaceId;
+        this.provider = provider;
     }
 }

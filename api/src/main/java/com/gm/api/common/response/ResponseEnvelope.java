@@ -32,6 +32,15 @@ public record ResponseEnvelope<T>(
         return new ResponseEnvelope<>(true, SUCCESS_CODE, SUCCESS_MESSAGE, data);
     }
 
+    public static <T> ResponseEnvelope<T> fail(ErrorCode errorCode, T data) {
+        return new ResponseEnvelope<>(
+                false,
+                errorCode.getCode(),
+                errorCode.getMessage(),
+                data
+        );
+    }
+
     /**
      * 오류 코드를 공통 실패 응답으로 변환한다.
      *
