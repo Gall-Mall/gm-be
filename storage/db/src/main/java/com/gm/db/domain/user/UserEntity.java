@@ -1,12 +1,11 @@
 package com.gm.db.domain.user;
 
-import jakarta.persistence.Column;
+import com.gm.core.domain.user.model.Provider;
+import com.gm.core.domain.user.model.UserStatus;
+import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-
-import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
 
 import com.gm.core.domain.user.model.User;
 import com.gm.db.common.entity.BaseEntity;
@@ -17,28 +16,30 @@ import com.gm.db.common.entity.BaseEntity;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class UserEntity extends BaseEntity {
 
-    @Column(nullable = false)
+    @Column(name = "name", length = 30, nullable = false)
     private String name;
-    @Column(nullable = false)
+    @Column(name = "nickname", length = 100, nullable = false)
     private String nickname;
-    @Column(nullable = false)
-    private String status;
-    @Column(nullable = false)
-    private String provider;
-    @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false)
+    private UserStatus status;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "provider", nullable = false)
+    private Provider provider;
+    @Column(name = "provider_id", length = 255, nullable = false)
     private String providerId;
-    @Column(nullable = false)
+    @Column(name = "phone", length = 20, nullable = false)
     private String phone;
-    @Column(nullable = false)
+    @Column(name = "email", length = 255, nullable = false)
     private String email;
-    @Column(nullable = false)
+    @Column(name = "terms_agreed", nullable = false)
     private Boolean termsAgreed;
 
     public UserEntity(
             String name,
             String nickname,
-            String status,
-            String provider,
+            UserStatus status,
+            Provider provider,
             String providerId,
             String phone,
             String email,
