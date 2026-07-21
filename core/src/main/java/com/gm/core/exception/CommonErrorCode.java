@@ -1,15 +1,21 @@
 package com.gm.core.exception;
 
+import lombok.Getter;
+
 /**
  * 특정 도메인에 속하지 않는 공통 오류 코드를 정의한다.
  *
  * <p>예상하지 못한 서버 예외는 내부 상세를 노출하지 않고
  * {@link #INTERNAL_ERROR}의 고정 메시지로 응답한다.</p>
  */
+@Getter
 public enum CommonErrorCode implements ErrorCode {
 
     /** 처리되지 않은 서버 예외에 사용하는 공통 오류이다. */
-    INTERNAL_ERROR(500, "COMMON-001", "서버 오류가 발생했습니다.");
+    INTERNAL_ERROR(500, "COMMON-001", "서버 오류가 발생했습니다."),
+
+    /** 요청 DTO 검증에 실패한 경우 사용하는 공통 오류이다. */
+    INVALID_INPUT(400, "COMMON-002", "요청 값이 올바르지 않습니다.");
 
     private final int status;
     private final String code;
@@ -26,23 +32,5 @@ public enum CommonErrorCode implements ErrorCode {
         this.status = status;
         this.code = code;
         this.message = message;
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public int getStatus() {
-        return status;
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public String getCode() {
-        return code;
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public String getMessage() {
-        return message;
     }
 }
