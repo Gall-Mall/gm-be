@@ -2,7 +2,6 @@
 // 공통 의존성(spring-boot-starter, lombok, test)은 root build.gradle의 subprojects에서 상속
 
 dependencies {
-    // 서비스 계층 트랜잭션 경계(@Transactional) 정의용
     implementation 'org.springframework:spring-tx'
 }
 

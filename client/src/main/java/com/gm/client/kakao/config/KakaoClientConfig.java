@@ -14,7 +14,7 @@ public class KakaoClientConfig {
     @Bean
     public RestClient restClient() {
 
-        return   RestClient.builder()
+        return RestClient.builder()
                 .baseUrl("https://dapi.kakao.com")
                 .defaultHeader("Authorization", "KakaoAK " + apiKey)
                 .build();
