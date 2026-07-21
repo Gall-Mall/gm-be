@@ -3,8 +3,8 @@ package com.gm.core.domain.user.model;
 public record User(
         String name,
         String nickname,
-        String status,
-        String provider,
+        UserStatus status,
+        Provider provider,
         String providerId,
         String phone,
         String email,
@@ -14,7 +14,8 @@ public record User(
 
     public static User create(
             String name,
-            String provider,
+            UserStatus status,
+            Provider provider,
             String providerId,
             String phone,
             String email
@@ -22,7 +23,7 @@ public record User(
         return new User(
                 name,
                 name,
-                DEFAULT_STATUS,
+                status,
                 provider,
                 providerId,
                 phone,

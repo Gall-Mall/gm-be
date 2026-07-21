@@ -1,5 +1,6 @@
 package com.gm.db.domain.user;
 
+import jakarta.persistence.Column;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -16,13 +17,21 @@ import com.gm.db.common.entity.BaseEntity;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class UserEntity extends BaseEntity {
 
+    @Column(nullable = false)
     private String name;
+    @Column(nullable = false)
     private String nickname;
+    @Column(nullable = false)
     private String status;
+    @Column(nullable = false)
     private String provider;
+    @Column(nullable = false)
     private String providerId;
+    @Column(nullable = false)
     private String phone;
+    @Column(nullable = false)
     private String email;
+    @Column(nullable = false)
     private Boolean termsAgreed;
 
     public UserEntity(

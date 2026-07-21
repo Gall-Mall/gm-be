@@ -1,5 +1,6 @@
 package com.gm.db.domain.user;
 
+import com.gm.core.domain.user.model.Provider;
 import lombok.RequiredArgsConstructor;
 
 import java.util.Optional;
@@ -23,7 +24,7 @@ public class UserRepositoryImpl implements UserRepository {
     }
 
     @Override
-    public Optional<User> findByProviderAndProviderId(String provider, String providerId) {
+    public Optional<User> findByProviderAndProviderId(Provider provider, String providerId) {
         return userJpaRepository
                 .findByProviderAndProviderId(provider, providerId)
                 .map(userMapper::toDomain);

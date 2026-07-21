@@ -1,6 +1,8 @@
 package com.gm.core.domain.user.service;
 
 import com.gm.core.domain.user.exception.UserNotFoundException;
+import com.gm.core.domain.user.model.Provider;
+import com.gm.core.domain.user.model.UserStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -45,7 +47,7 @@ public class UserService {
     @Transactional
     public User findOrCreate(
             String name,
-            String provider,
+            Provider provider,
             String providerId,
             String phone,
             String email
@@ -63,7 +65,7 @@ public class UserService {
 
     private User createUser(
             String name,
-            String provider,
+            Provider provider,
             String providerId,
             String phone,
             String email
@@ -73,6 +75,7 @@ public class UserService {
         return userRepository.save(
                 User.create(
                         name,
+                        UserStatus.ACTIVE,
                         provider,
                         providerId,
                         phone,
