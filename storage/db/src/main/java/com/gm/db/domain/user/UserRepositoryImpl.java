@@ -15,35 +15,25 @@ import com.gm.core.domain.user.repository.UserRepository;
 public class UserRepositoryImpl implements UserRepository {
 
     private final UserJpaRepository userJpaRepository;
+    private final UserMapper userMapper;
 
     @Override
     public Optional<User> findById(UUID id) {
-        return userJpaRepository.findById(id).map(UserEntity::toDomainModel);
+        return userJpaRepository.findById(id).map(userMapper::toDomain);
     }
 
     @Override
     public Optional<User> findByProviderAndProviderId(String provider, String providerId) {
         return userJpaRepository
                 .findByProviderAndProviderId(provider, providerId)
-                .map(UserEntity::toDomainModel);
+                .map(userMapper::toDomain);
     }
 
     @Override
     public User save(User user) {
-        UserEntity userEntity = new UserEntity(
-                user.name(),
-                user.nickname(),
-                user.status(),
-                user.provider(),
-                user.providerId(),
-                user.phone(),
-                user.email(),
-                user.termsAgreed()
-        );
+        UserEntity userEntity = userMapper.toEntity(user);
+        UserEntity savedUserEntity = userJpaRepository.save(userEntity);
 
-        UserEntity savedUserEntity =
-                userJpaRepository.save(userEntity);
-
-        return savedUserEntity.toDomainModel();
+        return userMapper.toDomain(savedUserEntity);
     }
 }

@@ -19,7 +19,7 @@ public class MemberService {
 
     public Member findById(UUID id){
         //member 에러 구현 요망
-        log.info("member 조회: Id={}", id);
+        log.info("member 조회: Id: {}", id);
         return memberRepository.findById(id).orElseThrow(() -> {
             throw new IllegalArgumentException("없는 id");
         });

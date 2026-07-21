@@ -21,9 +21,4 @@ public class UserController {
 
     private final UserService userService;
 
-    @GetMapping("/{userId}")
-    public ResponseEnvelope<UserResponse> findById(@PathVariable UUID userId) {
-        User user = userService.findById(userId);
-        return ResponseEnvelope.success(UserResponse.from(user));
-    }
 }

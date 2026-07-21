@@ -43,16 +43,4 @@ public class UserEntity extends BaseEntity {
         this.email = email;
         this.termsAgreed = termsAgreed;
     }
-
-    public User toDomainModel() {
-        return new User(
-                name,
-                nickname,
-                status,
-                provider,
-                providerId,
-                phone,
-                email,
-                termsAgreed);
-    }
 }

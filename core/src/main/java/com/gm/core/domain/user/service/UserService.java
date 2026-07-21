@@ -1,11 +1,13 @@
 package com.gm.core.domain.user.service;
 
+import com.gm.core.domain.user.exception.UserNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.gm.core.domain.user.model.User;
 import com.gm.core.domain.user.repository.UserRepository;
@@ -15,7 +17,6 @@ import com.gm.core.domain.user.repository.UserRepository;
 @RequiredArgsConstructor
 public class UserService {
 
-    private static final String DEFAULT_STATUS = "ACTIVE";
     private final UserRepository userRepository;
 
     /**
@@ -24,10 +25,10 @@ public class UserService {
      * @param id 회원 UUID
      * @return 조회된 회원
      */
+    @Transactional(readOnly = true)
     public User findById(UUID id) {
-        log.info("user 조회: Id={}", id);
-        return userRepository.findById(id).orElseThrow(() ->
-                        new IllegalArgumentException("존재하지 않는 회원입니다."));
+        log.info("user 조회: Id: {}", id);
+        return userRepository.findById(id).orElseThrow(UserNotFoundException::new);
     }
 
     /**
@@ -41,6 +42,7 @@ public class UserService {
      * @param phone 휴대폰 번호
      * @return 기존 회원 또는 새로 생성된 회원
      */
+    @Transactional
     public User findOrCreate(
             String name,
             String provider,
@@ -66,21 +68,16 @@ public class UserService {
             String phone,
             String email
     ) {
-        log.info(
-                "신규 소셜 회원 생성: provider={}, providerId={}", provider, providerId
-        );
+        log.info("신규 소셜 회원 생성: provider={}", provider);
 
-        User user = new User(
-                name,
-                name,
-                DEFAULT_STATUS,
-                provider,
-                providerId,
-                phone,
-                email,
-                false
+        return userRepository.save(
+                User.create(
+                        name,
+                        provider,
+                        providerId,
+                        phone,
+                        email
+                )
         );
-
-        return userRepository.save(user);
     }
 }
