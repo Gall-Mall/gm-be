@@ -29,6 +29,9 @@ public class JwtProvider {
             @Value("${jwt.secret}") String secret,
             @Value("${jwt.access-token-expiration}") long accessTokenExpiration
     ) {
+        if (!StringUtils.hasText(secret)) { throw new IllegalArgumentException("JWT Secret이 설정되지 않았습니다."); }
+        if (accessTokenExpiration <= 0) { throw new IllegalArgumentException("Access Token 만료 시간은 0보다 커야 합니다."); }
+
         this.key = Keys.hmacShaKeyFor(Base64.getDecoder().decode(secret));
         this.accessTokenExpiration = accessTokenExpiration;
     }

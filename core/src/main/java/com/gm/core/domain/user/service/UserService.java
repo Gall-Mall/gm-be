@@ -12,8 +12,9 @@ import com.gm.core.domain.user.exception.UserErrorCode;
 import com.gm.core.domain.user.exception.UserException;
 import com.gm.core.domain.user.model.Provider;
 import com.gm.core.domain.user.model.User;
-import com.gm.core.domain.user.model.UserStatus;
 import com.gm.core.domain.user.repository.UserRepository;
+import com.gm.core.domain.user.model.UserStatus;
+import com.gm.core.domain.user.model.UserResult;
 
 @Slf4j
 @Service
@@ -30,8 +31,8 @@ public class UserService {
      */
     @Transactional(readOnly = true)
     public User findById(UUID id) {
-        /** 인증 요청마다 발생하는 로그이므로 'info → debug'로 수정했습니다. */
         log.debug("user 조회: Id: {}", id);
+
         return userRepository.findById(id).orElseThrow(() ->
                         new UserException(UserErrorCode.USER_NOT_FOUND)
                 );
@@ -67,6 +68,36 @@ public class UserService {
                 ));
     }
 
+    /**
+     * OAuth2 로그인에서 사용할 회원(UUID + User)을 조회한다.
+     * 기존 회원이 없으면 신규 회원을 생성한다.
+     *
+     * @param name 이름
+     * @param provider 소셜 로그인 제공자
+     * @param providerId 소셜 로그인 제공자의 회원 식별자
+     * @param phone 휴대폰 번호
+     * @param email 이메일
+     * @return 회원 UUID와 도메인 회원 정보
+     */
+    @Transactional
+    public UserResult findOrCreateWithId(
+            String name,
+            Provider provider,
+            String providerId,
+            String phone,
+            String email
+    ) {
+        return userRepository
+                .findResultByProviderAndProviderId(provider, providerId)
+                .orElseGet(() -> createUserResult(
+                        name,
+                        provider,
+                        providerId,
+                        phone,
+                        email
+                ));
+    }
+
     private User createUser(
             String name,
             Provider provider,
@@ -75,6 +106,28 @@ public class UserService {
             String email
     ) {
         return userRepository.save(
+                User.create(
+                        name,
+                        UserStatus.ACTIVE,
+                        provider,
+                        providerId,
+                        phone,
+                        email
+                )
+        );
+    }
+
+    /**
+     * OAuth2 로그인용 회원(UUID + User)을 생성한다.
+     */
+    private UserResult createUserResult(
+            String name,
+            Provider provider,
+            String providerId,
+            String phone,
+            String email
+    ) {
+        return userRepository.saveResult(
                 User.create(
                         name,
                         UserStatus.ACTIVE,
