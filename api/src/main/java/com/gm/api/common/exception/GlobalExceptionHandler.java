@@ -1,12 +1,14 @@
 package com.gm.api.common.exception;
 
-import java.time.Instant;
-
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import com.gm.api.common.response.ResponseEnvelope;
 import com.gm.core.exception.BusinessException;
@@ -40,6 +42,42 @@ public class GlobalExceptionHandler {
             log.warn("[{}] {}", errorCode.getCode(), exception.getMessage());
         }
 
+        return ResponseEntity.status(errorCode.getStatus())
+                .body(ResponseEnvelope.fail(errorCode));
+    }
+
+    /**
+     * 필수 헤더 누락을 공통 입력값 오류(COMMON-002) 응답으로 변환한다.
+     *
+     * <p>DTO 검증 실패({@link MethodArgumentNotValidException})는
+     * {@link #handleValidationException}이 별도로 처리한다.</p>
+     *
+     * @param exception 요청 값 검증 관련 예외
+     * @return 400 상태의 공통 실패 응답
+     */
+    @ExceptionHandler(MissingRequestHeaderException.class)
+    public ResponseEntity<ResponseEnvelope<Void>> handleInvalidInput(Exception exception) {
+        ErrorCode errorCode = CommonErrorCode.INVALID_INPUT;
+        log.warn("[{}] {}", errorCode.getCode(), exception.getMessage());
+        return ResponseEntity.status(errorCode.getStatus())
+                .body(ResponseEnvelope.fail(errorCode));
+    }
+
+    /**
+     * 요청 형식 오류를 공통 형식 오류(COMMON-005) 응답으로 변환한다.
+     *
+     * <p>JSON 파싱 실패, UUID·파라미터 타입 변환 실패를 포함한다.</p>
+     *
+     * @param exception 요청 형식 관련 예외
+     * @return 400 상태의 공통 실패 응답
+     */
+    @ExceptionHandler({
+            HttpMessageNotReadableException.class,
+            MethodArgumentTypeMismatchException.class
+    })
+    public ResponseEntity<ResponseEnvelope<Void>> handleInvalidFormat(Exception exception) {
+        ErrorCode errorCode = CommonErrorCode.INVALID_FORMAT;
+        log.warn("[{}] {}", errorCode.getCode(), exception.getMessage());
         return ResponseEntity.status(errorCode.getStatus())
                 .body(ResponseEnvelope.fail(errorCode));
     }

@@ -5,7 +5,18 @@
 dependencies {
     implementation project(':core')
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+
+    implementation "org.mapstruct:mapstruct:1.6.3"
+    annotationProcessor "org.mapstruct:mapstruct-processor:1.6.3"
+    annotationProcessor "org.projectlombok:lombok-mapstruct-binding:0.2.0"
+
     runtimeOnly 'com.mysql:mysql-connector-j'
+
+    // 엔티티 ↔ 도메인 모델 매핑
+    implementation 'org.mapstruct:mapstruct:1.6.3'
+    annotationProcessor 'org.mapstruct:mapstruct-processor:1.6.3'
+    // Lombok(@Getter)이 생성한 접근자를 MapStruct가 같은 처리 라운드에서 보게 함
+    annotationProcessor 'org.projectlombok:lombok-mapstruct-binding:0.2.0'
 }
 
 tasks.register("prepareKotlinBuildScriptModel"){}

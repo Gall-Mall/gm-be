@@ -1,7 +1,5 @@
 package com.gm.api.common.response;
 
-import java.time.Instant;
-
 import com.gm.core.exception.ErrorCode;
 
 /**
@@ -32,6 +30,15 @@ public record ResponseEnvelope<T>(
      */
     public static <T> ResponseEnvelope<T> success(T data) {
         return new ResponseEnvelope<>(true, SUCCESS_CODE, SUCCESS_MESSAGE, data);
+    }
+
+    public static <T> ResponseEnvelope<T> fail(ErrorCode errorCode, T data) {
+        return new ResponseEnvelope<>(
+                false,
+                errorCode.getCode(),
+                errorCode.getMessage(),
+                data
+        );
     }
 
     /**
