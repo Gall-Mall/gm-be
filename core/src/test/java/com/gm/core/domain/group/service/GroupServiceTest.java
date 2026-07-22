@@ -3,6 +3,7 @@ package com.gm.core.domain.group.service;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.junit.jupiter.api.DisplayName;
@@ -16,11 +17,15 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
+import com.gm.core.domain.group.exception.GroupException;
 import com.gm.core.domain.group.model.Group;
+import com.gm.core.domain.group.model.GroupDetail;
+import com.gm.core.domain.group.model.GroupMemberRole;
 import com.gm.core.domain.group.model.NewGroup;
 import com.gm.core.domain.group.repository.GroupRepository;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
@@ -133,5 +138,59 @@ class GroupServiceTest {
         Page<Group> actual = groupService.findMyGroups(userId, pageable);
 
         assertThat(actual).isEmpty();
+    }
+
+    @Test
+    @DisplayName("요청 회원이 활성 멤버이면 그룹 정보와 역할을 반환한다")
+    void findGroupDetail_returnsGroupAndRole_whenRequesterIsActiveMember() {
+        groupService = new GroupService(groupRepository);
+
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        Group group = savedGroup(groupId, newGroup(UUID.randomUUID()));
+        GroupDetail expected = new GroupDetail(group, GroupMemberRole.MEMBER);
+
+        given(groupRepository.findDetailByIdAndMemberUserId(groupId, userId))
+                .willReturn(Optional.of(expected));
+
+        GroupDetail actual = groupService.findGroupDetail(groupId, userId);
+
+        assertThat(actual).isEqualTo(expected);
+    }
+
+    @Test
+    @DisplayName("groupId에 해당하는 그룹이 없으면 GROUP-001 오류를 던진다")
+    void findGroupDetail_throwsGroupNotFound_whenGroupDoesNotExist() {
+        groupService = new GroupService(groupRepository);
+
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+
+        given(groupRepository.findDetailByIdAndMemberUserId(groupId, userId))
+                .willReturn(Optional.empty());
+        given(groupRepository.existsById(groupId)).willReturn(false);
+
+        assertThatThrownBy(() -> groupService.findGroupDetail(groupId, userId))
+                .isInstanceOf(GroupException.class)
+                .satisfies(exception -> assertThat(((GroupException) exception).getErrorCode().getCode())
+                        .isEqualTo("GROUP-001"));
+    }
+
+    @Test
+    @DisplayName("그룹은 존재하지만 요청 회원이 활성 멤버가 아니면 GROUP-002 오류를 던진다")
+    void findGroupDetail_throwsNotGroupMember_whenRequesterIsNotActiveMember() {
+        groupService = new GroupService(groupRepository);
+
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+
+        given(groupRepository.findDetailByIdAndMemberUserId(groupId, userId))
+                .willReturn(Optional.empty());
+        given(groupRepository.existsById(groupId)).willReturn(true);
+
+        assertThatThrownBy(() -> groupService.findGroupDetail(groupId, userId))
+                .isInstanceOf(GroupException.class)
+                .satisfies(exception -> assertThat(((GroupException) exception).getErrorCode().getCode())
+                        .isEqualTo("GROUP-002"));
     }
 }
