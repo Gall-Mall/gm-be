@@ -1,10 +1,9 @@
 package com.gm.core.domain.user.exception;
 
-public class UserNotFoundException extends RuntimeException {
+/**
+ * 사용자를 찾을 수 없는 경우 발생한다.
+ */
+public class UserNotFoundException extends UserException {
 
-    private static final String MESSAGE = "존재하지 않는 회원입니다.";
-
-    public UserNotFoundException() {
-        super(MESSAGE);
-    }
+    public UserNotFoundException() { super(UserErrorCode.USER_NOT_FOUND); }
 }

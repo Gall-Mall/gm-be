@@ -8,7 +8,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.gm.core.domain.user.exception.UserNotFoundException;
+import com.gm.core.domain.user.exception.UserErrorCode;
+import com.gm.core.domain.user.exception.UserException;
 import com.gm.core.domain.user.model.Provider;
 import com.gm.core.domain.user.model.User;
 import com.gm.core.domain.user.model.UserStatus;
@@ -31,7 +32,9 @@ public class UserService {
     public User findById(UUID id) {
         /** 인증 요청마다 발생하는 로그이므로 'info → debug'로 수정했습니다. */
         log.debug("user 조회: Id: {}", id);
-        return userRepository.findById(id).orElseThrow(UserNotFoundException::new);
+        return userRepository.findById(id).orElseThrow(() ->
+                        new UserException(UserErrorCode.USER_NOT_FOUND)
+                );
     }
 
     /**

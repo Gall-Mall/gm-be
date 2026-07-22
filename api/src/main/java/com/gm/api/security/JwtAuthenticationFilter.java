@@ -21,6 +21,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import io.jsonwebtoken.JwtException;
 
 import com.gm.api.security.jwt.JwtProvider;
+import com.gm.core.domain.user.exception.UserException;
 import com.gm.core.domain.user.model.User;
 import com.gm.core.domain.user.model.UserStatus;
 import com.gm.core.domain.user.service.UserService;
@@ -60,7 +61,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         UUID userId;
 
         try {
-            // 1. Access Token을 검증하고 회원 UUID 추출
+            // 1. Access Token 검증 및 회원 UUID 추출
             userId = jwtProvider.validateAndGetUserId(accessToken);
         } catch (JwtException | IllegalArgumentException exception) {
             SecurityContextHolder.clearContext();
@@ -75,11 +76,35 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        // 2. 회원 조회
-        User user = userService.findById(userId);
+        User user;
+
+        try {
+            // 2. 회원 조회
+            user = userService.findById(userId);
+        } catch (UserException exception) {
+            SecurityContextHolder.clearContext();
+
+            log.debug(
+                    "JWT 회원 조회에 실패했습니다. method={}, path={}, userId={}, code={}",
+                    request.getMethod(),
+                    request.getRequestURI(),
+                    userId,
+                    exception.getErrorCode().getCode()
+            );
+
+            return;
+        }
 
         // 3. 활성 상태 회원인지 확인
         if (user.status() != UserStatus.ACTIVE) {
+            log.debug(
+                    "비활성 상태 회원의 JWT 인증 요청입니다. method={}, path={}, userId={}, status={}",
+                    request.getMethod(),
+                    request.getRequestURI(),
+                    userId,
+                    user.status()
+            );
+
             return;
         }
 
@@ -89,13 +114,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // 5. 인증 객체 생성
         UsernamePasswordAuthenticationToken authentication =
                 new UsernamePasswordAuthenticationToken(
-                        principal, null, principal.getAuthorities()
+                        principal,null, principal.getAuthorities()
                 );
 
         // 6. 요청 세부 정보 설정
-        authentication.setDetails(
-                new WebAuthenticationDetailsSource().buildDetails(request)
-        );
+        authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
         // 7. SecurityContext에 인증 정보 등록
         SecurityContextHolder.getContext().setAuthentication(authentication);
