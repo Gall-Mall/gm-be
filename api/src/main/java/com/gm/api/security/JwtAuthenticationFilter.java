@@ -64,7 +64,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             // 1. Access Token 검증 및 회원 UUID 추출
             userId = jwtProvider.validateAndGetUserId(accessToken);
         } catch (JwtException | IllegalArgumentException exception) {
-            SecurityContextHolder.clearContext();
 
             log.debug(
                     "JWT 검증에 실패했습니다. method={}, path={}, cause={}",
@@ -82,7 +81,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             // 2. 회원 조회
             user = userService.findById(userId);
         } catch (UserException exception) {
-            SecurityContextHolder.clearContext();
 
             log.debug(
                     "JWT 회원 조회에 실패했습니다. method={}, path={}, userId={}, code={}",
