@@ -35,7 +35,7 @@ public class UserRepositoryImpl implements UserRepository {
     public Optional<UserResult> findResultByProviderAndProviderId(Provider provider, String providerId) {
         return userJpaRepository
                 .findByProviderAndProviderId(provider, providerId)
-                .map(userMapper::toResult);
+                .map(entity -> UserResult.of(entity.getId(), userMapper.toDomain(entity)));
     }
 
     @Override
@@ -51,6 +51,6 @@ public class UserRepositoryImpl implements UserRepository {
         UserEntity entity = userMapper.toEntity(user);
         UserEntity savedEntity = userJpaRepository.save(entity);
 
-        return userMapper.toResult(savedEntity);
+        return UserResult.of(savedEntity.getId(), userMapper.toDomain(savedEntity));
     }
 }
