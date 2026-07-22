@@ -3,6 +3,8 @@
 
 dependencies {
     implementation 'org.springframework:spring-tx'
+    // Pageable/Page — 페이지네이션은 JPA에 종속된 개념이 아니라 spring-data-commons의 일반 추상화이므로 core에 둔다.
+    implementation 'org.springframework.data:spring-data-commons'
 }
 
 tasks.register("prepareKotlinBuildScriptModel"){}
