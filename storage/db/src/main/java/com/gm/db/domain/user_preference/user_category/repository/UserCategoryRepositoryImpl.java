@@ -1,12 +1,14 @@
-package com.gm.db.domain.user_preference.user_category;
+package com.gm.db.domain.user_preference.user_category.repository;
 
 import com.gm.core.domain.user_setting.user_preference.user_category.model.UserCategory;
 import com.gm.core.domain.user_setting.exception.UserSettingErrorCode;
 import com.gm.core.domain.user_setting.exception.UserSettingException;
 import com.gm.core.domain.user_setting.user_preference.user_category.repository.UserCategoryRepository;
 import com.gm.core.domain.user_setting.user_preference.user_menu.model.UserPreference;
-import com.gm.db.domain.menu.category.FoodCategoryEntity;
-import com.gm.db.domain.menu.category.FoodCategoryJpaRepository;
+import com.gm.db.domain.menu.category.entity.FoodCategoryEntity;
+import com.gm.db.domain.menu.category.repository.FoodCategoryJpaRepository;
+import com.gm.db.domain.user_preference.user_category.mapper.UserCategoryMapper;
+import com.gm.db.domain.user_preference.user_category.entity.UserCategoryEntity;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 import java.util.List;

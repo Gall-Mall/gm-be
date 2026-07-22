@@ -1,6 +1,7 @@
-package com.gm.db.domain.user_preference.user_category;
+package com.gm.db.domain.user_preference.user_category.mapper;
 
 import com.gm.core.domain.user_setting.user_preference.user_category.model.UserCategory;
+import com.gm.db.domain.user_preference.user_category.entity.UserCategoryEntity;
 import org.mapstruct.Mapper;
 
 @Mapper(componentModel = "spring")

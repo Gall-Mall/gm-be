@@ -1,4 +1,4 @@
-package com.gm.db.domain.store;
+package com.gm.db.domain.store.entity;
 
 import com.gm.core.domain.store.model.Provider;
 import com.gm.db.common.entity.BaseEntity;

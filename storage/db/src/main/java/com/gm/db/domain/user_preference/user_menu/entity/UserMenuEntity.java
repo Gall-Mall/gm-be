@@ -1,4 +1,4 @@
-package com.gm.db.domain.user_preference.user_menu;
+package com.gm.db.domain.user_preference.user_menu.entity;
 
 import com.gm.core.domain.user_setting.user_preference.user_menu.model.UserPreference;
 import com.gm.db.common.entity.BaseEntity;

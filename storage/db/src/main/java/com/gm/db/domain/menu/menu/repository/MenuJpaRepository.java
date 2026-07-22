@@ -1,5 +1,6 @@
-package com.gm.db.domain.menu.menu;
+package com.gm.db.domain.menu.menu.repository;
 
+import com.gm.db.domain.menu.menu.entity.MenuEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 import java.util.UUID;
