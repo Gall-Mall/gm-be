@@ -21,10 +21,8 @@ import com.gm.core.domain.user.service.UserService;
 public class CustomOAuth2UserService
         implements OAuth2UserService<OAuth2UserRequest, OAuth2User> {
 
+    private final DefaultOAuth2UserService delegate;
     private final UserService userService;
-
-    private final OAuth2UserService<OAuth2UserRequest, OAuth2User> delegate =
-            new DefaultOAuth2UserService();
 
     @Override
     public OAuth2User loadUser(OAuth2UserRequest request) throws OAuth2AuthenticationException {

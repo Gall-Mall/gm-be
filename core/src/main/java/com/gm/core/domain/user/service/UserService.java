@@ -12,9 +12,9 @@ import com.gm.core.domain.user.exception.UserErrorCode;
 import com.gm.core.domain.user.exception.UserException;
 import com.gm.core.domain.user.model.Provider;
 import com.gm.core.domain.user.model.User;
-import com.gm.core.domain.user.repository.UserRepository;
-import com.gm.core.domain.user.model.UserStatus;
 import com.gm.core.domain.user.model.UserResult;
+import com.gm.core.domain.user.model.UserStatus;
+import com.gm.core.domain.user.repository.UserRepository;
 
 @Slf4j
 @Service

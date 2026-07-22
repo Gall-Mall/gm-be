@@ -2,7 +2,6 @@ package com.gm.api.security.oauth;
 
 import java.io.IOException;
 
-import com.gm.api.security.CustomUserPrincipal;
 import lombok.RequiredArgsConstructor;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -17,6 +16,7 @@ import org.springframework.stereotype.Component;
 
 import com.gm.api.auth.dto.TokenResponse;
 import com.gm.api.auth.service.AuthTokenService;
+import com.gm.api.security.CustomUserPrincipal;
 
 @Component
 @RequiredArgsConstructor
