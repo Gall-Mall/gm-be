@@ -1,7 +1,5 @@
 package com.gm.core.domain.recommendation.service;
 
-import lombok.extern.slf4j.Slf4j;
-
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -16,7 +14,6 @@ import com.gm.core.domain.recommendation.model.MenuInfo;
 import com.gm.core.domain.recommendation.model.Recency;
 import com.gm.core.domain.recommendation.model.ScoredMenu;
 
-@Slf4j
 @Service
 public class MenuScoringService {
 
@@ -29,14 +26,7 @@ public class MenuScoringService {
 
 
     /**
-     *
-     * @param members
-     * @param menus
-     * @param recency
-     * @param popularity
-     * @param shown
-     * @param topN
-     * @return
+     * 후보 메뉴를 필터링·점수화해 상위 {@code topN}개를 내림차순으로 반환한다.
      */
     public List<ScoredMenu> scoreAndRank(
             List<MemberPreference> members,
@@ -55,11 +45,8 @@ public class MenuScoringService {
     }
 
     /**
-     *
-     * @param m
-     * @param members
-     * @param shown
-     * @return
+     * 하드 필터. 한 명이라도 배제 사유가 있으면 후보에서 뺀다.
+     * ex. 알레르기, 싫어하는 메뉴
      */
     private boolean isAllowed(MenuInfo m, List<MemberPreference> members, Set<UUID> shown){
         if(shown.contains(m.menuId())){ // 재시도 중복 시 false
@@ -77,10 +64,7 @@ public class MenuScoringService {
     }
 
     /**
-     *
-     * @param m
-     * @param members
-     * @return
+     * 최종 점수 = 선호 점수 − 최근성 감점 + 인기 가중.
      */
     private double score(MenuInfo m, List<MemberPreference> members,
                          Map<UUID, Recency> recency, Map<UUID, Double> popularity){
@@ -89,6 +73,9 @@ public class MenuScoringService {
                 + BETA * popularity.getOrDefault(m.menuId(), 0.0);
     }
 
+    /**
+     * 멤버별 선호 점수의 평균.
+     */
     private double preferenceScore(MenuInfo m, List<MemberPreference> members){
         return members.stream().mapToDouble(mp -> {
             double s = 0.0;
@@ -105,6 +92,9 @@ public class MenuScoringService {
         }).average().orElse(0.0);
     }
 
+    /**
+     * 최근 먹은 메뉴 감점. 먹은 적 없으면 0, 최근일수록 큰 감점.
+     */
     private double recencyPenalty(Recency r){
         if(r == null || r.daysSinceSelected() == null){
             return 0.0;
@@ -112,6 +102,10 @@ public class MenuScoringService {
         return R_SEL * decay(r.daysSinceSelected());
     }
 
+    /**
+     * 선형 감소함수 형태
+     * 0일이면 1.0, {@code W_DAYS}일 이후엔 0.
+     */
     private double decay(long days){
         return Math.max(0.0, 1.0 - (double) days / W_DAYS);
     }
