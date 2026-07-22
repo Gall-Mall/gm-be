@@ -1,4 +1,4 @@
-package com.gm.db.domain.food_master.category;
+package com.gm.db.domain.menu.category;
 
 import com.gm.db.common.entity.BaseEntity;
 import jakarta.persistence.Column;
