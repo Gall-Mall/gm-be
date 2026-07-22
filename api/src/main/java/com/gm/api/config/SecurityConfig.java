@@ -37,6 +37,10 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/users/me").authenticated()
+                        // 초대 API는 rate limiting이 사용자별로 의미를 가지려면 userId가
+                        // 스푸핑 불가능해야 하므로 실제 JWT 인증을 요구한다.
+                        .requestMatchers("/api/groups/*/invites").authenticated()
+                        .requestMatchers("/api/invites/**").authenticated()
                         .anyRequest().permitAll())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();

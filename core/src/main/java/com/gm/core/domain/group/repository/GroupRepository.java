@@ -8,6 +8,7 @@ import org.springframework.data.domain.Pageable;
 
 import com.gm.core.domain.group.model.Group;
 import com.gm.core.domain.group.model.GroupDetail;
+import com.gm.core.domain.group.model.GroupMember;
 import com.gm.core.domain.group.model.NewGroup;
 
 public interface GroupRepository {
@@ -51,4 +52,33 @@ public interface GroupRepository {
      * @return 존재하면 {@code true}
      */
     boolean existsById(UUID groupId);
+
+    /**
+     * groupId에 해당하는 그룹을 멤버 수와 함께 조회한다. 요청 회원의 멤버십 여부와 무관하게 조회한다.
+     *
+     * @param groupId 조회할 그룹 식별자
+     * @return 그룹 정보 (없으면 빈 값)
+     */
+    Optional<Group> findById(UUID groupId);
+
+    /**
+     * groupId 그룹 행을 잠근 뒤 정원 확인과 멤버 등록을 하나의 원자적 흐름으로 수행한다.
+     *
+     * <p>기존 멤버십 행의 상태에 따라 결과가 달라진다:</p>
+     * <ul>
+     *     <li>이미 {@code ACTIVE} 멤버라면 빈 값을 반환해, 호출자가 "이미 가입함"의 의미를
+     *         자신의 도메인 맥락에 맞게 해석하도록 한다.</li>
+     *     <li>{@code LEFT} 상태였다면 정원을 다시 확인한 뒤 같은 행을 {@code ACTIVE}로
+     *         재활성화한다(자발적 탈퇴자는 재가입을 허용한다).</li>
+     *     <li>{@code KICKED} 상태였다면 정원과 무관하게 재가입을 거부한다.</li>
+     * </ul>
+     *
+     * @param groupId 가입할 그룹 식별자
+     * @param userId 가입할 회원 식별자
+     * @return 등록(또는 재활성화)된 멤버십 (이미 활성 멤버였다면 빈 값)
+     * @throws com.gm.core.domain.group.exception.GroupException groupId에 해당하는 그룹이 없으면
+     *         {@code GROUP_NOT_FOUND}, 정원이 가득 찼으면 {@code GROUP_FULL}, 강퇴 이력이 있으면
+     *         {@code MEMBER_KICKED}
+     */
+    Optional<GroupMember> addActiveMember(UUID groupId, UUID userId);
 }

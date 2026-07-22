@@ -1,5 +1,6 @@
 package com.gm.core.domain.group.service;
 
+import java.util.Optional;
 import java.util.UUID;
 
 import lombok.RequiredArgsConstructor;
@@ -14,6 +15,7 @@ import com.gm.core.domain.group.exception.GroupErrorCode;
 import com.gm.core.domain.group.exception.GroupException;
 import com.gm.core.domain.group.model.Group;
 import com.gm.core.domain.group.model.GroupDetail;
+import com.gm.core.domain.group.model.GroupMember;
 import com.gm.core.domain.group.model.NewGroup;
 import com.gm.core.domain.group.repository.GroupRepository;
 
@@ -68,5 +70,23 @@ public class GroupService {
                     }
                     throw new GroupException(GroupErrorCode.NOT_GROUP_MEMBER);
                 });
+    }
+
+    /**
+     * 그룹 정원을 확인한 뒤 요청 회원을 활성 멤버로 등록한다. 정원 확인과 등록은 하나의
+     * 원자적 흐름으로 처리된다. 자발적으로 탈퇴(LEFT)했던 회원은 재가입할 수 있지만,
+     * 강퇴(KICKED)된 회원은 재가입할 수 없다.
+     *
+     * @param groupId 가입할 그룹 식별자
+     * @param userId 가입할 회원 식별자
+     * @return 등록(또는 재활성화)된 멤버십 (요청 회원이 이미 활성 멤버였다면 빈 값)
+     * @throws GroupException groupId에 해당하는 그룹이 없어 {@code GROUP-001} 오류가 발생하는 경우
+     * @throws GroupException 그룹 정원이 가득 차 {@code GROUP-004} 오류가 발생하는 경우
+     * @throws GroupException 요청 회원이 강퇴 이력이 있어 {@code GROUP-007} 오류가 발생하는 경우
+     */
+    @Transactional
+    public Optional<GroupMember> addMember(UUID groupId, UUID userId) {
+        log.info("그룹 멤버 추가: groupId: {}, userId: {}", groupId, userId);
+        return groupRepository.addActiveMember(groupId, userId);
     }
 }
