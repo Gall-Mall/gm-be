@@ -13,9 +13,19 @@ import com.gm.core.domain.recommendation.model.MemberPreference;
 import com.gm.core.domain.recommendation.model.MenuInfo;
 import com.gm.core.domain.recommendation.model.Recency;
 import com.gm.core.domain.recommendation.model.ScoredMenu;
+import com.gm.core.domain.recommendation.repository.RecommendationRepository;
 
+import lombok.RequiredArgsConstructor;
+
+/**
+ * 그룹 메뉴 후보를 결정론적으로 필터링·점수화·정렬하는 서비스.
+ * 스코어링은 순수 계산 로직이며, 알레르기 제외도 여기서 결정론적으로 처리한다(LLM 위임 X).
+ */
 @Service
-public class MenuScoringService {
+@RequiredArgsConstructor
+public class RecommendationService {
+
+    private final RecommendationRepository repository;
 
     private static final double MENU_LIKE = 1.0;      // 메뉴 선호
     private static final double CAT_LIKE = 0.4;       // 카테고리 선호
@@ -26,9 +36,21 @@ public class MenuScoringService {
 
 
     /**
-     * 후보 메뉴를 필터링·점수화해 상위 {@code topN}개를 내림차순으로 반환한다.
+     * 그룹의 추천 데이터를 조회해 상위 {@code topN}개 메뉴를 점수순으로 반환한다.
      */
-    public List<ScoredMenu> scoreAndRank(
+    public List<ScoredMenu> recommend(UUID groupId, Set<UUID> shown, int topN) {
+        List<MemberPreference> members = repository.findMemberPreferencesByGroupId(groupId);
+        List<MenuInfo> menus = repository.findAllMenus();
+        Map<UUID, Recency> recency = repository.findRecencyByGroupId(groupId);
+        Map<UUID, Double> popularity = repository.findMenuPopularity();
+        return scoreAndRank(members, menus, recency, popularity, shown, topN);
+    }
+
+    /**
+     * 후보 메뉴를 필터링·점수화해 상위 {@code topN}개를 내림차순으로 반환한다.
+     * recommend()의 내부 단계이며, 순수 계산이라 단위 테스트를 위해 package-private로 연다.
+     */
+    List<ScoredMenu> scoreAndRank(
             List<MemberPreference> members,
             List<MenuInfo> menus,
             Map<UUID, Recency> recency,

@@ -15,9 +15,10 @@ import com.gm.core.domain.recommendation.model.MenuInfo;
 import com.gm.core.domain.recommendation.model.Recency;
 import com.gm.core.domain.recommendation.model.ScoredMenu;
 
-class MenuScoringServiceTest {
+class RecommendationServiceTest {
 
-    private final MenuScoringService service = new MenuScoringService();
+    // scoreAndRank(순수 계산)만 검증하므로 repository는 사용하지 않아 null 주입
+    private final RecommendationService service = new RecommendationService(null);
 
     // 필드 순서: userId, likedMenus, likedCategories, excludeMenus, dislikedCategories, standardAllergens
     private MemberPreference member(Set<UUID> likedMenus, Set<UUID> likedCats,
