@@ -1,5 +1,6 @@
 package com.gm.db.domain.group;
 
+import java.util.Optional;
 import java.util.UUID;
 
 import lombok.RequiredArgsConstructor;
@@ -10,6 +11,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
 import com.gm.core.domain.group.model.Group;
+import com.gm.core.domain.group.model.GroupDetail;
 import com.gm.core.domain.group.model.GroupMemberStatus;
 import com.gm.core.domain.group.model.NewGroup;
 import com.gm.core.domain.group.repository.GroupRepository;
@@ -35,5 +37,20 @@ public class GroupRepositoryImpl implements GroupRepository {
         return groupJpaRepository
                 .findAllWithMemberCountByMemberUserIdAndStatus(userId, GroupMemberStatus.ACTIVE, pageOnly)
                 .map(groupMapper::toDomainModel);
+    }
+
+    @Override
+    public Optional<GroupDetail> findDetailByIdAndMemberUserId(UUID groupId, UUID userId) {
+        return groupJpaRepository
+                .findDetailByIdAndMemberUserIdAndStatus(groupId, userId, GroupMemberStatus.ACTIVE)
+                .map(projection -> new GroupDetail(
+                        groupMapper.toDomainModel(projection),
+                        projection.currentUserRole()
+                ));
+    }
+
+    @Override
+    public boolean existsById(UUID groupId) {
+        return groupJpaRepository.existsById(groupId);
     }
 }
