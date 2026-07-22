@@ -1,12 +1,14 @@
-package com.gm.db.domain.food_master.allergen;
+package com.gm.db.domain.menu.allergen;
 
 import com.gm.db.common.entity.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
+import lombok.Getter;
 
 @Entity
 @Table(name = "allergen")
+@Getter
 public class AllergenEntity extends BaseEntity {
 
     @Column(nullable = false)

@@ -1,13 +1,16 @@
-package com.gm.db.domain.food_master.menu;
+package com.gm.db.domain.menu.menu;
 
 import com.gm.db.common.entity.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
+import lombok.Getter;
+
 import java.util.UUID;
 
 @Entity
 @Table(name = "menu")
+@Getter
 public class MenuEntity extends BaseEntity {
 
     @Column(nullable = false)

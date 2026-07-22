@@ -1,9 +1,8 @@
 package com.gm.db.domain.user_preference.user_menu;
 
-import com.gm.core.domain.user_preference.user_menu.UserPreference;
+import com.gm.core.domain.user_setting.user_preference.user_menu.model.UserPreference;
 import com.gm.db.common.entity.BaseEntity;
 import jakarta.persistence.*;
-import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.util.UUID;

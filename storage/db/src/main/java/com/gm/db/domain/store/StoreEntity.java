@@ -14,10 +14,10 @@ import java.util.UUID;
 public class StoreEntity extends BaseEntity {
 
     // TODO: 연관관계 매핑 UUID voteSession;
-    @Column(name = "vote_session_id", nullable = false)
-    private UUID voteSession;
+    @Column(nullable = false)
+    private UUID voteSessionId;
 
-    @Column(name = "selected", nullable = false)
+    @Column(nullable = false)
     private Boolean selected;
 
     @Column(nullable = false)
