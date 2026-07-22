@@ -13,13 +13,15 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
+import com.gm.core.domain.vote.service.VoteSessionService;
+
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * 그룹 생성(GROUP-001), 그룹 상세 조회(GROUP-003) API의 통합 테스트이다.
+ * 그룹 생성(GROUP-001), 내 그룹 목록 조회(GROUP-002), 그룹 상세 조회(GROUP-003) API의 통합 테스트이다.
  *
  * <p>실제 웹 계층부터 H2 기반 영속 계층까지 전체 스택을 거쳐,
  * 요청이 계약대로 저장되고 응답되는지 검증한다.</p>
@@ -30,6 +32,9 @@ class GroupIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private VoteSessionService voteSessionService;
 
     private static final String REQUEST_BODY = """
             {
@@ -127,6 +132,136 @@ class GroupIntegrationTest {
     }
 
     @Test
+    @DisplayName("내가 참여 중인 그룹만 목록으로 조회한다")
+    void findMyGroups_returnsGroupsOfActiveMember() throws Exception {
+        UUID ownerUserId = UUID.randomUUID();
+
+        mockMvc.perform(post("/api/groups")
+                        .header("X-User-Id", ownerUserId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(REQUEST_BODY))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/groups")
+                        .header("X-User-Id", ownerUserId.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.code").value("SUCCESS"))
+                .andExpect(jsonPath("$.data.content.length()").value(1))
+                .andExpect(jsonPath("$.data.content[0].ownerUserId").value(ownerUserId.toString()))
+                .andExpect(jsonPath("$.data.content[0].name").value("점심팟"))
+                .andExpect(jsonPath("$.data.content[0].memberCount").value(1))
+                .andExpect(jsonPath("$.data.page").value(0))
+                .andExpect(jsonPath("$.data.size").value(20))
+                .andExpect(jsonPath("$.data.totalElements").value(1))
+                .andExpect(jsonPath("$.data.totalPages").value(1))
+                .andExpect(jsonPath("$.data.hasNext").value(false));
+    }
+
+    @Test
+    @DisplayName("참여 중인 그룹이 없으면 빈 목록을 반환한다")
+    void findMyGroups_withNoMemberships_returnsEmptyContent() throws Exception {
+        mockMvc.perform(get("/api/groups")
+                        .header("X-User-Id", UUID.randomUUID().toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.code").value("SUCCESS"))
+                .andExpect(jsonPath("$.data.content.length()").value(0))
+                .andExpect(jsonPath("$.data.totalElements").value(0));
+    }
+
+    @Test
+    @DisplayName("투표 세션이 없으면 생성일 내림차순으로 정렬되고, size만큼 페이지가 나뉜다")
+    void findMyGroups_ordersByCreatedAtDesc_andPaginates() throws Exception {
+        UUID ownerUserId = UUID.randomUUID();
+
+        mockMvc.perform(post("/api/groups")
+                        .header("X-User-Id", ownerUserId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(REQUEST_BODY))
+                .andExpect(status().isCreated());
+
+        String secondGroupBody = """
+                {
+                  "name": "저녁팟",
+                  "locationAddress": "서울특별시 강남구 테헤란로 456",
+                  "latitude": 37.5012345,
+                  "longitude": 127.0398765,
+                  "searchRadiusM": 1000,
+                  "recommendationTime": "18:00",
+                  "maxMemberCount": 6
+                }
+                """;
+        mockMvc.perform(post("/api/groups")
+                        .header("X-User-Id", ownerUserId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(secondGroupBody))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/groups")
+                        .header("X-User-Id", ownerUserId.toString())
+                        .param("page", "0")
+                        .param("size", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content.length()").value(1))
+                .andExpect(jsonPath("$.data.content[0].name").value("저녁팟"))
+                .andExpect(jsonPath("$.data.totalElements").value(2))
+                .andExpect(jsonPath("$.data.totalPages").value(2))
+                .andExpect(jsonPath("$.data.hasNext").value(true));
+
+        mockMvc.perform(get("/api/groups")
+                        .header("X-User-Id", ownerUserId.toString())
+                        .param("page", "1")
+                        .param("size", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content.length()").value(1))
+                .andExpect(jsonPath("$.data.content[0].name").value("점심팟"))
+                .andExpect(jsonPath("$.data.hasNext").value(false));
+    }
+
+    @Test
+    @DisplayName("요청자 식별 헤더가 없으면 COMMON-002 오류를 반환한다")
+    void findMyGroups_withoutOwnerHeader_returnsCommon002() throws Exception {
+        mockMvc.perform(get("/api/groups"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("COMMON-002"));
+    }
+
+    @Test
+    @DisplayName("최근 투표 세션이 생성된 그룹이, 더 먼저 만들어진 그룹보다 앞에 온다")
+    void findMyGroups_ordersByMostRecentVoteSessionActivity() throws Exception {
+        UUID ownerUserId = UUID.randomUUID();
+
+        UUID firstGroupId = createGroupAndGetId(ownerUserId, REQUEST_BODY);
+
+        String secondGroupBody = """
+                {
+                  "name": "저녁팟",
+                  "locationAddress": "서울특별시 강남구 테헤란로 456",
+                  "latitude": 37.5012345,
+                  "longitude": 127.0398765,
+                  "searchRadiusM": 1000,
+                  "recommendationTime": "18:00",
+                  "maxMemberCount": 6
+                }
+                """;
+        UUID secondGroupId = createGroupAndGetId(ownerUserId, secondGroupBody);
+
+        // 생성 순서상으로는 저녁팟(둘째 그룹)이 앞서야 하지만,
+        // 점심팟(첫째 그룹)에 더 나중에 투표 세션이 생겨 활동이 더 최근이다.
+        voteSessionService.createManualVoteSession(secondGroupId, "저녁 투표", null, null);
+        voteSessionService.createManualVoteSession(firstGroupId, "점심 투표", null, null);
+
+        mockMvc.perform(get("/api/groups")
+                        .header("X-User-Id", ownerUserId.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content.length()").value(2))
+                .andExpect(jsonPath("$.data.content[0].name").value("점심팟"))
+                .andExpect(jsonPath("$.data.content[1].name").value("저녁팟"));
+    }
+
+    @Test
     @DisplayName("그룹장이 상세 조회하면 200과 함께 그룹 정보·OWNER 역할을 반환한다")
     void findGroupDetail_succeeds_forOwner() throws Exception {
         UUID ownerUserId = UUID.randomUUID();
@@ -168,13 +303,13 @@ class GroupIntegrationTest {
     }
 
     @Test
-    @DisplayName("groupId가 UUID 형식이 아니면 COMMON-003 오류를 반환한다")
-    void findGroupDetail_withMalformedGroupId_returnsCommon003() throws Exception {
+    @DisplayName("groupId가 UUID 형식이 아니면 COMMON-005 오류를 반환한다")
+    void findGroupDetail_withMalformedGroupId_returnsCommon005() throws Exception {
         mockMvc.perform(get("/api/groups/{groupId}", "not-a-uuid")
                         .header("X-User-Id", UUID.randomUUID().toString()))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.code").value("COMMON-003"));
+                .andExpect(jsonPath("$.code").value("COMMON-005"));
     }
 
     @Test
