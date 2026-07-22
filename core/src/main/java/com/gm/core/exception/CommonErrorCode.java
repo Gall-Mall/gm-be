@@ -15,7 +15,10 @@ public enum CommonErrorCode implements ErrorCode {
     INTERNAL_ERROR(500, "COMMON-001", "서버 오류가 발생했습니다."),
 
     /** 요청 DTO 검증에 실패한 경우 사용하는 공통 오류이다. */
-    INVALID_INPUT(400, "COMMON-002", "요청 값이 올바르지 않습니다.");
+    INVALID_INPUT(400, "COMMON-002", "요청 값이 올바르지 않습니다."),
+
+    /** JSON 파싱, UUID 변환 또는 필수 파라미터 변환에 실패한 경우 사용하는 공통 오류이다. */
+    INVALID_FORMAT(400, "COMMON-003", "요청 형식이 올바르지 않습니다.");
 
     private final int status;
     private final String code;

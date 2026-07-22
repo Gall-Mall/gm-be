@@ -51,19 +51,36 @@ public class GlobalExceptionHandler {
     /**
      * 요청 값 검증 실패를 공통 입력값 오류(COMMON-002) 응답으로 변환한다.
      *
-     * <p>DTO 검증 실패, 본문 파싱 실패, 필수 헤더 누락, 파라미터 타입 불일치를 포함한다.</p>
+     * <p>DTO 검증 실패, 필수 헤더 누락을 포함한다.</p>
      *
      * @param exception 요청 값 검증 관련 예외
      * @return 400 상태의 공통 실패 응답
      */
     @ExceptionHandler({
             MethodArgumentNotValidException.class,
-            HttpMessageNotReadableException.class,
-            MissingRequestHeaderException.class,
-            MethodArgumentTypeMismatchException.class
+            MissingRequestHeaderException.class
     })
     public ResponseEntity<ResponseEnvelope<Void>> handleInvalidInput(Exception exception) {
         ErrorCode errorCode = CommonErrorCode.INVALID_INPUT;
+        log.warn("[{}] {}", errorCode.getCode(), exception.getMessage());
+        return ResponseEntity.status(errorCode.getStatus())
+                .body(ResponseEnvelope.fail(errorCode));
+    }
+
+    /**
+     * 요청 형식 오류를 공통 형식 오류(COMMON-003) 응답으로 변환한다.
+     *
+     * <p>JSON 파싱 실패, UUID·파라미터 타입 변환 실패를 포함한다.</p>
+     *
+     * @param exception 요청 형식 관련 예외
+     * @return 400 상태의 공통 실패 응답
+     */
+    @ExceptionHandler({
+            HttpMessageNotReadableException.class,
+            MethodArgumentTypeMismatchException.class
+    })
+    public ResponseEntity<ResponseEnvelope<Void>> handleInvalidFormat(Exception exception) {
+        ErrorCode errorCode = CommonErrorCode.INVALID_FORMAT;
         log.warn("[{}] {}", errorCode.getCode(), exception.getMessage());
         return ResponseEntity.status(errorCode.getStatus())
                 .body(ResponseEnvelope.fail(errorCode));
