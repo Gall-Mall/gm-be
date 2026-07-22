@@ -2,11 +2,11 @@ package com.gm.api.security;
 
 import java.io.IOException;
 
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 import tools.jackson.databind.ObjectMapper;
 
@@ -43,6 +43,8 @@ public class CustomAccessDeniedHandler implements AccessDeniedHandler {
             AccessDeniedException accessDeniedException
     ) throws IOException {
 
+        if (response.isCommitted()) { return; }
+
         log.warn(
                 "[{}] 접근 권한이 없는 요청입니다. method={}, path={}",
                 CommonErrorCode.ACCESS_DENIED.getCode(),
@@ -57,9 +59,6 @@ public class CustomAccessDeniedHandler implements AccessDeniedHandler {
         ResponseEnvelope<Void> responseBody =
                 ResponseEnvelope.fail(CommonErrorCode.ACCESS_DENIED);
 
-        objectMapper.writeValue(
-                response.getWriter(),
-                responseBody
-        );
+        objectMapper.writeValue(response.getWriter(),responseBody);
     }
 }

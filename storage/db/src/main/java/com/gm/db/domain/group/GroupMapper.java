@@ -11,4 +11,8 @@ public interface GroupMapper {
     GroupEntity toEntity(NewGroup newGroup);
 
     Group toDomainModel(GroupEntity entity, int memberCount);
+
+    Group toDomainModel(GroupSummaryProjection projection);
+
+    Group toDomainModel(GroupDetailProjection projection);
 }
