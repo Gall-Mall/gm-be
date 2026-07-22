@@ -9,6 +9,7 @@ import javax.crypto.SecretKey;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
@@ -59,7 +60,7 @@ public class JwtProvider {
     }
 
     /**
-     * Access Token의 유효성을 검증한다.
+     * Access Token을 검증하고 회원 UUID를 반환한다.
      *
      * 검증 항목:
      * - 토큰 존재 여부
@@ -68,28 +69,31 @@ public class JwtProvider {
      * - JWT 만료 시간
      * - JWT 변조 여부
      * - Access Token 타입 여부
-     */
-    public boolean validateAccessToken(String token) {
-        if (token == null || token.isBlank()) { return false; }
-
-        try {
-            Claims claims = parseClaims(token);
-            String tokenType = claims.get(TOKEN_TYPE_CLAIM, String.class);
-
-            return ACCESS_TOKEN_TYPE.equals(tokenType);
-        } catch (JwtException | IllegalArgumentException exception) {
-            return false;
-        }
-    }
-
-    /**
-     * Access Token의 subject에서 서비스 회원 UUID를 조회한다.
+     * - 회원 UUID 형식
      *
      * @param token Access Token
-     * @return 서비스 회원 UUID
+     * @return JWT subject에 저장된 회원 UUID
+     * @throws IllegalArgumentException 토큰이 없거나 회원 UUID 형식이 잘못된 경우
+     * @throws JwtException JWT가 유효하지 않거나 Access Token이 아닌 경우
      */
-    public UUID getUserId(String token) {
-        String subject = parseClaims(token).getSubject();
+    public UUID validateAndGetUserId(String token) {
+        if (!StringUtils.hasText(token)) {
+            throw new IllegalArgumentException("Access Token이 존재하지 않습니다.");
+        }
+
+        Claims claims = parseClaims(token);
+
+        String tokenType = claims.get(TOKEN_TYPE_CLAIM, String.class);
+
+        if (!ACCESS_TOKEN_TYPE.equals(tokenType)) {
+            throw new JwtException("Access Token 타입이 올바르지 않습니다.");
+        }
+
+        String subject = claims.getSubject();
+
+        if (!StringUtils.hasText(subject)) {
+            throw new JwtException("Access Token에 회원 식별자가 존재하지 않습니다.");
+        }
 
         return UUID.fromString(subject);
     }

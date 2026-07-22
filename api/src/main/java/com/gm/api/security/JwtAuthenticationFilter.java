@@ -18,6 +18,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import io.jsonwebtoken.JwtException;
+
 import com.gm.api.security.jwt.JwtProvider;
 import com.gm.core.domain.user.model.User;
 import com.gm.core.domain.user.model.UserStatus;
@@ -55,48 +57,48 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
      * Access Token을 검증하고 Spring Security 인증 정보를 등록한다.
      */
     private void authenticate(String accessToken, HttpServletRequest request) {
+        UUID userId;
+
         try {
-            // 1. Access Token 유효성 및 토큰 타입 검증
-            if (!jwtProvider.validateAccessToken(accessToken)) {
-                return;
-            }
-
-            // 2. JWT subject에서 회원 UUID 추출
-            UUID userId = jwtProvider.getUserId(accessToken);
-
-            // 3. 회원 조회
-            User user = userService.findById(userId);
-
-            // 4. 활성 상태 회원인지 확인
-            if (user.status() != UserStatus.ACTIVE) { return; }
-
-            // 5. 인증 Principal 생성
-            CustomUserPrincipal principal = new CustomUserPrincipal(userId, user);
-
-            // 6. 인증 객체 생성
-            UsernamePasswordAuthenticationToken authentication =
-                    new UsernamePasswordAuthenticationToken(
-                            principal, null, principal.getAuthorities()
-                    );
-
-            // 7. 요청 세부 정보 설정
-            authentication.setDetails(
-                    new WebAuthenticationDetailsSource().buildDetails(request)
-            );
-
-            // 8. SecurityContext에 인증 정보 등록
-            SecurityContextHolder.getContext().setAuthentication(authentication);
-
-        } catch (RuntimeException exception) {
+            // 1. Access Token을 검증하고 회원 UUID 추출
+            userId = jwtProvider.validateAndGetUserId(accessToken);
+        } catch (JwtException | IllegalArgumentException exception) {
             SecurityContextHolder.clearContext();
 
             log.debug(
-                    "JWT 인증 처리에 실패했습니다. method={}, path={}, cause={}",
+                    "JWT 검증에 실패했습니다. method={}, path={}, cause={}",
                     request.getMethod(),
                     request.getRequestURI(),
                     exception.getClass().getSimpleName()
             );
+
+            return;
         }
+
+        // 2. 회원 조회
+        User user = userService.findById(userId);
+
+        // 3. 활성 상태 회원인지 확인
+        if (user.status() != UserStatus.ACTIVE) {
+            return;
+        }
+
+        // 4. 인증 Principal 생성
+        CustomUserPrincipal principal = new CustomUserPrincipal(userId, user);
+
+        // 5. 인증 객체 생성
+        UsernamePasswordAuthenticationToken authentication =
+                new UsernamePasswordAuthenticationToken(
+                        principal, null, principal.getAuthorities()
+                );
+
+        // 6. 요청 세부 정보 설정
+        authentication.setDetails(
+                new WebAuthenticationDetailsSource().buildDetails(request)
+        );
+
+        // 7. SecurityContext에 인증 정보 등록
+        SecurityContextHolder.getContext().setAuthentication(authentication);
     }
 
     /**
