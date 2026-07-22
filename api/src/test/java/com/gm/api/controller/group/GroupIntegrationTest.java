@@ -2,6 +2,8 @@ package com.gm.api.controller.group;
 
 import java.util.UUID;
 
+import com.jayway.jsonpath.JsonPath;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,6 +11,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+
+import com.gm.core.domain.vote.service.VoteSessionService;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -27,6 +32,9 @@ class GroupIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private VoteSessionService voteSessionService;
 
     private static final String REQUEST_BODY = """
             {
@@ -139,21 +147,76 @@ class GroupIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.code").value("SUCCESS"))
-                .andExpect(jsonPath("$.data.length()").value(1))
-                .andExpect(jsonPath("$.data[0].ownerUserId").value(ownerUserId.toString()))
-                .andExpect(jsonPath("$.data[0].name").value("점심팟"))
-                .andExpect(jsonPath("$.data[0].memberCount").value(1));
+                .andExpect(jsonPath("$.data.content.length()").value(1))
+                .andExpect(jsonPath("$.data.content[0].ownerUserId").value(ownerUserId.toString()))
+                .andExpect(jsonPath("$.data.content[0].name").value("점심팟"))
+                .andExpect(jsonPath("$.data.content[0].memberCount").value(1))
+                .andExpect(jsonPath("$.data.page").value(0))
+                .andExpect(jsonPath("$.data.size").value(20))
+                .andExpect(jsonPath("$.data.totalElements").value(1))
+                .andExpect(jsonPath("$.data.totalPages").value(1))
+                .andExpect(jsonPath("$.data.hasNext").value(false));
     }
 
     @Test
-    @DisplayName("참여 중인 그룹이 없으면 빈 배열을 반환한다")
-    void findMyGroups_withNoMemberships_returnsEmptyArray() throws Exception {
+    @DisplayName("참여 중인 그룹이 없으면 빈 목록을 반환한다")
+    void findMyGroups_withNoMemberships_returnsEmptyContent() throws Exception {
         mockMvc.perform(get("/api/groups")
                         .header("X-User-Id", UUID.randomUUID().toString()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.code").value("SUCCESS"))
-                .andExpect(jsonPath("$.data.length()").value(0));
+                .andExpect(jsonPath("$.data.content.length()").value(0))
+                .andExpect(jsonPath("$.data.totalElements").value(0));
+    }
+
+    @Test
+    @DisplayName("투표 세션이 없으면 생성일 내림차순으로 정렬되고, size만큼 페이지가 나뉜다")
+    void findMyGroups_ordersByCreatedAtDesc_andPaginates() throws Exception {
+        UUID ownerUserId = UUID.randomUUID();
+
+        mockMvc.perform(post("/api/groups")
+                        .header("X-User-Id", ownerUserId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(REQUEST_BODY))
+                .andExpect(status().isCreated());
+
+        String secondGroupBody = """
+                {
+                  "name": "저녁팟",
+                  "locationAddress": "서울특별시 강남구 테헤란로 456",
+                  "latitude": 37.5012345,
+                  "longitude": 127.0398765,
+                  "searchRadiusM": 1000,
+                  "recommendationTime": "18:00",
+                  "maxMemberCount": 6
+                }
+                """;
+        mockMvc.perform(post("/api/groups")
+                        .header("X-User-Id", ownerUserId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(secondGroupBody))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/groups")
+                        .header("X-User-Id", ownerUserId.toString())
+                        .param("page", "0")
+                        .param("size", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content.length()").value(1))
+                .andExpect(jsonPath("$.data.content[0].name").value("저녁팟"))
+                .andExpect(jsonPath("$.data.totalElements").value(2))
+                .andExpect(jsonPath("$.data.totalPages").value(2))
+                .andExpect(jsonPath("$.data.hasNext").value(true));
+
+        mockMvc.perform(get("/api/groups")
+                        .header("X-User-Id", ownerUserId.toString())
+                        .param("page", "1")
+                        .param("size", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content.length()").value(1))
+                .andExpect(jsonPath("$.data.content[0].name").value("점심팟"))
+                .andExpect(jsonPath("$.data.hasNext").value(false));
     }
 
     @Test
@@ -163,5 +226,50 @@ class GroupIntegrationTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.code").value("COMMON-002"));
+    }
+
+    @Test
+    @DisplayName("최근 투표 세션이 생성된 그룹이, 더 먼저 만들어진 그룹보다 앞에 온다")
+    void findMyGroups_ordersByMostRecentVoteSessionActivity() throws Exception {
+        UUID ownerUserId = UUID.randomUUID();
+
+        UUID firstGroupId = createGroupAndGetId(ownerUserId, REQUEST_BODY);
+
+        String secondGroupBody = """
+                {
+                  "name": "저녁팟",
+                  "locationAddress": "서울특별시 강남구 테헤란로 456",
+                  "latitude": 37.5012345,
+                  "longitude": 127.0398765,
+                  "searchRadiusM": 1000,
+                  "recommendationTime": "18:00",
+                  "maxMemberCount": 6
+                }
+                """;
+        UUID secondGroupId = createGroupAndGetId(ownerUserId, secondGroupBody);
+
+        // 생성 순서상으로는 저녁팟(둘째 그룹)이 앞서야 하지만,
+        // 점심팟(첫째 그룹)에 더 나중에 투표 세션이 생겨 활동이 더 최근이다.
+        voteSessionService.createManualVoteSession(secondGroupId, "저녁 투표", null, null);
+        voteSessionService.createManualVoteSession(firstGroupId, "점심 투표", null, null);
+
+        mockMvc.perform(get("/api/groups")
+                        .header("X-User-Id", ownerUserId.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content.length()").value(2))
+                .andExpect(jsonPath("$.data.content[0].name").value("점심팟"))
+                .andExpect(jsonPath("$.data.content[1].name").value("저녁팟"));
+    }
+
+    private UUID createGroupAndGetId(UUID ownerUserId, String requestBody) throws Exception {
+        MvcResult result = mockMvc.perform(post("/api/groups")
+                        .header("X-User-Id", ownerUserId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        String groupId = JsonPath.read(result.getResponse().getContentAsString(), "$.data.groupId");
+        return UUID.fromString(groupId);
     }
 }

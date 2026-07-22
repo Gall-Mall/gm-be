@@ -11,6 +11,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import com.gm.core.domain.group.model.Group;
 import com.gm.core.domain.group.model.NewGroup;
@@ -107,24 +111,26 @@ class GroupServiceTest {
 
         UUID userId = UUID.randomUUID();
         NewGroup newGroup = newGroup(userId);
-        List<Group> expected = List.of(savedGroup(UUID.randomUUID(), newGroup));
+        Pageable pageable = PageRequest.of(0, 20);
+        Page<Group> expected = new PageImpl<>(List.of(savedGroup(UUID.randomUUID(), newGroup)), pageable, 1);
 
-        given(groupRepository.findAllByMemberUserId(userId)).willReturn(expected);
+        given(groupRepository.findAllByMemberUserId(userId, pageable)).willReturn(expected);
 
-        List<Group> actual = groupService.findMyGroups(userId);
+        Page<Group> actual = groupService.findMyGroups(userId, pageable);
 
         assertThat(actual).isEqualTo(expected);
     }
 
     @Test
-    @DisplayName("참여 중인 그룹이 없으면 빈 리스트를 반환한다")
-    void findMyGroups_withNoMemberships_returnsEmptyList() {
+    @DisplayName("참여 중인 그룹이 없으면 빈 페이지를 반환한다")
+    void findMyGroups_withNoMemberships_returnsEmptyPage() {
         groupService = new GroupService(groupRepository);
 
         UUID userId = UUID.randomUUID();
-        given(groupRepository.findAllByMemberUserId(userId)).willReturn(List.of());
+        Pageable pageable = PageRequest.of(0, 20);
+        given(groupRepository.findAllByMemberUserId(userId, pageable)).willReturn(Page.empty(pageable));
 
-        List<Group> actual = groupService.findMyGroups(userId);
+        Page<Group> actual = groupService.findMyGroups(userId, pageable);
 
         assertThat(actual).isEmpty();
     }

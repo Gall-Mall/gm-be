@@ -1,11 +1,12 @@
 package com.gm.core.domain.group.service;
 
-import java.util.List;
 import java.util.UUID;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,14 +34,15 @@ public class GroupService {
     }
 
     /**
-     * 요청 회원이 활성 멤버로 참여 중인 그룹 목록을 조회한다.
+     * 요청 회원이 활성 멤버로 참여 중인 그룹 목록을 페이지 단위 조회한다.
      *
      * @param userId 요청 회원 식별자
-     * @return 참여 중인 그룹 목록
+     * @param pageable 페이지 번호·크기
+     * @return 참여 중인 그룹 페이지
      */
     @Transactional(readOnly = true)
-    public List<Group> findMyGroups(UUID userId) {
-        log.info("내 그룹 목록 조회: userId: {}", userId);
-        return groupRepository.findAllByMemberUserId(userId);
+    public Page<Group> findMyGroups(UUID userId, Pageable pageable) {
+        log.info("내 그룹 목록 조회: userId: {}, page: {}, size: {}", userId, pageable.getPageNumber(), pageable.getPageSize());
+        return groupRepository.findAllByMemberUserId(userId, pageable);
     }
 }

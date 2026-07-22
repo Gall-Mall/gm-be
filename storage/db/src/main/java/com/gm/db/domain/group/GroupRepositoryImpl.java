@@ -1,10 +1,12 @@
 package com.gm.db.domain.group;
 
-import java.util.List;
 import java.util.UUID;
 
 import lombok.RequiredArgsConstructor;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
 import com.gm.core.domain.group.model.Group;
@@ -28,10 +30,10 @@ public class GroupRepositoryImpl implements GroupRepository {
     }
 
     @Override
-    public List<Group> findAllByMemberUserId(UUID userId) {
-        return groupJpaRepository.findAllWithMemberCountByMemberUserIdAndStatus(userId, GroupMemberStatus.ACTIVE)
-                .stream()
-                .map(groupMapper::toDomainModel)
-                .toList();
+    public Page<Group> findAllByMemberUserId(UUID userId, Pageable pageable) {
+        Pageable pageOnly = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize());
+        return groupJpaRepository
+                .findAllWithMemberCountByMemberUserIdAndStatus(userId, GroupMemberStatus.ACTIVE, pageOnly)
+                .map(groupMapper::toDomainModel);
     }
 }
