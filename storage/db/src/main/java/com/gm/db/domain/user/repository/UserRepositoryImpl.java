@@ -1,5 +1,7 @@
-package com.gm.db.domain.user;
+package com.gm.db.domain.user.repository;
 
+import com.gm.db.domain.user.entity.UserEntity;
+import com.gm.db.domain.user.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
 
 import java.util.Optional;

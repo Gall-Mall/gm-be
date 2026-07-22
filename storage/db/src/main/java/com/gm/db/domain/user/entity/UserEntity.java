@@ -1,4 +1,4 @@
-package com.gm.db.domain.user;
+package com.gm.db.domain.user.entity;
 
 import lombok.AccessLevel;
 import lombok.Getter;
