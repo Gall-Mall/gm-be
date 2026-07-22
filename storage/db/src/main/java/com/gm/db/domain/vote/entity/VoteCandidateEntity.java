@@ -38,8 +38,7 @@ public class VoteCandidateEntity extends BaseEntity {
 
     private Integer maybeCount;
 
-    @Column(name = "no_count")
-    private Integer noGoCount;
+    private Integer noCount;
 
     private Integer respondentCount;
 
@@ -59,7 +58,7 @@ public class VoteCandidateEntity extends BaseEntity {
      * @param selected 최종 메뉴 선택 여부
      * @param goCount 갈래 응답 수
      * @param maybeCount 애매 응답 수
-     * @param noGoCount 말래 응답 수
+     * @param noCount 말래 응답 수
      * @param respondentCount 응답자 수
      * @param resultStatus 투표 판정 상태
      * @param description 추천 이유
@@ -71,7 +70,7 @@ public class VoteCandidateEntity extends BaseEntity {
             boolean selected,
             Integer goCount,
             Integer maybeCount,
-            Integer noGoCount,
+            Integer noCount,
             Integer respondentCount,
             VoteCandidateResult resultStatus,
             String description
@@ -82,7 +81,7 @@ public class VoteCandidateEntity extends BaseEntity {
         this.selected = selected;
         this.goCount = goCount;
         this.maybeCount = maybeCount;
-        this.noGoCount = noGoCount;
+        this.noCount = noCount;
         this.respondentCount = respondentCount;
         this.resultStatus = resultStatus;
         this.description = description;

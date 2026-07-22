@@ -15,7 +15,7 @@ import java.util.UUID;
  * @param selected 최종 메뉴 선택 여부
  * @param goCount 갈래 응답 수
  * @param maybeCount 애매 응답 수
- * @param noGoCount 말래 응답 수
+ * @param noCount 말래 응답 수
  * @param respondentCount 응답자 수
  * @param resultStatus 투표 판정 상태
  * @param description 추천 이유
@@ -31,7 +31,7 @@ public record VoteCandidate(
         boolean selected,
         Integer goCount,
         Integer maybeCount,
-        Integer noGoCount,
+        Integer noCount,
         Integer respondentCount,
         VoteCandidateResult resultStatus,
         String description,
