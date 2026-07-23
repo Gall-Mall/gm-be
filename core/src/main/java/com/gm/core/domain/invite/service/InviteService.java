@@ -37,6 +37,8 @@ public class InviteService {
     /**
      * 그룹장의 요청으로 그룹 가입에 사용할 초대 코드를 생성한다.
      *
+     * <p>DB 트랜잭션은 조회만 하므로 readOnly이다. 초대 코드 저장은 Redis(SETNX)에서 일어난다.</p>
+     *
      * @param groupId 초대 코드를 발급할 그룹 식별자
      * @param requesterUserId 요청 회원 식별자
      * @return 생성된 초대 코드
