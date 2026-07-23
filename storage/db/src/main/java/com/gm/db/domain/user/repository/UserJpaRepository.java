@@ -1,11 +1,13 @@
-package com.gm.db.domain.user;
+package com.gm.db.domain.user.repository;
 
 import java.util.Optional;
 import java.util.UUID;
 
-import com.gm.core.domain.user.model.Provider;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
+
+import com.gm.core.domain.user.model.Provider;
+import com.gm.db.domain.user.entity.UserEntity;
 
 @Repository
 public interface UserJpaRepository extends JpaRepository<UserEntity, UUID> {
