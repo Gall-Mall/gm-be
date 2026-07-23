@@ -248,9 +248,9 @@ public class UserService {
      * 유저가 선택한 알러지 정보(선택 알러지 + 자유텍스트)를 유저에게 저장
      */
     private void saveUserAllergen(UUID userId, List<UUID> allergenIds, String userInputText) {
-        // if (!userInputText.isBlank()) {
-        //     userService.saveUserCustomAllergenText();
-        // }
+         if (!userInputText.isBlank()) {
+             saveUserCustomAllergenText(userId);
+         }
         userAllergenService.saveUserAllergens(userId, allergenIds);
     }
 
@@ -258,9 +258,9 @@ public class UserService {
      * 유저가 선택한 선호 메뉴를 저장
      */
     private void saveUserPreferredMenu(UUID userId, List<UUID> menuIds, String userInputText) {
-        // if (!userInputText.isBlank()) {
-        //     userService.savePreferenceText();
-        // }
+         if (!userInputText.isBlank()) {
+             savePreferenceText(userId);
+         }
         userMenuService.saveUserMenuPreference(
                 userId,
                 menuIds,
@@ -272,9 +272,9 @@ public class UserService {
      * 유저가 선택한 비선호 메뉴를 저장
      */
     private void saveUserExcludedMenu(UUID userId, List<UUID> menuIds, String userInputText) {
-        // if (!userInputText.isBlank()) {
-        //     userService.savePreferenceText();
-        // }
+         if (!userInputText.isBlank()) {
+             saveUserCustomAllergenText(userId);
+         }
         userMenuService.saveUserMenuPreference(
                 userId,
                 menuIds,
@@ -285,9 +285,9 @@ public class UserService {
      * 유저가 선택한 선호 카테고리 저장
      */
     private void saveUserPreferredCategory(UUID userId, List<UUID> categoryIds, String userInputText) {
-        // if (!userInputText.isBlank()) {
-        //     userService.savePreferenceText();
-        // }
+         if (!userInputText.isBlank()) {
+             savePreferenceText(userId);
+         }
         userCategoryService.saveUserCategoryPreference(userId, categoryIds, UserPreference.EXCLUDE);
     }
 
@@ -295,9 +295,9 @@ public class UserService {
      * 유저가 선택한 비선호 카테고리 저장
      */
     private void saveUserExcludedCategory(UUID userId, List<UUID> categoryIds, String userInputText) {
-        // if (!userInputText.isBlank()) {
-        //     userService.savePreferenceText();
-        // }
+         if (!userInputText.isBlank()) {
+             saveUserCustomAllergenText(userId);
+         }
         userCategoryService.saveUserCategoryPreference(userId, categoryIds, UserPreference.EXCLUDE);
     }
 
@@ -321,5 +321,19 @@ public class UserService {
                 throw new UserException(UserErrorCode.MENU_PREFERENCE_CONFLICT);
             }
         }
+    }
+
+    private void savePreferenceText(UUID userId) {
+        User user = userRepository.findById(userId).orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+        User savedUser = user.updatePreferenceText(user.preferenceText());
+        userRepository.save(savedUser);
+
+    }
+
+    private void saveUserCustomAllergenText(UUID userId) {
+        User user = userRepository.findById(userId).orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+        User savedUser = user.updateCustomAllergenText(user.customAllergenText());
+        userRepository.save(savedUser);
+
     }
 }

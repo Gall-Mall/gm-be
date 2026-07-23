@@ -53,4 +53,33 @@ public record User(
                 this.preferenceText()
         );
     }
+    public User updatePreferenceText(String preferenceText) {
+        return new User(
+                this.name,
+                this.nickname,
+                this.status,
+                this.provider,
+                this.providerId,
+                this.phone,
+                this.email,
+                this.termsAgreed,
+                this.customAllergenText,
+                preferenceText
+        );
+    }
+
+    public User updateCustomAllergenText(String customAllergenText) {
+        return new User(
+                this.name,
+                this.nickname,
+                this.status,
+                this.provider,
+                this.providerId,
+                this.phone,
+                this.email,
+                termsAgreed,
+                customAllergenText,
+                this.preferenceText
+        );
+    }
 }
