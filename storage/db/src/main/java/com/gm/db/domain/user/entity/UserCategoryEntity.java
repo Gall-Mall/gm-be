@@ -1,7 +1,6 @@
-package com.gm.db.domain.user.preference.user_category.entity;
+package com.gm.db.domain.user.entity;
 
 import com.gm.core.domain.user.model.UserCategoryPreference;
-import com.gm.core.domain.user.model.UserMenuPreference;
 import com.gm.db.common.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.Getter;

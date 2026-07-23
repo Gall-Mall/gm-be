@@ -1,8 +1,8 @@
-package com.gm.db.domain.user.preference.user_allergen.repository;
+package com.gm.db.domain.user.repository;
 
 import com.gm.core.domain.user.model.UserAllergen;
 import com.gm.core.domain.user.repository.UserAllergenRepository;
-import com.gm.db.domain.user.preference.user_allergen.entity.UserAllergenEntity;
+import com.gm.db.domain.user.entity.UserAllergenEntity;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 import java.util.List;

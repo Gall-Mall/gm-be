@@ -1,9 +1,9 @@
-package com.gm.db.domain.user.preference.user_menu.repository;
+package com.gm.db.domain.user.repository;
 
 import com.gm.core.domain.user.model.UserMenu;
 import com.gm.core.domain.user.repository.UserMenuRepository;
 import com.gm.core.domain.user.model.UserMenuPreference;
-import com.gm.db.domain.user.preference.user_menu.entity.UserMenuEntity;
+import com.gm.db.domain.user.entity.UserMenuEntity;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 import java.util.List;

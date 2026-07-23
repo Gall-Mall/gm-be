@@ -1,4 +1,4 @@
-package com.gm.db.domain.user.preference.user_allergen.entity;
+package com.gm.db.domain.user.entity;
 
 import com.gm.db.common.entity.BaseEntity;
 import jakarta.persistence.Column;

@@ -1,6 +1,6 @@
-package com.gm.db.domain.user.preference.user_category.repository;
+package com.gm.db.domain.user.repository;
 
-import com.gm.db.domain.user.preference.user_category.entity.UserCategoryEntity;
+import com.gm.db.domain.user.entity.UserCategoryEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

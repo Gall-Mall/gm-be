@@ -1,4 +1,4 @@
-package com.gm.db.domain.user;
+package com.gm.db.domain.user.entity;
 
 import com.gm.core.domain.user.model.Provider;
 import com.gm.core.domain.user.model.UserStatus;
@@ -7,7 +7,6 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import com.gm.core.domain.user.model.User;
 import com.gm.db.common.entity.BaseEntity;
 
 @Entity

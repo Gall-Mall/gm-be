@@ -1,7 +1,7 @@
-package com.gm.db.domain.user.preference.user_menu.repository;
+package com.gm.db.domain.user.repository;
 
 import com.gm.core.domain.user.model.UserMenu;
-import com.gm.db.domain.user.preference.user_menu.entity.UserMenuEntity;
+import com.gm.db.domain.user.entity.UserMenuEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;

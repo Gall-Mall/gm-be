@@ -1,4 +1,4 @@
-package com.gm.db.domain.user;
+package com.gm.db.domain.user.repository;
 
 import com.gm.core.domain.user.model.Provider;
 import lombok.RequiredArgsConstructor;
@@ -10,6 +10,8 @@ import org.springframework.stereotype.Repository;
 
 import com.gm.core.domain.user.model.User;
 import com.gm.core.domain.user.repository.UserRepository;
+import com.gm.db.domain.user.mapper.UserMapper;
+import com.gm.db.domain.user.entity.UserEntity;
 
 @Repository
 @RequiredArgsConstructor
