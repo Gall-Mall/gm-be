@@ -34,6 +34,12 @@ public class UserEntity extends BaseEntity {
     private String email;
     @Column(nullable = false)
     private Boolean termsAgreed;
+    @Column(nullable = false)
+    private String customAllergenText;
+    @Column(nullable = false)
+    private String preferenceText;
+    @Column(nullable = false)
+    private String excludeFoodText;
 
     public UserEntity(
             String name,
