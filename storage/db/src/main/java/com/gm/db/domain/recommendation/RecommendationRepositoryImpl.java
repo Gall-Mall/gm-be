@@ -29,9 +29,9 @@ import com.gm.core.domain.user.model.UserMenuPreference;
 import com.gm.db.domain.group.entity.QGroupMemberEntity;
 import com.gm.db.domain.menu.allergen.entity.QMenuAllergenEntity;
 import com.gm.db.domain.menu.menu.entity.QMenuEntity;
-import com.gm.db.domain.user.preference.user_allergen.entity.QUserAllergenEntity;
-import com.gm.db.domain.user.preference.user_category.entity.QUserCategoryEntity;
-import com.gm.db.domain.user.preference.user_menu.entity.QUserMenuEntity;
+import com.gm.db.domain.user.entity.QUserAllergenEntity;
+import com.gm.db.domain.user.entity.QUserCategoryEntity;
+import com.gm.db.domain.user.entity.QUserMenuEntity;
 import com.gm.db.domain.vote.entity.QVoteCandidateEntity;
 import com.gm.db.domain.vote.entity.QVoteSessionEntity;
 
