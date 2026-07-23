@@ -8,7 +8,9 @@ public record User(
         String providerId,
         String phone,
         String email,
-        Boolean termsAgreed
+        Boolean termsAgreed,
+        String customAllergenText,
+        String preferenceText
 ) {
     private static final String DEFAULT_STATUS = "ACTIVE";
 
@@ -18,7 +20,10 @@ public record User(
             Provider provider,
             String providerId,
             String phone,
-            String email
+            String email,
+            Boolean termsAgreed,
+            String customAllergenText,
+            String preferenceText
     ) {
         return new User(
                 name,
@@ -28,7 +33,24 @@ public record User(
                 providerId,
                 phone,
                 email,
-                false
+                false,
+                "",
+                ""
+
+        );
+    }
+    public User updateTermsAgreed(Boolean termsAgreed) {
+        return new User(
+                this.name,
+                this.nickname,
+                this.status,
+                this.provider,
+                this.providerId,
+                this.phone,
+                this.email,
+                termsAgreed,
+                this.customAllergenText,
+                this.preferenceText()
         );
     }
 }

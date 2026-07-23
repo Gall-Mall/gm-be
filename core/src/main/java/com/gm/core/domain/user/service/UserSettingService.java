@@ -1,102 +1,31 @@
 package com.gm.core.domain.user.service;
 
+import com.gm.core.domain.menu.menu.service.MenuService;
+import com.gm.core.domain.user.exception.UserErrorCode;
+import com.gm.core.domain.user.exception.UserException;
+import com.gm.core.domain.user.model.*;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.UUID;
 
-import com.gm.core.domain.user.model.*;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import com.gm.core.domain.user.exception.UserErrorCode;
-import com.gm.core.domain.user.exception.UserException;
-import com.gm.core.domain.user.repository.UserRepository;
-
-@Slf4j
 @Service
 @RequiredArgsConstructor
-public class UserService {
-
-    private final UserRepository userRepository;
+public class UserSettingService {
     private final UserAllergenService userAllergenService;
+    private final MenuService menuService;
     private final UserCategoryService userCategoryService;
+    private final UserService userService;
     private final UserMenuService userMenuService;
 
-    /**
-     * 회원 식별자로 회원을 조회한다.
-     *
-     * @param id 회원 UUID
-     * @return 조회된 회원
-     */
-    @Transactional(readOnly = true)
-    public User findById(UUID id) {
-        /** 인증 요청마다 발생하는 로그이므로 'info → debug'로 수정했습니다. */
-        log.debug("user 조회: Id: {}", id);
-        return userRepository.findById(id).orElseThrow(() ->
-                        new UserException(UserErrorCode.USER_NOT_FOUND)
-                );
-    }
-
-    /**
-     * 소셜 로그인 제공자와 제공자 회원 식별자로 회원을 조회한다.
-     * 기존 회원이 없으면 신규 회원을 생성한다.
-     *
-     * @param provider 소셜 로그인 제공자
-     * @param providerId 소셜 로그인 제공자의 회원 식별자
-     * @param name 이름
-     * @param email 이메일
-     * @param phone 휴대폰 번호
-     * @return 기존 회원 또는 새로 생성된 회원
-     */
-    @Transactional
-    public User findOrCreate(
-            String name,
-            Provider provider,
-            String providerId,
-            String phone,
-            String email
-    ) {
-        return userRepository
-                .findByProviderAndProviderId(provider, providerId)
-                .orElseGet(() -> createUser(
-                        name,
-                        provider,
-                        providerId,
-                        phone,
-                        email
-                ));
-    }
-
-    private User createUser(
-            String name,
-            Provider provider,
-            String providerId,
-            String phone,
-            String email
-    ) {
-        return userRepository.save(
-                User.create(
-                        name,
-                        UserStatus.ACTIVE,
-                        provider,
-                        providerId,
-                        phone,
-                        email,
-                        false,
-                        "",
-                        ""
-                )
-        );
-    }
 
     /**
      *  온보딩 제출
      */
     @Transactional
     public void submitOnboarding(UUID userId, Onboarding onboarding) {
-        updateTermsAgreed(userId, onboarding.termsAgreed());
+//        userService.updateTermsAgreed(userId, onboarding.termsAgreed());
         changeUserSetting(userId, onboarding.userSetting());
     }
 
@@ -114,9 +43,9 @@ public class UserService {
      *  유저 세팅 조회
      */
     public UserSetting getUserSetting(UUID userId) {
-        String allergenText = getCustomAllergenText(userId);
-        String preferredText = getPreferenceText(userId);
-        String excludedText = getCustomAllergenText(userId);
+        String allergenText = ""; // userService.getCustomAllergenText(userId);
+        String preferredText = ""; // userService.getPreferredText(userId);
+        String excludedText = ""; // userService.getCustomAllergenText(userId);
 
         return new UserSetting(
                 getUserAllergenIds(userId),
@@ -128,30 +57,6 @@ public class UserService {
                 preferredText,
                 excludedText
         );
-    }
-
-    /**
-     *  유저의 TermsAgreed를 수정
-     */
-    private void updateTermsAgreed(UUID userId, Boolean termsAgreed) {
-        User user = userRepository.findById(userId).orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
-        userRepository.save(user.updateTermsAgreed(termsAgreed));
-    }
-
-    /**
-     *  유저의 AllergenText 조회
-     */
-    private String getCustomAllergenText(UUID userId) {
-        User user = userRepository.findById(userId).orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
-        return user.customAllergenText();
-    }
-
-    /**
-     *  유저의 Preference 조회
-     */
-    private String getPreferenceText(UUID userId) {
-        User user = userRepository.findById(userId).orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
-        return user.preferenceText();
     }
 
     private void validateUserSetting(UserSetting userSetting) {

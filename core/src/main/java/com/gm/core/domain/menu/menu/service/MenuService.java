@@ -11,16 +11,19 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class MenuService {
-    /**
-     * menu 테이블을 모두 조회
-     * 카테고리ID를 기준으로 메뉴 조회
-     */
+
     private final MenuRepository menuRepository;
 
+    /**
+     * menu 테이블을 모두 조회
+     */
     public List<Menu> findAll() {
         return menuRepository.findAll();
     }
 
+    /**
+     * 카테고리ID를 기준으로 유저 선택메뉴 조회
+     */
     public List<Menu> findMenusByCategoryId(UUID categoryId) {
         return menuRepository.findMenusByCategoryId(categoryId);
     }
