@@ -10,16 +10,7 @@ import static org.mockito.Mockito.when;
 import java.util.Optional;
 import java.util.UUID;
 
-import com.gm.core.domain.user.exception.UserException;
-import com.gm.core.domain.user.model.Provider;
-import com.gm.core.domain.user.model.User;
-import com.gm.core.domain.user.model.UserResult;
-import com.gm.core.domain.user.model.UserStatus;
-import com.gm.core.domain.user.repository.UserRepository;
-
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
@@ -27,183 +18,155 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import com.gm.core.domain.user.exception.UserErrorCode;
+import com.gm.core.domain.user.exception.UserException;
+import com.gm.core.domain.user.model.Provider;
+import com.gm.core.domain.user.model.User;
+import com.gm.core.domain.user.model.UserResult;
+import com.gm.core.domain.user.model.UserStatus;
+import com.gm.core.domain.user.repository.UserRepository;
+
 @ExtendWith(MockitoExtension.class)
 class UserServiceTest {
 
     @Mock
     private UserRepository userRepository;
-    private UserService userService;
-    private UUID userId;
-    private User user;
 
-    @BeforeEach
-    void setUp() {
-        userService = new UserService(userRepository);
-        userId = UUID.randomUUID();
-        user = new User(
+    @Test
+    @DisplayName("회원 UUID로 기존 회원을 조회한다")
+    void findByIdReturnsExistingUser() {
+        // given
+        UUID userId = UUID.randomUUID();
+        User user = createUser(UserStatus.ACTIVE);
+
+        when(userRepository.findById(userId))
+                .thenReturn(Optional.of(user));
+
+        UserService userService = new UserService(userRepository);
+
+        // when
+        User result = userService.findById(userId);
+
+        // then
+        assertThat(result).isEqualTo(user);
+        verify(userRepository).findById(userId);
+    }
+
+    @Test
+    @DisplayName("회원 UUID에 해당하는 회원이 없으면 USER_NOT_FOUND 예외가 발생한다")
+    void findByIdThrowsWhenUserDoesNotExist() {
+        // given
+        UUID userId = UUID.randomUUID();
+
+        when(userRepository.findById(userId))
+                .thenReturn(Optional.empty());
+
+        UserService userService = new UserService(userRepository);
+
+        // when & then
+        assertThatThrownBy(() -> userService.findById(userId))
+                .isInstanceOf(UserException.class)
+                .satisfies(exception -> {
+                    UserException userException = (UserException) exception;
+
+                    assertThat(userException.getErrorCode())
+                            .isEqualTo(UserErrorCode.USER_NOT_FOUND);
+                });
+
+        verify(userRepository).findById(userId);
+    }
+
+    @Test
+    @DisplayName("기존 네이버 회원이면 새로 저장하지 않고 기존 회원 정보를 반환한다")
+    void findOrCreateWithIdReturnsExistingUser() {
+        // given
+        UUID userId = UUID.randomUUID();
+        User existingUser = createUser(UserStatus.ACTIVE);
+        UserResult existingResult = UserResult.of(userId, existingUser);
+
+        when(userRepository.findResultByProviderAndProviderId(
+                Provider.NAVER,
+                "naver-provider-id"
+        )).thenReturn(Optional.of(existingResult));
+
+        UserService userService = new UserService(userRepository);
+
+        // when
+        UserResult result = userService.findOrCreateWithId(
                 "홍길동",
-                "홍길동",
-                UserStatus.ACTIVE,
                 Provider.NAVER,
                 "naver-provider-id",
-                "01012345678",
-                "user@example.com",
-                false
+                "010-1234-5678",
+                "user@example.com"
         );
+
+        // then
+        assertThat(result).isEqualTo(existingResult);
+
+        verify(userRepository, never())
+                .saveResult(any(User.class));
     }
 
-    @Nested
-    @DisplayName("회원 ID 조회")
-    class FindById {
+    @Test
+    @DisplayName("기존 네이버 회원이 없으면 ONBOARDING 상태로 신규 회원을 생성한다")
+    void findOrCreateWithIdCreatesOnboardingUser() {
+        // given
+        UUID generatedUserId = UUID.randomUUID();
 
-        @Test
-        @DisplayName("회원이 존재하면 회원을 반환한다")
-        void findById_success() {
-            // given
-            when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(userRepository.findResultByProviderAndProviderId(
+                Provider.NAVER,
+                "new-provider-id"
+        )).thenReturn(Optional.empty());
 
-            // when
-            User result = userService.findById(userId);
+        when(userRepository.saveResult(any(User.class)))
+                .thenAnswer(invocation -> {
+                    User savedUser = invocation.getArgument(0);
 
-            // then
-            assertThat(result).isEqualTo(user);
-            verify(userRepository).findById(userId);
-        }
+                    return UserResult.of(generatedUserId, savedUser);
+                });
 
-        @Test
-        @DisplayName("회원이 존재하지 않으면 UserException이 발생한다")
-        void findById_notFound() {
-            // given
-            when(userRepository.findById(userId)).thenReturn(Optional.empty());
+        UserService userService = new UserService(userRepository);
 
-            // when & then
-            assertThatThrownBy(() -> userService.findById(userId)).isInstanceOf(UserException.class);
-            verify(userRepository).findById(userId);
-        }
+        // when
+        UserResult result = userService.findOrCreateWithId(
+                "신규 사용자",
+                Provider.NAVER,
+                "new-provider-id",
+                "010-9999-9999",
+                "new@example.com"
+        );
+
+        // then
+        assertThat(result.userId()).isEqualTo(generatedUserId);
+        assertThat(result.user().name()).isEqualTo("신규 사용자");
+        assertThat(result.user().nickname()).isEqualTo("신규 사용자");
+        assertThat(result.user().status()).isEqualTo(UserStatus.ONBOARDING);
+        assertThat(result.user().provider()).isEqualTo(Provider.NAVER);
+        assertThat(result.user().providerId()).isEqualTo("new-provider-id");
+        assertThat(result.user().phone()).isEqualTo("010-9999-9999");
+        assertThat(result.user().email()).isEqualTo("new@example.com");
+        assertThat(result.user().termsAgreed()).isFalse();
+
+        ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
+
+        verify(userRepository).saveResult(captor.capture());
+
+        User savedUser = captor.getValue();
+
+        assertThat(savedUser.status()).isEqualTo(UserStatus.ONBOARDING);
+        assertThat(savedUser.termsAgreed()).isFalse();
     }
 
-    @Nested
-    @DisplayName("소셜 로그인 회원 조회 또는 생성")
-    class FindOrCreate {
-
-        @Test
-        @DisplayName("기존 회원이 있으면 새로 저장하지 않고 기존 회원을 반환한다")
-        void findOrCreate_existingUser() {
-            // given
-            when(userRepository.findByProviderAndProviderId(Provider.NAVER, "naver-provider-id")).thenReturn(Optional.of(user));
-
-            // when
-            User result = userService.findOrCreate(
-                    "홍길동",
-                    Provider.NAVER,
-                    "naver-provider-id",
-                    "01012345678",
-                    "user@example.com"
-            );
-
-            // then
-            assertThat(result).isEqualTo(user);
-
-            verify(userRepository)
-                    .findByProviderAndProviderId(Provider.NAVER, "naver-provider-id");
-            verify(userRepository, never()).save(any(User.class));
-        }
-
-        @Test
-        @DisplayName("기존 회원이 없으면 신규 회원을 생성하고 저장한다")
-        void findOrCreate_newUser() {
-            // given
-            when(userRepository.findByProviderAndProviderId(Provider.NAVER, "naver-provider-id")).thenReturn(Optional.empty());
-
-            when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
-
-            // when
-            User result = userService.findOrCreate(
-                    "홍길동",
-                    Provider.NAVER,
-                    "naver-provider-id",
-                    "01012345678",
-                    "user@example.com"
-            );
-
-            // then
-            assertThat(result.name()).isEqualTo("홍길동");
-            assertThat(result.nickname()).isEqualTo("홍길동");
-            assertThat(result.status()).isEqualTo(UserStatus.ACTIVE);
-            assertThat(result.provider()).isEqualTo(Provider.NAVER);
-            assertThat(result.providerId()).isEqualTo("naver-provider-id");
-            assertThat(result.phone()).isEqualTo("01012345678");
-            assertThat(result.email()).isEqualTo("user@example.com");
-            assertThat(result.termsAgreed()).isFalse();
-
-            ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
-
-            verify(userRepository).save(captor.capture());
-
-            User savedUser = captor.getValue();
-
-            assertThat(savedUser.provider()).isEqualTo(Provider.NAVER);
-            assertThat(savedUser.providerId()).isEqualTo("naver-provider-id");
-        }
-    }
-
-    @Nested
-    @DisplayName("OAuth2 로그인용 회원 조회 또는 생성")
-    class FindOrCreateWithId {
-
-        @Test
-        @DisplayName("기존 회원이 있으면 UUID와 회원 정보를 반환한다")
-        void findOrCreateWithId_existingUser() {
-            // given
-            UserResult expected = UserResult.of(userId, user);
-
-            when(userRepository.findResultByProviderAndProviderId(Provider.NAVER, "naver-provider-id")).thenReturn(Optional.of(expected));
-
-            // when
-            UserResult result = userService.findOrCreateWithId(
-                    "홍길동",
-                    Provider.NAVER,
-                    "naver-provider-id",
-                    "01012345678",
-                    "user@example.com"
-            );
-
-            // then
-            assertThat(result).isEqualTo(expected);
-            assertThat(result.userId()).isEqualTo(userId);
-            assertThat(result.user()).isEqualTo(user);
-
-            verify(userRepository, never()).saveResult(any(User.class));
-        }
-
-        @Test
-        @DisplayName("기존 회원이 없으면 신규 회원을 저장하고 UUID와 회원 정보를 반환한다")
-        void findOrCreateWithId_newUser() {
-            // given
-            when(userRepository.findResultByProviderAndProviderId(Provider.NAVER, "naver-provider-id")).thenReturn(Optional.empty());
-
-            when(userRepository.saveResult(any(User.class)))
-                    .thenAnswer(invocation -> {
-                        User createdUser = invocation.getArgument(0);
-                        return UserResult.of(userId, createdUser);
-                    });
-
-            // when
-            UserResult result = userService.findOrCreateWithId(
-                    "홍길동",
-                    Provider.NAVER,
-                    "naver-provider-id",
-                    "01012345678",
-                    "user@example.com"
-            );
-
-            // then
-            assertThat(result.userId()).isEqualTo(userId);
-            assertThat(result.user().status()).isEqualTo(UserStatus.ACTIVE);
-            assertThat(result.user().provider()).isEqualTo(Provider.NAVER);
-            assertThat(result.user().providerId()).isEqualTo("naver-provider-id");
-
-            verify(userRepository).saveResult(any(User.class));
-        }
+    private User createUser(UserStatus status) {
+        return new User(
+                "홍길동",
+                "길동",
+                status,
+                Provider.NAVER,
+                "naver-provider-id",
+                "010-1234-5678",
+                "user@example.com",
+                status == UserStatus.ACTIVE
+        );
     }
 }

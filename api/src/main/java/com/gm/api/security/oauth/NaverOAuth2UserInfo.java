@@ -18,7 +18,15 @@ public class NaverOAuth2UserInfo {
         this.response = (Map<String, Object>) map;
     }
 
-    public String providerId() { return (String) response.get("id"); }
+    public String providerId() {
+        String providerId = (String) response.get("id");
+
+        if (providerId == null || providerId.isBlank()) {
+            throw new IllegalArgumentException("네이버 사용자 식별자가 존재하지 않습니다.");
+        }
+
+        return providerId;
+    }
     public String name() { return (String) response.get("name"); }
     public String email() { return (String) response.get("email"); }
     public String phone() { return (String) response.get("mobile"); }

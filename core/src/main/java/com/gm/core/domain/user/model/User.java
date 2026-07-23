@@ -10,11 +10,20 @@ public record User(
         String email,
         Boolean termsAgreed
 ) {
-    private static final String DEFAULT_STATUS = "ACTIVE";
+    /**
+     * OAuth 로그인을 통해 신규 사용자를 생성한다.
+     * 신규 사용자는 온보딩과 약관 동의를 완료하지 않은 상태이므로 ONBOARDING 상태와 termsAgreed=false로 생성한다.
+     *
+     * @param name 사용자 이름
+     * @param provider OAuth 제공자
+     * @param providerId OAuth 제공자의 사용자 식별자
+     * @param phone 휴대폰 번호
+     * @param email 이메일
+     * @return 신규 사용자
+     */
 
     public static User create(
             String name,
-            UserStatus status,
             Provider provider,
             String providerId,
             String phone,
@@ -23,7 +32,7 @@ public record User(
         return new User(
                 name,
                 name,
-                status,
+                UserStatus.ONBOARDING,
                 provider,
                 providerId,
                 phone,

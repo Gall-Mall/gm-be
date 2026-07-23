@@ -99,3 +99,8 @@ jwt:
   # Base64로 인코딩된 256bit 이상의 Secret Key
   secret: ${JWT_SECRET:YOUR_BASE64_SECRET_KEY}
   access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION:3600}
+
+# /oauth/success 처리용 Redirect URI. 현재는 프론트엔드와의 미연동으로 임시로 설정해둠.
+app:
+  oauth2:
+    success-redirect-uri: http://localhost:8080/oauth/success

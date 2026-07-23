@@ -33,8 +33,9 @@ public class SecurityConfig {
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
                 .csrf(AbstractHttpConfigurer::disable)
+                // OAuth2 로그인 과정에서 인증 요청과 state를 저장할 때만 세션 생성을 허용한다.
                 .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                        .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
                 // 네이버 OAuth2 로그인 설정
                 .oauth2Login(oauth2 -> oauth2
                         // 네이버 로그인 시작 경로
@@ -56,7 +57,7 @@ public class SecurityConfig {
                         .accessDeniedHandler(accessDeniedHandler))
                 .authorizeHttpRequests(auth -> auth
                         // 네이버 OAuth2 로그인 시작 및 콜백 요청 허용
-                        .requestMatchers("/api/auth/oauth/**").permitAll()
+                        .requestMatchers("/api/auth/oauth/**", "/login/**").permitAll()
                         // 현재 사용자 정보 조회 API는 인증 필요
                         .requestMatchers("/api/users/me").authenticated()
                         .anyRequest().permitAll())
