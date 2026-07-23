@@ -1,4 +1,4 @@
-package com.gm.db.domain.group;
+package com.gm.db.domain.group.projection;
 
 import java.time.LocalDateTime;
 import java.time.LocalTime;
