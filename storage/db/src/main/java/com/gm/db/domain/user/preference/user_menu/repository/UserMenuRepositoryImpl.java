@@ -2,7 +2,7 @@ package com.gm.db.domain.user.preference.user_menu.repository;
 
 import com.gm.core.domain.user.model.UserMenu;
 import com.gm.core.domain.user.repository.UserMenuRepository;
-import com.gm.core.domain.user.model.UserPreference;
+import com.gm.core.domain.user.model.UserMenuPreference;
 import com.gm.db.domain.user.preference.user_menu.entity.UserMenuEntity;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
@@ -27,9 +27,11 @@ public class UserMenuRepositoryImpl implements UserMenuRepository {
     }
 
     @Override
-    public void addUserMenuPreference(UUID userId, List<UUID> menuIds, UserPreference preference) {
-        for (UUID uuid : menuIds) {
-            userMenuJpaRepository.save(new UserMenuEntity(userId, uuid, preference));
-        }
+    public void addUserMenuPreference(UUID userId, List<UUID> menuIds, UserMenuPreference preference) {
+        List<UserMenuEntity> list = menuIds
+                .stream()
+                .map(menuId -> new UserMenuEntity(userId, menuId, preference))
+                .toList();
+        userMenuJpaRepository.saveAll(list);
     }
 }

@@ -5,6 +5,6 @@ import java.util.UUID;
 public record UserMenu(
         UUID userId,
         UUID menuId,
-        UserPreference preference
+        UserMenuPreference preference
 ) {
 }

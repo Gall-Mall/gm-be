@@ -1,7 +1,7 @@
 package com.gm.core.domain.user.service;
 
 import com.gm.core.domain.user.model.UserMenu;
-import com.gm.core.domain.user.model.UserPreference;
+import com.gm.core.domain.user.model.UserMenuPreference;
 import com.gm.core.domain.user.repository.UserMenuRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -31,7 +31,7 @@ public class UserMenuService {
     /**
      * 유저가 메뉴를 선택하면 user_menu_preference에 추가
      */
-    public void saveUserMenuPreference(UUID userId, List<UUID> menuIds, UserPreference preference) {
+    public void saveUserMenuPreference(UUID userId, List<UUID> menuIds, UserMenuPreference preference) {
         userMenuRepository.addUserMenuPreference(userId, menuIds, preference);
     }
 }

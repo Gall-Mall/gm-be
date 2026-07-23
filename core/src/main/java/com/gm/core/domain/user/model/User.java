@@ -10,7 +10,8 @@ public record User(
         String email,
         Boolean termsAgreed,
         String customAllergenText,
-        String preferenceText
+        String preferenceText,
+        String excludeFoodText
 ) {
     private static final String DEFAULT_STATUS = "ACTIVE";
 
@@ -23,7 +24,8 @@ public record User(
             String email,
             Boolean termsAgreed,
             String customAllergenText,
-            String preferenceText
+            String preferenceText,
+            String excludeFoodText
     ) {
         return new User(
                 name,
@@ -34,8 +36,9 @@ public record User(
                 phone,
                 email,
                 false,
-                "",
-                ""
+                null,
+                null,
+                null
 
         );
     }
@@ -50,7 +53,9 @@ public record User(
                 this.email,
                 termsAgreed,
                 this.customAllergenText,
-                this.preferenceText()
+                this.preferenceText,
+                this.excludeFoodText
+
         );
     }
     public User updatePreferenceText(String preferenceText) {
@@ -64,7 +69,8 @@ public record User(
                 this.email,
                 this.termsAgreed,
                 this.customAllergenText,
-                preferenceText
+                preferenceText,
+                this.excludeFoodText
         );
     }
 
@@ -77,9 +83,26 @@ public record User(
                 this.providerId,
                 this.phone,
                 this.email,
-                termsAgreed,
+                this.termsAgreed,
                 customAllergenText,
-                this.preferenceText
+                this.preferenceText,
+                this.excludeFoodText
+        );
+    }
+
+    public User updateExcludeFoodText(String excludeFoodText) {
+        return new User(
+                this.name,
+                this.nickname,
+                this.status,
+                this.provider,
+                this.providerId,
+                this.phone,
+                this.email,
+                this.termsAgreed,
+                this.customAllergenText,
+                this.preferenceText,
+                excludeFoodText
         );
     }
 }

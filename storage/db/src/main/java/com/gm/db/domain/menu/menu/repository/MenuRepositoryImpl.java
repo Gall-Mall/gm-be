@@ -1,7 +1,7 @@
 package com.gm.db.domain.menu.menu.repository;
 
-import com.gm.core.domain.menu.menu.repository.MenuRepository;
-import com.gm.core.domain.menu.menu.model.Menu;
+import com.gm.core.domain.menu.repository.MenuRepository;
+import com.gm.core.domain.menu.model.Menu;
 import com.gm.db.domain.menu.menu.mapper.MenuMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;

@@ -1,8 +1,9 @@
 package com.gm.core.domain.user.service;
 
 import com.gm.core.domain.user.model.UserCategory;
+import com.gm.core.domain.user.model.UserCategoryPreference;
 import com.gm.core.domain.user.repository.UserCategoryRepository;
-import com.gm.core.domain.user.model.UserPreference;
+import com.gm.core.domain.user.model.UserMenuPreference;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import java.util.List;
@@ -31,7 +32,7 @@ public class UserCategoryService {
     /**
      * 유저가 카테고리를 선택하면 선택카테고리를 user_category_preference에 추가
      */
-    public void saveUserCategoryPreference(UUID userId, List<UUID> categoryIds, UserPreference preference) {
+    public void saveUserCategoryPreference(UUID userId, List<UUID> categoryIds, UserCategoryPreference preference) {
         userCategoryRepository.saveUserCategoryPreference(userId, categoryIds, preference);
     }
 }

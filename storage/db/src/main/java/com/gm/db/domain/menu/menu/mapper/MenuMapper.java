@@ -1,6 +1,6 @@
 package com.gm.db.domain.menu.menu.mapper;
 
-import com.gm.core.domain.menu.menu.model.Menu;
+import com.gm.core.domain.menu.model.Menu;
 import com.gm.db.domain.menu.menu.entity.MenuEntity;
 import org.mapstruct.Mapper;
 

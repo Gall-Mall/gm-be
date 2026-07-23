@@ -1,6 +1,6 @@
-package com.gm.core.domain.menu.menu.repository;
+package com.gm.core.domain.menu.repository;
 
-import com.gm.core.domain.menu.menu.model.Menu;
+import com.gm.core.domain.menu.model.Menu;
 import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.UUID;

@@ -1,4 +1,4 @@
-package com.gm.core.domain.menu.category.model;
+package com.gm.core.domain.menu.model;
 
 import java.util.UUID;
 

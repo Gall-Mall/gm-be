@@ -1,7 +1,7 @@
 package com.gm.core.domain.user.repository;
 
 import com.gm.core.domain.user.model.UserMenu;
-import com.gm.core.domain.user.model.UserPreference;
+import com.gm.core.domain.user.model.UserMenuPreference;
 import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.UUID;
@@ -12,5 +12,5 @@ public interface UserMenuRepository {
 
     void deleteByUserId(UUID userId);
 
-    void addUserMenuPreference(UUID userId, List<UUID> menuIds, UserPreference preference);
+    void addUserMenuPreference(UUID userId, List<UUID> menuIds, UserMenuPreference preference);
 }

@@ -1,7 +1,7 @@
 package com.gm.db.domain.menu.allergen.repository;
 
-import com.gm.core.domain.menu.allergen.repository.AllergenRepository;
-import com.gm.core.domain.menu.allergen.model.Allergen;
+import com.gm.core.domain.menu.repository.AllergenRepository;
+import com.gm.core.domain.menu.model.Allergen;
 import com.gm.db.domain.menu.allergen.mapper.AllergenMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;

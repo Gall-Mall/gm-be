@@ -1,7 +1,7 @@
-package com.gm.core.domain.menu.menu.service;
+package com.gm.core.domain.menu.service;
 
-import com.gm.core.domain.menu.menu.model.Menu;
-import com.gm.core.domain.menu.menu.repository.MenuRepository;
+import com.gm.core.domain.menu.model.Menu;
+import com.gm.core.domain.menu.repository.MenuRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 

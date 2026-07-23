@@ -1,7 +1,8 @@
 package com.gm.db.domain.user.preference.user_category.entity;
 
+import com.gm.core.domain.user.model.UserCategoryPreference;
+import com.gm.core.domain.user.model.UserMenuPreference;
 import com.gm.db.common.entity.BaseEntity;
-import com.gm.core.domain.user.model.UserPreference;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -21,9 +22,9 @@ public class UserCategoryEntity extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private UserPreference preference;
+    private UserCategoryPreference preference;
 
-    public UserCategoryEntity(UUID userId, UUID categoryId, UserPreference preference) {
+    public UserCategoryEntity(UUID userId, UUID categoryId, UserCategoryPreference preference) {
         this.userId = userId;
         this.categoryId = categoryId;
         this.preference = preference;

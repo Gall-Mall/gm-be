@@ -1,7 +1,7 @@
 package com.gm.core.domain.user.repository;
 
 import com.gm.core.domain.user.model.UserCategory;
-import com.gm.core.domain.user.model.UserPreference;
+import com.gm.core.domain.user.model.UserCategoryPreference;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -13,5 +13,5 @@ public interface UserCategoryRepository {
 
     void deleteByUserId(UUID userId);
 
-    void saveUserCategoryPreference(UUID userId, List<UUID> categoryIds, UserPreference preference);
+    void saveUserCategoryPreference(UUID userId, List<UUID> categoryIds, UserCategoryPreference preference);
 }

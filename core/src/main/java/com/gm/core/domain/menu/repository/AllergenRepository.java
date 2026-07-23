@@ -1,6 +1,6 @@
-package com.gm.core.domain.menu.allergen.repository;
+package com.gm.core.domain.menu.repository;
 
-import com.gm.core.domain.menu.allergen.model.Allergen;
+import com.gm.core.domain.menu.model.Allergen;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;

@@ -53,28 +53,43 @@ public class UserService {
     @Transactional
     public User findOrCreate(
             String name,
+            UserStatus userStatus,
             Provider provider,
             String providerId,
             String phone,
-            String email
+            String email,
+            Boolean termsAgreed,
+            String customAllergenText,
+            String preferenceText,
+            String excludeFoodText
     ) {
         return userRepository
                 .findByProviderAndProviderId(provider, providerId)
                 .orElseGet(() -> createUser(
                         name,
+                        userStatus,
                         provider,
                         providerId,
                         phone,
-                        email
+                        email,
+                        false,
+                        null,
+                        null,
+                        null
                 ));
     }
 
     private User createUser(
             String name,
+            UserStatus userStatus,
             Provider provider,
             String providerId,
             String phone,
-            String email
+            String email,
+            Boolean termsAgreed,
+            String customAllergenText,
+            String preferenceText,
+            String excludeFoodText
     ) {
         return userRepository.save(
                 User.create(
@@ -85,8 +100,9 @@ public class UserService {
                         phone,
                         email,
                         false,
-                        "",
-                        ""
+                        null,
+                        null,
+                        null
                 )
         );
     }
@@ -116,7 +132,7 @@ public class UserService {
     public UserSetting getUserSetting(UUID userId) {
         String allergenText = getCustomAllergenText(userId);
         String preferredText = getPreferenceText(userId);
-        String excludedText = getCustomAllergenText(userId);
+        String excludedText = getExcludeFoodText(userId);
 
         return new UserSetting(
                 getUserAllergenIds(userId),
@@ -154,6 +170,14 @@ public class UserService {
         return user.preferenceText();
     }
 
+    /**
+     *  유저의 excludeFood 조회
+     */
+    private String getExcludeFoodText(UUID userId) {
+        User user = userRepository.findById(userId).orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+        return user.excludeFoodText();
+    }
+
     private void validateUserSetting(UserSetting userSetting) {
         validateCategoryOverlap(userSetting.preferredCategoryIds(), userSetting.excludedCategoryIds());
         validateMenuOverlap(userSetting.preferredMenuIds(), userSetting.excludedMenuIds());
@@ -178,18 +202,16 @@ public class UserService {
         );
         saveUserExcludedMenu(
                 userId,
-                userSetting.preferredMenuIds(),
+                userSetting.excludedMenuIds(),
                 userSetting.excludedText()
         );
         saveUserPreferredCategory(
                 userId,
-                userSetting.preferredCategoryIds(),
-                userSetting.preferredText()
+                userSetting.preferredCategoryIds()
         );
         saveUserExcludedCategory(
                 userId,
-                userSetting.excludedCategoryIds(),
-                userSetting.excludedText()
+                userSetting.excludedCategoryIds()
         );
     }
 
@@ -206,7 +228,7 @@ public class UserService {
     private List<UUID> getUserPreferredMenuIds(UUID userId) {
         List<UserMenu> list = userMenuService.getUserMenuPreferences(userId)
                 .stream()
-                .filter(i -> i.preference() == UserPreference.LIKE)
+                .filter(i -> i.preference() == UserMenuPreference.LIKE)
                 .toList();
         return list.stream().map(UserMenu::menuId).toList();
     }
@@ -217,7 +239,7 @@ public class UserService {
     private List<UUID> getUserExcludedMenuIds(UUID userId) {
         return userMenuService.getUserMenuPreferences(userId)
                 .stream()
-                .filter(i -> i.preference() == UserPreference.EXCLUDE)
+                .filter(i -> i.preference() == UserMenuPreference.EXCLUDE)
                 .map(UserMenu::menuId)
                 .toList();
     }
@@ -228,7 +250,7 @@ public class UserService {
     private List<UUID> getUserPreferredCategoryIds(UUID userId) {
         return userCategoryService.getUserCategoryPreferences(userId)
                 .stream()
-                .filter(i -> i.preference() == UserPreference.LIKE)
+                .filter(i -> i.preference() == UserCategoryPreference.LIKE)
                 .map(UserCategory::categoryId)
                 .toList();
     }
@@ -239,7 +261,7 @@ public class UserService {
     private List<UUID> getUserExcludedCategoryIds(UUID userId) {
         return userCategoryService.getUserCategoryPreferences(userId)
                 .stream()
-                .filter(i -> i.preference() == UserPreference.EXCLUDE)
+                .filter(i -> i.preference() == UserCategoryPreference.DISLIKE)
                 .map(UserCategory::categoryId)
                 .toList();
     }
@@ -248,8 +270,8 @@ public class UserService {
      * 유저가 선택한 알러지 정보(선택 알러지 + 자유텍스트)를 유저에게 저장
      */
     private void saveUserAllergen(UUID userId, List<UUID> allergenIds, String userInputText) {
-         if (!userInputText.isBlank()) {
-             saveUserCustomAllergenText(userId);
+         if (userInputText != null && !userInputText.isBlank()) {
+             saveUserCustomAllergenText(userId, userInputText);
          }
         userAllergenService.saveUserAllergens(userId, allergenIds);
     }
@@ -258,13 +280,13 @@ public class UserService {
      * 유저가 선택한 선호 메뉴를 저장
      */
     private void saveUserPreferredMenu(UUID userId, List<UUID> menuIds, String userInputText) {
-         if (!userInputText.isBlank()) {
-             savePreferenceText(userId);
+         if (userInputText != null && !userInputText.isBlank()) {
+             savePreferenceText(userId, userInputText);
          }
         userMenuService.saveUserMenuPreference(
                 userId,
                 menuIds,
-                UserPreference.LIKE
+                UserMenuPreference.LIKE
         );
     }
 
@@ -272,33 +294,27 @@ public class UserService {
      * 유저가 선택한 비선호 메뉴를 저장
      */
     private void saveUserExcludedMenu(UUID userId, List<UUID> menuIds, String userInputText) {
-         if (!userInputText.isBlank()) {
-             saveUserCustomAllergenText(userId);
+         if (userInputText != null && !userInputText.isBlank()) {
+             saveUserExcludeText(userId, userInputText);
          }
         userMenuService.saveUserMenuPreference(
                 userId,
                 menuIds,
-                UserPreference.EXCLUDE
+                UserMenuPreference.EXCLUDE
         );
     }
     /**
      * 유저가 선택한 선호 카테고리 저장
      */
-    private void saveUserPreferredCategory(UUID userId, List<UUID> categoryIds, String userInputText) {
-         if (!userInputText.isBlank()) {
-             savePreferenceText(userId);
-         }
-        userCategoryService.saveUserCategoryPreference(userId, categoryIds, UserPreference.EXCLUDE);
+    private void saveUserPreferredCategory(UUID userId, List<UUID> categoryIds) {
+        userCategoryService.saveUserCategoryPreference(userId, categoryIds, UserCategoryPreference.LIKE);
     }
 
     /**
      * 유저가 선택한 비선호 카테고리 저장
      */
-    private void saveUserExcludedCategory(UUID userId, List<UUID> categoryIds, String userInputText) {
-         if (!userInputText.isBlank()) {
-             saveUserCustomAllergenText(userId);
-         }
-        userCategoryService.saveUserCategoryPreference(userId, categoryIds, UserPreference.EXCLUDE);
+    private void saveUserExcludedCategory(UUID userId, List<UUID> categoryIds) {
+        userCategoryService.saveUserCategoryPreference(userId, categoryIds, UserCategoryPreference.DISLIKE);
     }
 
     /**
@@ -323,17 +339,22 @@ public class UserService {
         }
     }
 
-    private void savePreferenceText(UUID userId) {
+    private void saveUserCustomAllergenText(UUID userId, String userInputText) {
         User user = userRepository.findById(userId).orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
-        User savedUser = user.updatePreferenceText(user.preferenceText());
+        User savedUser = user.updateCustomAllergenText(userInputText);
+        userRepository.save(savedUser);
+    }
+
+    private void savePreferenceText(UUID userId, String userInputText) {
+        User user = userRepository.findById(userId).orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+        User savedUser = user.updatePreferenceText(userInputText);
         userRepository.save(savedUser);
 
     }
 
-    private void saveUserCustomAllergenText(UUID userId) {
+    private void saveUserExcludeText(UUID userId, String userInputText) {
         User user = userRepository.findById(userId).orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
-        User savedUser = user.updateCustomAllergenText(user.customAllergenText());
+        User savedUser = user.updateExcludeFoodText(userInputText);
         userRepository.save(savedUser);
-
     }
 }

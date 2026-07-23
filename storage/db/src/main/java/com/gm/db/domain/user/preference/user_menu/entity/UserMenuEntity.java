@@ -1,6 +1,6 @@
 package com.gm.db.domain.user.preference.user_menu.entity;
 
-import com.gm.core.domain.user.model.UserPreference;
+import com.gm.core.domain.user.model.UserMenuPreference;
 import com.gm.db.common.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.NoArgsConstructor;
@@ -20,9 +20,9 @@ public class UserMenuEntity extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private UserPreference preference;
+    private UserMenuPreference preference;
 
-    public UserMenuEntity(UUID userId, UUID menuId, UserPreference preference) {
+    public UserMenuEntity(UUID userId, UUID menuId, UserMenuPreference preference) {
         this.userId = userId;
         this.menuId = menuId;
         this.preference = preference;

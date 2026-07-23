@@ -6,6 +6,6 @@ public record UserCategory(
         UUID id,
         UUID userId,
         UUID categoryId,
-        UserPreference preference
+        UserCategoryPreference preference
 ) {
 }
