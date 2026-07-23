@@ -76,4 +76,29 @@ public class GroupMemberEntity extends BaseEntity {
                 GroupMemberRole.OWNER
         );
     }
+
+    /**
+     * 초대를 통해 가입하는 일반 멤버를 생성한다.
+     */
+    public static GroupMemberEntity ofMember(UUID diningGroupId, UUID userId) {
+        return new GroupMemberEntity(
+                diningGroupId,
+                userId,
+                GroupMemberStatus.ACTIVE,
+                LocalDateTime.now(),
+                GroupMemberRole.MEMBER
+        );
+    }
+
+    /**
+     * 자발적으로 탈퇴(LEFT)했던 멤버십 행을 일반 멤버로 재활성화한다. 유니크 제약
+     * ({@code UK_group_member})이 그룹당 회원 한 명에 행 하나만 허용하므로, 재가입은 새 행을
+     * 삽입하지 않고 기존 행을 갱신하는 방식으로 처리한다.
+     */
+    public void rejoin() {
+        this.status = GroupMemberStatus.ACTIVE;
+        this.joinedAt = LocalDateTime.now();
+        this.leftAt = null;
+        this.role = GroupMemberRole.MEMBER;
+    }
 }

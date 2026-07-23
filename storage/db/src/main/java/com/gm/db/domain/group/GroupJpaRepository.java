@@ -3,9 +3,12 @@ package com.gm.db.domain.group;
 import java.util.Optional;
 import java.util.UUID;
 
+import jakarta.persistence.LockModeType;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -80,4 +83,32 @@ public interface GroupJpaRepository extends JpaRepository<GroupEntity, UUID> {
             @Param("userId") UUID userId,
             @Param("status") GroupMemberStatus status
     );
+
+    /**
+     * groupId에 해당하는 그룹을 멤버 수와 함께 단일 쿼리로 조회한다. 요청 회원의 멤버십 여부와
+     * 무관하게 조회한다.
+     */
+    @Query("""
+            select new com.gm.db.domain.group.GroupSummaryProjection(
+                g.id, g.ownerUserId, g.name, g.locationAddress, g.latitude, g.longitude,
+                g.searchRadiusM, g.recommendationTime, g.maxMemberCount,
+                (select count(m) from GroupMemberEntity m
+                        where m.diningGroupId = g.id and m.status = :status),
+                g.createdAt, g.updatedAt
+            )
+            from GroupEntity g
+            where g.id = :groupId
+            """)
+    Optional<GroupSummaryProjection> findByIdWithMemberCount(
+            @Param("groupId") UUID groupId,
+            @Param("status") GroupMemberStatus status
+    );
+
+    /**
+     * groupId에 해당하는 그룹 행을 비관적 쓰기 잠금으로 조회한다. 정원 확인과 멤버 등록을
+     * 하나의 원자적 흐름으로 처리하기 위해, 동일 그룹에 대한 동시 가입 요청을 이 잠금으로 직렬화한다.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select g from GroupEntity g where g.id = :groupId")
+    Optional<GroupEntity> findByIdForUpdate(@Param("groupId") UUID groupId);
 }
