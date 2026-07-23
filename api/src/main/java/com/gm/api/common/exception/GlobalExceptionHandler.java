@@ -1,15 +1,11 @@
 package com.gm.api.common.exception;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
-
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingRequestHeaderException;
-import org.springframework.validation.FieldError;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
@@ -28,28 +24,6 @@ import com.gm.core.exception.ErrorCode;
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
-
-    /** @Valid 검증 실패를 공통 실패 응답으로 변환한다. */
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ResponseEnvelope<Map<String, String>>> handleValidationException(
-            MethodArgumentNotValidException exception
-    ) {
-        Map<String, String> validationErrors = new LinkedHashMap<>();
-
-        for (FieldError fieldError : exception.getBindingResult().getFieldErrors()) {
-            validationErrors.put(
-                    fieldError.getField(),
-                    fieldError.getDefaultMessage()
-            );
-        }
-
-        ErrorCode errorCode = CommonErrorCode.INVALID_INPUT;
-
-        log.warn("Validation failed : {}", validationErrors);
-
-        return ResponseEntity.status(errorCode.getStatus())
-                .body(ResponseEnvelope.fail(errorCode, validationErrors));
-    }
 
     /**
      * 비즈니스 예외를 오류 코드에 지정된 상태와 공통 실패 응답으로 변환한다.
