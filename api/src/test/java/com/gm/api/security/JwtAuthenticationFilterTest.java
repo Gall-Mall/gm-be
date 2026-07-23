@@ -230,7 +230,10 @@ class JwtAuthenticationFilterTest {
                 "naver-provider-id",
                 "010-1234-5678",
                 "user@example.com",
-                status == UserStatus.ACTIVE
+                false,
+                null,
+                null,
+                null
         );
     }
 }

@@ -17,6 +17,10 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.11'
 
+    // storage:redis가 implementation으로 선언해 컴파일 시점에 전이되지 않는 StringRedisTemplate을
+    // rate limiting 컴포넌트(api/common/ratelimit)에서 직접 참조하기 위해 별도로 선언한다.
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+
     // JWT
     implementation 'io.jsonwebtoken:jjwt-api:0.12.7'
 
@@ -28,6 +32,9 @@ dependencies {
 
     // MockMvc 테스트 지원 (Boot 4에서 spring-boot-starter-test와 분리됨)
     testImplementation 'org.springframework.boot:spring-boot-webmvc-test'
+
+    // MockMvc 요청에 인증 정보를 직접 주입하기 위한 Spring Security 테스트 지원
+    testImplementation 'org.springframework.security:spring-security-test'
 
     testRuntimeOnly 'com.h2database:h2'
 

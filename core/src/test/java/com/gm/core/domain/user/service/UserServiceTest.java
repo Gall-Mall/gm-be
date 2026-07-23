@@ -32,6 +32,16 @@ class UserServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private UserAllergenService userAllergenService;
+
+    @Mock
+    private UserCategoryService userCategoryService;
+
+    @Mock
+    private UserMenuService userMenuService;
+
+
     @Test
     @DisplayName("회원 UUID로 기존 회원을 조회한다")
     void findByIdReturnsExistingUser() {
@@ -42,7 +52,7 @@ class UserServiceTest {
         when(userRepository.findById(userId))
                 .thenReturn(Optional.of(user));
 
-        UserService userService = new UserService(userRepository);
+        UserService userService = new UserService(userRepository, userAllergenService, userCategoryService, userMenuService);
 
         // when
         User result = userService.findById(userId);
@@ -61,7 +71,7 @@ class UserServiceTest {
         when(userRepository.findById(userId))
                 .thenReturn(Optional.empty());
 
-        UserService userService = new UserService(userRepository);
+        UserService userService = new UserService(userRepository, userAllergenService, userCategoryService, userMenuService);
 
         // when & then
         assertThatThrownBy(() -> userService.findById(userId))
@@ -89,7 +99,7 @@ class UserServiceTest {
                 "naver-provider-id"
         )).thenReturn(Optional.of(existingResult));
 
-        UserService userService = new UserService(userRepository);
+        UserService userService = new UserService(userRepository, userAllergenService, userCategoryService, userMenuService);
 
         // when
         UserResult result = userService.findOrCreateWithId(
@@ -125,7 +135,7 @@ class UserServiceTest {
                     return UserResult.of(generatedUserId, savedUser);
                 });
 
-        UserService userService = new UserService(userRepository);
+        UserService userService = new UserService(userRepository, userAllergenService, userCategoryService, userMenuService);
 
         // when
         UserResult result = userService.findOrCreateWithId(
@@ -166,7 +176,10 @@ class UserServiceTest {
                 "naver-provider-id",
                 "010-1234-5678",
                 "user@example.com",
-                status == UserStatus.ACTIVE
+                false,
+                null,
+                null,
+                null
         );
     }
 }

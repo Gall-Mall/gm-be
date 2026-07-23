@@ -2,19 +2,29 @@ package com.gm.api.controller.group;
 
 import java.util.UUID;
 
+import com.gm.core.domain.user.model.UserResult;
+import com.gm.core.domain.user.repository.UserRepository;
 import com.jayway.jsonpath.JsonPath;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
+import com.gm.api.security.CustomUserPrincipal;
+import com.gm.core.domain.user.model.Provider;
+import com.gm.core.domain.user.model.User;
+import com.gm.core.domain.user.model.UserStatus;
 import com.gm.core.domain.vote.service.VoteSessionService;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -24,7 +34,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 그룹 생성(GROUP-001), 내 그룹 목록 조회(GROUP-002), 그룹 상세 조회(GROUP-003) API의 통합 테스트이다.
  *
  * <p>실제 웹 계층부터 H2 기반 영속 계층까지 전체 스택을 거쳐,
- * 요청이 계약대로 저장되고 응답되는지 검증한다.</p>
+ * 요청이 계약대로 저장되고 응답되는지 검증한다. 실제 JWT 인증을 요구하므로
+ * {@code spring-security-test}의 {@code authentication(...)} RequestPostProcessor로
+ * {@link CustomUserPrincipal}을 직접 SecurityContext에 주입한다(Invite 통합 테스트와 동일한 패턴).</p>
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -35,6 +47,46 @@ class GroupIntegrationTest {
 
     @Autowired
     private VoteSessionService voteSessionService;
+
+    @Autowired
+    private UserRepository userRepository;
+    private UUID testUserId;
+
+    @BeforeEach
+    void setUp() {
+        User user = new User(
+                "테스터",
+                "테스터닉네임",
+                UserStatus.ACTIVE,
+                Provider.NAVER,
+                "naver-provider-" + UUID.randomUUID(),
+                "010-1234-5678",
+                UUID.randomUUID() + "@example.com",
+                false,
+                null,
+                null,
+                null
+        );
+
+        UserResult savedUser = userRepository.saveResult(user);
+        testUserId = savedUser.userId();
+    }
+
+    /** 요청 회원을 SecurityContext에 직접 주입하는 RequestPostProcessor를 만든다. */
+    private static RequestPostProcessor authAs(UUID userId) {
+        User dummyUser = new User(
+                "테스터", "테스터닉네임",
+                UserStatus.ACTIVE, Provider.NAVER, "naver-provider-id",
+                "010-1234-5678", "user@example.com",
+                false, null,
+                null, null
+        );
+
+        CustomUserPrincipal principal = new CustomUserPrincipal(userId, dummyUser);
+        UsernamePasswordAuthenticationToken authentication =
+                new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
+        return authentication(authentication);
+    }
 
     private static final String REQUEST_BODY = """
             {
@@ -51,10 +103,10 @@ class GroupIntegrationTest {
     @Test
     @DisplayName("그룹 생성에 성공하면 201과 함께 요청자를 그룹장으로 등록한 그룹 정보를 반환한다")
     void createGroup_succeeds() throws Exception {
-        UUID ownerUserId = UUID.randomUUID();
+        UUID ownerUserId = testUserId;
 
         mockMvc.perform(post("/api/groups")
-                        .header("X-User-Id", ownerUserId.toString())
+                        .with(authAs(ownerUserId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(REQUEST_BODY))
                 .andExpect(status().isCreated())
@@ -88,7 +140,7 @@ class GroupIntegrationTest {
                 """;
 
         mockMvc.perform(post("/api/groups")
-                        .header("X-User-Id", UUID.randomUUID().toString())
+                        .with(authAs(testUserId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isBadRequest())
@@ -112,7 +164,7 @@ class GroupIntegrationTest {
                 """;
 
         mockMvc.perform(post("/api/groups")
-                        .header("X-User-Id", UUID.randomUUID().toString())
+                        .with(authAs(testUserId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isBadRequest())
@@ -121,29 +173,29 @@ class GroupIntegrationTest {
     }
 
     @Test
-    @DisplayName("요청자 식별 헤더가 없으면 COMMON-002 오류를 반환한다")
-    void createGroup_withoutOwnerHeader_returnsCommon002() throws Exception {
+    @DisplayName("인증 없이 요청하면 COMMON-003 오류를 반환한다")
+    void createGroup_withoutAuthentication_returnsCommon003() throws Exception {
         mockMvc.perform(post("/api/groups")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(REQUEST_BODY))
-                .andExpect(status().isBadRequest())
+                .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.code").value("COMMON-002"));
+                .andExpect(jsonPath("$.code").value("COMMON-003"));
     }
 
     @Test
     @DisplayName("내가 참여 중인 그룹만 목록으로 조회한다")
     void findMyGroups_returnsGroupsOfActiveMember() throws Exception {
-        UUID ownerUserId = UUID.randomUUID();
+        UUID ownerUserId = testUserId;
 
         mockMvc.perform(post("/api/groups")
-                        .header("X-User-Id", ownerUserId.toString())
+                        .with(authAs(ownerUserId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(REQUEST_BODY))
                 .andExpect(status().isCreated());
 
         mockMvc.perform(get("/api/groups")
-                        .header("X-User-Id", ownerUserId.toString()))
+                        .with(authAs(ownerUserId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.code").value("SUCCESS"))
@@ -162,7 +214,7 @@ class GroupIntegrationTest {
     @DisplayName("참여 중인 그룹이 없으면 빈 목록을 반환한다")
     void findMyGroups_withNoMemberships_returnsEmptyContent() throws Exception {
         mockMvc.perform(get("/api/groups")
-                        .header("X-User-Id", UUID.randomUUID().toString()))
+                        .with(authAs(testUserId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.code").value("SUCCESS"))
@@ -173,10 +225,10 @@ class GroupIntegrationTest {
     @Test
     @DisplayName("투표 세션이 없으면 생성일 내림차순으로 정렬되고, size만큼 페이지가 나뉜다")
     void findMyGroups_ordersByCreatedAtDesc_andPaginates() throws Exception {
-        UUID ownerUserId = UUID.randomUUID();
+        UUID ownerUserId = testUserId;
 
         mockMvc.perform(post("/api/groups")
-                        .header("X-User-Id", ownerUserId.toString())
+                        .with(authAs(ownerUserId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(REQUEST_BODY))
                 .andExpect(status().isCreated());
@@ -193,13 +245,13 @@ class GroupIntegrationTest {
                 }
                 """;
         mockMvc.perform(post("/api/groups")
-                        .header("X-User-Id", ownerUserId.toString())
+                        .with(authAs(ownerUserId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(secondGroupBody))
                 .andExpect(status().isCreated());
 
         mockMvc.perform(get("/api/groups")
-                        .header("X-User-Id", ownerUserId.toString())
+                        .with(authAs(ownerUserId))
                         .param("page", "0")
                         .param("size", "1"))
                 .andExpect(status().isOk())
@@ -210,7 +262,7 @@ class GroupIntegrationTest {
                 .andExpect(jsonPath("$.data.hasNext").value(true));
 
         mockMvc.perform(get("/api/groups")
-                        .header("X-User-Id", ownerUserId.toString())
+                        .with(authAs(ownerUserId))
                         .param("page", "1")
                         .param("size", "1"))
                 .andExpect(status().isOk())
@@ -220,18 +272,18 @@ class GroupIntegrationTest {
     }
 
     @Test
-    @DisplayName("요청자 식별 헤더가 없으면 COMMON-002 오류를 반환한다")
-    void findMyGroups_withoutOwnerHeader_returnsCommon002() throws Exception {
+    @DisplayName("인증 없이 요청하면 COMMON-003 오류를 반환한다")
+    void findMyGroups_withoutAuthentication_returnsCommon003() throws Exception {
         mockMvc.perform(get("/api/groups"))
-                .andExpect(status().isBadRequest())
+                .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.code").value("COMMON-002"));
+                .andExpect(jsonPath("$.code").value("COMMON-003"));
     }
 
     @Test
     @DisplayName("최근 투표 세션이 생성된 그룹이, 더 먼저 만들어진 그룹보다 앞에 온다")
     void findMyGroups_ordersByMostRecentVoteSessionActivity() throws Exception {
-        UUID ownerUserId = UUID.randomUUID();
+        UUID ownerUserId = testUserId;
 
         UUID firstGroupId = createGroupAndGetId(ownerUserId, REQUEST_BODY);
 
@@ -254,7 +306,7 @@ class GroupIntegrationTest {
         voteSessionService.createManualVoteSession(firstGroupId, "점심 투표", null, null);
 
         mockMvc.perform(get("/api/groups")
-                        .header("X-User-Id", ownerUserId.toString()))
+                        .with(authAs(ownerUserId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.content.length()").value(2))
                 .andExpect(jsonPath("$.data.content[0].name").value("점심팟"))
@@ -264,11 +316,11 @@ class GroupIntegrationTest {
     @Test
     @DisplayName("그룹장이 상세 조회하면 200과 함께 그룹 정보·OWNER 역할을 반환한다")
     void findGroupDetail_succeeds_forOwner() throws Exception {
-        UUID ownerUserId = UUID.randomUUID();
+        UUID ownerUserId = testUserId;
         UUID groupId = createGroupAndGetId(ownerUserId, REQUEST_BODY);
 
         mockMvc.perform(get("/api/groups/{groupId}", groupId)
-                        .header("X-User-Id", ownerUserId.toString()))
+                        .with(authAs(ownerUserId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.code").value("SUCCESS"))
@@ -282,8 +334,8 @@ class GroupIntegrationTest {
     @Test
     @DisplayName("존재하지 않는 groupId를 조회하면 GROUP-001 오류를 반환한다")
     void findGroupDetail_withUnknownGroupId_returnsGroup001() throws Exception {
-        mockMvc.perform(get("/api/groups/{groupId}", UUID.randomUUID())
-                        .header("X-User-Id", UUID.randomUUID().toString()))
+        mockMvc.perform(get("/api/groups/{groupId}", testUserId)
+                        .with(authAs(testUserId)))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.code").value("GROUP-001"));
@@ -292,11 +344,13 @@ class GroupIntegrationTest {
     @Test
     @DisplayName("그룹의 활성 멤버가 아닌 회원이 조회하면 GROUP-002 오류를 반환한다")
     void findGroupDetail_withNonMemberRequester_returnsGroup002() throws Exception {
-        UUID ownerUserId = UUID.randomUUID();
+        UUID ownerUserId = testUserId;
+        // 그룹장과 다른 비회원 UUID 생성
+        UUID nonMemberUserId = UUID.randomUUID();
         UUID groupId = createGroupAndGetId(ownerUserId, REQUEST_BODY);
 
         mockMvc.perform(get("/api/groups/{groupId}", groupId)
-                        .header("X-User-Id", UUID.randomUUID().toString()))
+                        .with(authAs(nonMemberUserId)))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.code").value("GROUP-002"));
@@ -306,24 +360,24 @@ class GroupIntegrationTest {
     @DisplayName("groupId가 UUID 형식이 아니면 COMMON-005 오류를 반환한다")
     void findGroupDetail_withMalformedGroupId_returnsCommon005() throws Exception {
         mockMvc.perform(get("/api/groups/{groupId}", "not-a-uuid")
-                        .header("X-User-Id", UUID.randomUUID().toString()))
+                        .with(authAs(testUserId)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.code").value("COMMON-005"));
     }
 
     @Test
-    @DisplayName("요청자 식별 헤더가 없으면 COMMON-002 오류를 반환한다")
-    void findGroupDetail_withoutOwnerHeader_returnsCommon002() throws Exception {
-        mockMvc.perform(get("/api/groups/{groupId}", UUID.randomUUID()))
-                .andExpect(status().isBadRequest())
+    @DisplayName("인증 없이 요청하면 COMMON-003 오류를 반환한다")
+    void findGroupDetail_withoutAuthentication_returnsCommon003() throws Exception {
+        mockMvc.perform(get("/api/groups/{groupId}", testUserId))
+                .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.code").value("COMMON-002"));
+                .andExpect(jsonPath("$.code").value("COMMON-003"));
     }
 
     private UUID createGroupAndGetId(UUID ownerUserId, String requestBody) throws Exception {
         MvcResult result = mockMvc.perform(post("/api/groups")
-                        .header("X-User-Id", ownerUserId.toString())
+                        .with(authAs(ownerUserId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
                 .andExpect(status().isCreated())

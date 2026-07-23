@@ -20,7 +20,9 @@ import org.springframework.data.domain.Pageable;
 import com.gm.core.domain.group.exception.GroupException;
 import com.gm.core.domain.group.model.Group;
 import com.gm.core.domain.group.model.GroupDetail;
+import com.gm.core.domain.group.model.GroupMember;
 import com.gm.core.domain.group.model.GroupMemberRole;
+import com.gm.core.domain.group.model.GroupMemberStatus;
 import com.gm.core.domain.group.model.NewGroup;
 import com.gm.core.domain.group.repository.GroupRepository;
 
@@ -192,5 +194,39 @@ class GroupServiceTest {
                 .isInstanceOf(GroupException.class)
                 .satisfies(exception -> assertThat(((GroupException) exception).getErrorCode().getCode())
                         .isEqualTo("GROUP-002"));
+    }
+
+    @Test
+    @DisplayName("멤버 추가 요청을 그대로 리포지토리에 위임하고 등록된 멤버십을 반환한다")
+    void addMember_delegatesToRepository_andReturnsSavedMembership() {
+        groupService = new GroupService(groupRepository);
+
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        LocalDateTime now = LocalDateTime.now();
+        GroupMember expected = new GroupMember(
+                UUID.randomUUID(), groupId, userId,
+                GroupMemberRole.MEMBER, GroupMemberStatus.ACTIVE, now, now
+        );
+
+        given(groupRepository.addActiveMember(groupId, userId)).willReturn(Optional.of(expected));
+
+        Optional<GroupMember> actual = groupService.addMember(groupId, userId);
+
+        assertThat(actual).contains(expected);
+    }
+
+    @Test
+    @DisplayName("이미 활성 멤버라 리포지토리가 빈 값을 반환하면 그대로 빈 값을 반환한다")
+    void addMember_returnsEmpty_whenRepositoryReportsAlreadyMember() {
+        groupService = new GroupService(groupRepository);
+
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        given(groupRepository.addActiveMember(groupId, userId)).willReturn(Optional.empty());
+
+        Optional<GroupMember> actual = groupService.addMember(groupId, userId);
+
+        assertThat(actual).isEmpty();
     }
 }

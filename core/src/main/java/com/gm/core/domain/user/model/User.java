@@ -8,7 +8,10 @@ public record User(
         String providerId,
         String phone,
         String email,
-        Boolean termsAgreed
+        Boolean termsAgreed,
+        String customAllergenText,
+        String preferenceText,
+        String excludeFoodText
 ) {
     /**
      * OAuth 로그인을 통해 신규 사용자를 생성한다.
@@ -37,7 +40,74 @@ public record User(
                 providerId,
                 phone,
                 email,
-                false
+                false,
+                null,
+                null,
+                null
+
+        );
+    }
+    public User updateTermsAgreed(Boolean termsAgreed) {
+        return new User(
+                this.name,
+                this.nickname,
+                this.status,
+                this.provider,
+                this.providerId,
+                this.phone,
+                this.email,
+                termsAgreed,
+                this.customAllergenText,
+                this.preferenceText,
+                this.excludeFoodText
+
+        );
+    }
+    public User updatePreferenceText(String preferenceText) {
+        return new User(
+                this.name,
+                this.nickname,
+                this.status,
+                this.provider,
+                this.providerId,
+                this.phone,
+                this.email,
+                this.termsAgreed,
+                this.customAllergenText,
+                preferenceText,
+                this.excludeFoodText
+        );
+    }
+
+    public User updateCustomAllergenText(String customAllergenText) {
+        return new User(
+                this.name,
+                this.nickname,
+                this.status,
+                this.provider,
+                this.providerId,
+                this.phone,
+                this.email,
+                this.termsAgreed,
+                customAllergenText,
+                this.preferenceText,
+                this.excludeFoodText
+        );
+    }
+
+    public User updateExcludeFoodText(String excludeFoodText) {
+        return new User(
+                this.name,
+                this.nickname,
+                this.status,
+                this.provider,
+                this.providerId,
+                this.phone,
+                this.email,
+                this.termsAgreed,
+                this.customAllergenText,
+                this.preferenceText,
+                excludeFoodText
         );
     }
 }

@@ -72,6 +72,9 @@ class UserControllerSecurityTest {
     }
 
     private CustomUserPrincipal createPrincipal(UserStatus status) {
+        // ACTIVE 상태이면 약관 동의 여부를 true로 설정
+        boolean termsAgreed = status == UserStatus.ACTIVE;
+
         User user = new User(
                 "홍길동",
                 "길동",
@@ -80,7 +83,10 @@ class UserControllerSecurityTest {
                 "naver-provider-id",
                 "010-1234-5678",
                 "user@example.com",
-                status == UserStatus.ACTIVE
+                termsAgreed,
+                null,
+                null,
+                null
         );
 
         return new CustomUserPrincipal(UUID.randomUUID(), user);

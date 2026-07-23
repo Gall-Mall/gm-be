@@ -2,7 +2,6 @@ package com.gm.api.security.oauth;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 
 import java.io.Writer;
@@ -17,8 +16,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.security.authentication.AuthenticationServiceException;
 
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
+import org.springframework.security.oauth2.core.OAuth2Error;
 import tools.jackson.databind.ObjectMapper;
 
 import com.gm.api.common.response.ResponseEnvelope;
@@ -34,52 +34,34 @@ class OAuth2FailureHandlerTest {
     @DisplayName("OAuth2 로그인 실패 시 AUTH-004 공통 실패 응답을 반환한다")
     void returnsCommonFailureResponse() throws Exception {
         // given
-        MockHttpServletRequest request =
-                new MockHttpServletRequest();
+        MockHttpServletRequest request = new MockHttpServletRequest();
 
         request.setMethod("GET");
         request.setRequestURI("/api/auth/oauth/naver/callback");
 
-        MockHttpServletResponse response =
-                new MockHttpServletResponse();
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        OAuth2AuthenticationException exception =
+                new OAuth2AuthenticationException(
+                        new OAuth2Error("oauth2_authentication_failed"), "OAuth2 failure");
 
-        AuthenticationServiceException exception =
-                new AuthenticationServiceException("OAuth2 failure");
-
-        OAuth2FailureHandler handler =
-                new OAuth2FailureHandler(objectMapper);
+        OAuth2FailureHandler handler = new OAuth2FailureHandler(objectMapper);
 
         // when
-        handler.onAuthenticationFailure(
-                request,
-                response,
-                exception
-        );
+        handler.onAuthenticationFailure(request, response, exception);
 
         // then
-        assertThat(response.getStatus())
-                .isEqualTo(AuthErrorCode.OAUTH_AUTHENTICATION_FAILED.getStatus());
+        assertThat(response.getStatus()).isEqualTo(AuthErrorCode.OAUTH_AUTHENTICATION_FAILED.getStatus());
+        assertThat(response.getContentType()).startsWith("application/json");
+        assertThat(response.getCharacterEncoding()).isEqualTo("UTF-8");
 
-        assertThat(response.getContentType())
-                .startsWith("application/json");
+        assertThat(response.getHeader("Cache-Control")).isEqualTo("no-store");
 
-        assertThat(response.getCharacterEncoding())
-                .isEqualTo("UTF-8");
-
-        assertThat(response.getHeader("Cache-Control"))
-                .isEqualTo("no-store");
-
-        assertThat(response.getHeader("Pragma"))
-                .isEqualTo("no-cache");
+        assertThat(response.getHeader("Pragma")).isEqualTo("no-cache");
 
         @SuppressWarnings("unchecked")
-        ArgumentCaptor<ResponseEnvelope<Void>> captor =
-                ArgumentCaptor.forClass(ResponseEnvelope.class);
+        ArgumentCaptor<ResponseEnvelope<Void>> captor = ArgumentCaptor.forClass(ResponseEnvelope.class);
 
-        verify(objectMapper).writeValue(
-                any(Writer.class),
-                captor.capture()
-        );
+        verify(objectMapper).writeValue(any(Writer.class), captor.capture());
 
         ResponseEnvelope<Void> body = captor.getValue();
 

@@ -36,7 +36,10 @@ class OAuth2SuccessHandlerTest {
                 "naver-provider-id",
                 "010-1234-5678",
                 "user@example.com",
-                false
+                false,
+                null,
+                null,
+                null
         );
 
         CustomUserPrincipal principal =

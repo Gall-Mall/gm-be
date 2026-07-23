@@ -1,0 +1,21 @@
+package com.gm.db.domain.group.mapper;
+
+import org.mapstruct.Mapper;
+
+import com.gm.core.domain.group.model.Group;
+import com.gm.core.domain.group.model.NewGroup;
+import com.gm.db.domain.group.entity.GroupEntity;
+import com.gm.db.domain.group.projection.GroupDetailProjection;
+import com.gm.db.domain.group.projection.GroupSummaryProjection;
+
+@Mapper(componentModel = "spring")
+public interface GroupMapper {
+
+    GroupEntity toEntity(NewGroup newGroup);
+
+    Group toDomainModel(GroupEntity entity, int memberCount);
+
+    Group toDomainModel(GroupSummaryProjection projection);
+
+    Group toDomainModel(GroupDetailProjection projection);
+}
