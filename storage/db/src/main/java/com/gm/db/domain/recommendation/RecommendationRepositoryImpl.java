@@ -24,14 +24,14 @@ import com.gm.core.domain.recommendation.model.MemberPreference;
 import com.gm.core.domain.recommendation.model.MenuInfo;
 import com.gm.core.domain.recommendation.model.Recency;
 import com.gm.core.domain.recommendation.repository.RecommendationRepository;
-import com.gm.core.domain.user_preference.user_category.CategoryPreference;
-import com.gm.core.domain.user_preference.user_menu.UserPreference;
-import com.gm.db.domain.food_master.menu.QMenuAllergenEntity;
-import com.gm.db.domain.food_master.menu.QMenuEntity;
-import com.gm.db.domain.group.QGroupMemberEntity;
-import com.gm.db.domain.user_preference.user_allergen.QUserAllergenEntity;
-import com.gm.db.domain.user_preference.user_category.QUserCategoryEntity;
-import com.gm.db.domain.user_preference.user_menu.QUserMenuEntity;
+import com.gm.core.domain.user.model.UserCategoryPreference;
+import com.gm.core.domain.user.model.UserMenuPreference;
+import com.gm.db.domain.group.entity.QGroupMemberEntity;
+import com.gm.db.domain.menu.allergen.entity.QMenuAllergenEntity;
+import com.gm.db.domain.menu.menu.entity.QMenuEntity;
+import com.gm.db.domain.user.preference.user_allergen.entity.QUserAllergenEntity;
+import com.gm.db.domain.user.preference.user_category.entity.QUserCategoryEntity;
+import com.gm.db.domain.user.preference.user_menu.entity.QUserMenuEntity;
 import com.gm.db.domain.vote.entity.QVoteCandidateEntity;
 import com.gm.db.domain.vote.entity.QVoteSessionEntity;
 
@@ -83,7 +83,7 @@ public class RecommendationRepositoryImpl implements RecommendationRepository {
             UUID userId = row.get(userMenu.userId);
             UUID menuId = row.get(userMenu.menuId);
             Map<UUID, Set<UUID>> target =
-                    row.get(userMenu.preference) == UserPreference.LIKE ? likedMenus : excludeMenus;
+                    row.get(userMenu.preference) == UserMenuPreference.LIKE ? likedMenus : excludeMenus;
             target.computeIfAbsent(userId, k -> new HashSet<>()).add(menuId);
         }
 
@@ -98,7 +98,7 @@ public class RecommendationRepositoryImpl implements RecommendationRepository {
             UUID userId = row.get(userCategory.userId);
             UUID categoryId = row.get(userCategory.categoryId);
             Map<UUID, Set<UUID>> target =
-                    row.get(userCategory.preference) == CategoryPreference.LIKE
+                    row.get(userCategory.preference) == UserCategoryPreference.LIKE
                             ? likedCategories : dislikedCategories;
             target.computeIfAbsent(userId, k -> new HashSet<>()).add(categoryId);
         }

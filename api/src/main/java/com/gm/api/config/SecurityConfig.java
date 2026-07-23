@@ -37,6 +37,10 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/users/me").authenticated()
+                        // Group·Invite 도메인은 실제 JWT 인증을 요구한다. 임시 X-User-Id
+                        // 헤더 패턴은 폐기했다.
+                        .requestMatchers("/api/groups/**").authenticated()
+                        .requestMatchers("/api/invites/**").authenticated()
                         .anyRequest().permitAll())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();

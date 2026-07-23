@@ -35,6 +35,18 @@ public class UserEntity extends BaseEntity {
     @Column(nullable = false)
     private Boolean termsAgreed;
 
+    /** 비표준 알레르기 자유텍스트. AI 하드 제외 지시용. (schema: user.custom_allergen_text) */
+    @Column(name = "custom_allergen_text", length = 500)
+    private String customAllergenText;
+
+    /** 선호 음식 자유텍스트. AI 소프트 신호. (schema: user.preference_text) */
+    @Column(name = "preference_text", length = 500)
+    private String preferenceText;
+
+    /** 싫어하는 음식 자유텍스트. AI 소프트 신호. (schema: user.exclude_food_text) */
+    @Column(name = "exclude_food_text", length = 500)
+    private String excludeFoodText;
+
     public UserEntity(
             String name,
             String nickname,

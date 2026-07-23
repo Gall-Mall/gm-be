@@ -18,13 +18,13 @@ import java.util.List;
 @Component
 public class KakaoMapSearchAdapter implements StoreSearchPort {
 
-    private final RestClient restClient;
+    private final RestClient kakaoClient;
 
     @Override
     public List<Store> searchNearby(String keyword, Coordinate coordinate, int radius) {
 
         try {
-            KakaoPlaceResponse kakaoPlaceResponse = restClient
+            KakaoPlaceResponse kakaoPlaceResponse = kakaoClient
                     .get()
                     .uri(uriBuilder -> uriBuilder.path("/v2/local/search/keyword.json")
                             .queryParam("query", keyword)

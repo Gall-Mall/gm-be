@@ -1,7 +1,9 @@
 package com.gm.core.domain.user.service;
 
+import java.util.List;
 import java.util.UUID;
 
+import com.gm.core.domain.user.model.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -10,9 +12,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.gm.core.domain.user.exception.UserErrorCode;
 import com.gm.core.domain.user.exception.UserException;
-import com.gm.core.domain.user.model.Provider;
-import com.gm.core.domain.user.model.User;
-import com.gm.core.domain.user.model.UserStatus;
 import com.gm.core.domain.user.repository.UserRepository;
 
 @Slf4j
@@ -21,6 +20,9 @@ import com.gm.core.domain.user.repository.UserRepository;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final UserAllergenService userAllergenService;
+    private final UserCategoryService userCategoryService;
+    private final UserMenuService userMenuService;
 
     /**
      * 회원 식별자로 회원을 조회한다.
@@ -51,28 +53,43 @@ public class UserService {
     @Transactional
     public User findOrCreate(
             String name,
+            UserStatus userStatus,
             Provider provider,
             String providerId,
             String phone,
-            String email
+            String email,
+            Boolean termsAgreed,
+            String customAllergenText,
+            String preferenceText,
+            String excludeFoodText
     ) {
         return userRepository
                 .findByProviderAndProviderId(provider, providerId)
                 .orElseGet(() -> createUser(
                         name,
+                        userStatus,
                         provider,
                         providerId,
                         phone,
-                        email
+                        email,
+                        false,
+                        null,
+                        null,
+                        null
                 ));
     }
 
     private User createUser(
             String name,
+            UserStatus userStatus,
             Provider provider,
             String providerId,
             String phone,
-            String email
+            String email,
+            Boolean termsAgreed,
+            String customAllergenText,
+            String preferenceText,
+            String excludeFoodText
     ) {
         return userRepository.save(
                 User.create(
@@ -81,8 +98,274 @@ public class UserService {
                         provider,
                         providerId,
                         phone,
-                        email
+                        email,
+                        false,
+                        null,
+                        null,
+                        null
                 )
         );
+    }
+
+    /**
+     *  온보딩 제출
+     */
+    @Transactional
+    public void submitOnboarding(UUID userId, Onboarding onboarding) {
+        updateTermsAgreed(userId, onboarding.termsAgreed());
+        changeUserSetting(userId, onboarding.userSetting());
+    }
+
+    /**
+     *  유저 세팅 변경
+     */
+    @Transactional
+    public void changeUserSetting(UUID userId, UserSetting userSetting) {
+        validateUserSetting(userSetting);
+        deleteUserSettings(userId);
+        saveUserSetting(userId, userSetting);
+    }
+
+    /**
+     *  유저 세팅 조회
+     */
+    public UserSetting getUserSetting(UUID userId) {
+        User user = userRepository.findById(userId).orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+
+        String allergenText = user.customAllergenText();
+        String preferredText = user.preferenceText();
+        String excludedText = user.excludeFoodText();
+
+        return new UserSetting(
+                getUserAllergenIds(userId),
+                getUserPreferredMenuIds(userId),
+                getUserExcludedMenuIds(userId),
+                getUserPreferredCategoryIds(userId),
+                getUserExcludedCategoryIds(userId),
+                allergenText,
+                preferredText,
+                excludedText
+        );
+    }
+
+    /**
+     *  유저의 TermsAgreed를 수정
+     */
+    private void updateTermsAgreed(UUID userId, Boolean termsAgreed) {
+        User user = userRepository.findById(userId).orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+        userRepository.save(user.updateTermsAgreed(termsAgreed));
+    }
+
+    /**
+     *  유저의 AllergenText 조회
+     */
+    private String getCustomAllergenText(UUID userId) {
+        User user = userRepository.findById(userId).orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+        return user.customAllergenText();
+    }
+
+    /**
+     *  유저의 Preference 조회
+     */
+    private String getPreferenceText(UUID userId) {
+        User user = userRepository.findById(userId).orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+        return user.preferenceText();
+    }
+
+    /**
+     *  유저의 excludeFood 조회
+     */
+    private String getExcludeFoodText(UUID userId) {
+        User user = userRepository.findById(userId).orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+        return user.excludeFoodText();
+    }
+
+    /**
+     *  UserSetting 유효성 검증
+     */
+    private void validateUserSetting(UserSetting userSetting) {
+        validateCategoryOverlap(userSetting.preferredCategoryIds(), userSetting.excludedCategoryIds());
+        validateMenuOverlap(userSetting.preferredMenuIds(), userSetting.excludedMenuIds());
+    }
+
+    /**
+     *  UserSetting 삭제
+     */
+    private void deleteUserSettings(UUID userId) {
+        userAllergenService.deleteUserAllergens(userId);
+        userCategoryService.deleteUserCategoryPreferences(userId);
+        userMenuService.deleteUserMenuPreferences(userId);
+    }
+
+    /**
+     *  UserSetting 저장
+     */
+    private void saveUserSetting(UUID userId, UserSetting userSetting) {
+        saveUserAllergen(
+                userId,
+                userSetting.allergenIds(),
+                userSetting.allergenText()
+        );
+        saveUserPreferredMenu(
+                userId,
+                userSetting.preferredMenuIds(),
+                userSetting.preferredText()
+        );
+        saveUserExcludedMenu(
+                userId,
+                userSetting.excludedMenuIds(),
+                userSetting.excludedText()
+        );
+        saveUserPreferredCategory(
+                userId,
+                userSetting.preferredCategoryIds()
+        );
+        saveUserExcludedCategory(
+                userId,
+                userSetting.excludedCategoryIds()
+        );
+    }
+
+    /**
+     * 유저가 선택한 알러지 ID
+     */
+    private List<UUID> getUserAllergenIds(UUID userId) {
+        return userAllergenService.getUserAllergens(userId).stream().map(UserAllergen::allergenId).toList();
+    }
+
+    /**
+     * 유저가 선택한 선호메뉴 ID
+     */
+    private List<UUID> getUserPreferredMenuIds(UUID userId) {
+        List<UserMenu> list = userMenuService.getUserMenuPreferences(userId)
+                .stream()
+                .filter(i -> i.preference() == UserMenuPreference.LIKE)
+                .toList();
+        return list.stream().map(UserMenu::menuId).toList();
+    }
+
+    /**
+     * 유저가 선택한 비선호메뉴ID
+     */
+    private List<UUID> getUserExcludedMenuIds(UUID userId) {
+        return userMenuService.getUserMenuPreferences(userId)
+                .stream()
+                .filter(i -> i.preference() == UserMenuPreference.EXCLUDE)
+                .map(UserMenu::menuId)
+                .toList();
+    }
+
+    /**
+     * 유저가 선택한 선호카테고리ID
+     */
+    private List<UUID> getUserPreferredCategoryIds(UUID userId) {
+        return userCategoryService.getUserCategoryPreferences(userId)
+                .stream()
+                .filter(i -> i.preference() == UserCategoryPreference.LIKE)
+                .map(UserCategory::categoryId)
+                .toList();
+    }
+
+    /**
+     * 유저가 선택한 비선호카테고리ID
+     */
+    private List<UUID> getUserExcludedCategoryIds(UUID userId) {
+        return userCategoryService.getUserCategoryPreferences(userId)
+                .stream()
+                .filter(i -> i.preference() == UserCategoryPreference.DISLIKE)
+                .map(UserCategory::categoryId)
+                .toList();
+    }
+
+    /**
+     * 유저가 선택한 알러지 정보(선택 알러지 + 자유텍스트)를 유저에게 저장
+     */
+    private void saveUserAllergen(UUID userId, List<UUID> allergenIds, String userInputText) {
+         if (userInputText != null && !userInputText.isBlank()) {
+             saveUserCustomAllergenText(userId, userInputText);
+         }
+        userAllergenService.saveUserAllergens(userId, allergenIds);
+    }
+
+    /**
+     * 유저가 선택한 선호 메뉴를 저장
+     */
+    private void saveUserPreferredMenu(UUID userId, List<UUID> menuIds, String userInputText) {
+         if (userInputText != null && !userInputText.isBlank()) {
+             savePreferenceText(userId, userInputText);
+         }
+        userMenuService.saveUserMenuPreference(
+                userId,
+                menuIds,
+                UserMenuPreference.LIKE
+        );
+    }
+
+    /**
+     * 유저가 선택한 비선호 메뉴를 저장
+     */
+    private void saveUserExcludedMenu(UUID userId, List<UUID> menuIds, String userInputText) {
+         if (userInputText != null && !userInputText.isBlank()) {
+             saveUserExcludeText(userId, userInputText);
+         }
+        userMenuService.saveUserMenuPreference(
+                userId,
+                menuIds,
+                UserMenuPreference.EXCLUDE
+        );
+    }
+    /**
+     * 유저가 선택한 선호 카테고리 저장
+     */
+    private void saveUserPreferredCategory(UUID userId, List<UUID> categoryIds) {
+        userCategoryService.saveUserCategoryPreference(userId, categoryIds, UserCategoryPreference.LIKE);
+    }
+
+    /**
+     * 유저가 선택한 비선호 카테고리 저장
+     */
+    private void saveUserExcludedCategory(UUID userId, List<UUID> categoryIds) {
+        userCategoryService.saveUserCategoryPreference(userId, categoryIds, UserCategoryPreference.DISLIKE);
+    }
+
+    /**
+     * 선호 비선호 카테고리 중복에러
+     */
+    private void validateCategoryOverlap(List<UUID> preferredIds, List<UUID> excludedIds) {
+        for (UUID excludedId : excludedIds) {
+            if (preferredIds.contains(excludedId)) {
+                throw new UserException(UserErrorCode.CATEGORY_PREFERENCE_CONFLICT);
+            }
+        }
+    }
+
+    /**
+     * 선호 비선호 메뉴 중복 에러
+     */
+    private void validateMenuOverlap(List<UUID> preferredIds, List<UUID> excludedIds) {
+        for (UUID excludedId : excludedIds) {
+            if (preferredIds.contains(excludedId)) {
+                throw new UserException(UserErrorCode.MENU_PREFERENCE_CONFLICT);
+            }
+        }
+    }
+
+    private void saveUserCustomAllergenText(UUID userId, String userInputText) {
+        User user = userRepository.findById(userId).orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+        User savedUser = user.updateCustomAllergenText(userInputText);
+        userRepository.save(savedUser);
+    }
+
+    private void savePreferenceText(UUID userId, String userInputText) {
+        User user = userRepository.findById(userId).orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+        User savedUser = user.updatePreferenceText(userInputText);
+        userRepository.save(savedUser);
+
+    }
+
+    private void saveUserExcludeText(UUID userId, String userInputText) {
+        User user = userRepository.findById(userId).orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+        User savedUser = user.updateExcludeFoodText(userInputText);
+        userRepository.save(savedUser);
     }
 }
