@@ -2,24 +2,17 @@ package com.gm.api.security.oauth;
 
 import java.io.IOException;
 
-import lombok.RequiredArgsConstructor;
-
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import tools.jackson.databind.ObjectMapper;
 
-import org.springframework.http.MediaType;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
 
-import com.gm.api.auth.dto.TokenResponse;
-import com.gm.api.auth.service.AuthTokenService;
 import com.gm.api.security.CustomUserPrincipal;
-import com.gm.core.domain.user.model.User;
 import com.gm.core.domain.user.model.UserStatus;
 
 @Slf4j

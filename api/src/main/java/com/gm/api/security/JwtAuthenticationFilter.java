@@ -3,7 +3,6 @@ package com.gm.api.security;
 import java.io.IOException;
 import java.util.UUID;
 
-import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -19,6 +18,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 
 import com.gm.api.security.jwt.JwtProvider;

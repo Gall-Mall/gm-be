@@ -11,8 +11,8 @@ import org.springframework.stereotype.Repository;
 
 import com.gm.core.domain.user.model.Provider;
 import com.gm.core.domain.user.model.User;
-import com.gm.core.domain.user.repository.UserRepository;
 import com.gm.core.domain.user.model.UserResult;
+import com.gm.core.domain.user.repository.UserRepository;
 
 @Repository
 @RequiredArgsConstructor

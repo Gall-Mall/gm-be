@@ -33,9 +33,8 @@ public class SecurityConfig {
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
                 .csrf(AbstractHttpConfigurer::disable)
-                // OAuth2 로그인 과정에서 인증 요청과 state를 저장할 때만 세션 생성을 허용한다.
                 .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 // 네이버 OAuth2 로그인 설정
                 .oauth2Login(oauth2 -> oauth2
                         // 네이버 로그인 시작 경로

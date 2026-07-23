@@ -21,10 +21,7 @@ public record TokenResponse(String tokenType, String accessToken, UserStatus use
 
     /**
      * 사용자 상태에 따른 프런트엔드 이동 경로를 결정한다.
-     *
-     * ONBOARDING 사용자는 온보딩 화면으로 이동하고,
-     * ACTIVE 사용자는 서비스 메인 화면으로 이동한다.
-     *
+     * ONBOARDING 사용자는 온보딩 화면으로 이동하고, ACTIVE 사용자는 서비스 메인 화면으로 이동한다.
      * WITHDRAWN 사용자는 정상적인 로그인 성공 응답을 받을 수 없다.
      *
      * @param userStatus 현재 사용자 상태
