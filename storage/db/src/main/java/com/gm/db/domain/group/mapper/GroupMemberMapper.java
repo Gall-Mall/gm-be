@@ -1,9 +1,10 @@
-package com.gm.db.domain.group;
+package com.gm.db.domain.group.mapper;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
 import com.gm.core.domain.group.model.GroupMember;
+import com.gm.db.domain.group.entity.GroupMemberEntity;
 
 /**
  * {@link GroupMemberEntity}와 {@link GroupMember} 도메인 모델 간 변환을 담당한다.

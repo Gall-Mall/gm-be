@@ -1,4 +1,4 @@
-package com.gm.db.domain.group;
+package com.gm.db.domain.group.repository;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -14,6 +14,9 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import com.gm.core.domain.group.model.GroupMemberStatus;
+import com.gm.db.domain.group.entity.GroupEntity;
+import com.gm.db.domain.group.projection.GroupDetailProjection;
+import com.gm.db.domain.group.projection.GroupSummaryProjection;
 
 @Repository
 public interface GroupJpaRepository extends JpaRepository<GroupEntity, UUID> {
@@ -31,7 +34,7 @@ public interface GroupJpaRepository extends JpaRepository<GroupEntity, UUID> {
      */
     @Query(
             value = """
-                    select new com.gm.db.domain.group.GroupSummaryProjection(
+                    select new com.gm.db.domain.group.projection.GroupSummaryProjection(
                         g.id, g.ownerUserId, g.name, g.locationAddress, g.latitude, g.longitude,
                         g.searchRadiusM, g.recommendationTime, g.maxMemberCount,
                         (select count(m2) from GroupMemberEntity m2
@@ -67,7 +70,7 @@ public interface GroupJpaRepository extends JpaRepository<GroupEntity, UUID> {
      * 이 두 경우를 구분하려면 {@link #existsById(UUID)}를 별도로 호출해야 한다.</p>
      */
     @Query("""
-            select new com.gm.db.domain.group.GroupDetailProjection(
+            select new com.gm.db.domain.group.projection.GroupDetailProjection(
                 g.id, g.ownerUserId, g.name, g.locationAddress, g.latitude, g.longitude,
                 g.searchRadiusM, g.recommendationTime, g.maxMemberCount,
                 (select count(m2) from GroupMemberEntity m2
@@ -89,7 +92,7 @@ public interface GroupJpaRepository extends JpaRepository<GroupEntity, UUID> {
      * 무관하게 조회한다.
      */
     @Query("""
-            select new com.gm.db.domain.group.GroupSummaryProjection(
+            select new com.gm.db.domain.group.projection.GroupSummaryProjection(
                 g.id, g.ownerUserId, g.name, g.locationAddress, g.latitude, g.longitude,
                 g.searchRadiusM, g.recommendationTime, g.maxMemberCount,
                 (select count(m) from GroupMemberEntity m

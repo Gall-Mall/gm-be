@@ -1,4 +1,4 @@
-package com.gm.db.domain.group;
+package com.gm.db.domain.group.entity;
 
 import java.time.LocalTime;
 import java.util.UUID;

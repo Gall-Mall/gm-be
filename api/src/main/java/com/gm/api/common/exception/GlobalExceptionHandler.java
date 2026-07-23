@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -47,15 +48,15 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * 필수 헤더 누락을 공통 입력값 오류(COMMON-002) 응답으로 변환한다.
-     *
-     * <p>DTO 검증 실패({@link MethodArgumentNotValidException})는
-     * {@link #handleValidationException}이 별도로 처리한다.</p>
+     * DTO 검증 실패와 필수 헤더 누락을 공통 입력값 오류(COMMON-002) 응답으로 변환한다.
      *
      * @param exception 요청 값 검증 관련 예외
      * @return 400 상태의 공통 실패 응답
      */
-    @ExceptionHandler(MissingRequestHeaderException.class)
+    @ExceptionHandler({
+            MethodArgumentNotValidException.class,
+            MissingRequestHeaderException.class
+    })
     public ResponseEntity<ResponseEnvelope<Void>> handleInvalidInput(Exception exception) {
         ErrorCode errorCode = CommonErrorCode.INVALID_INPUT;
         log.warn("[{}] {}", errorCode.getCode(), exception.getMessage());

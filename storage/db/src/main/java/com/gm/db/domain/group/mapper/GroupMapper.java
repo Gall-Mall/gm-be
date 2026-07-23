@@ -1,9 +1,12 @@
-package com.gm.db.domain.group;
+package com.gm.db.domain.group.mapper;
 
 import org.mapstruct.Mapper;
 
 import com.gm.core.domain.group.model.Group;
 import com.gm.core.domain.group.model.NewGroup;
+import com.gm.db.domain.group.entity.GroupEntity;
+import com.gm.db.domain.group.projection.GroupDetailProjection;
+import com.gm.db.domain.group.projection.GroupSummaryProjection;
 
 @Mapper(componentModel = "spring")
 public interface GroupMapper {

@@ -1,4 +1,4 @@
-package com.gm.db.domain.group;
+package com.gm.db.domain.group.repository;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -19,6 +19,10 @@ import com.gm.core.domain.group.model.GroupMember;
 import com.gm.core.domain.group.model.GroupMemberStatus;
 import com.gm.core.domain.group.model.NewGroup;
 import com.gm.core.domain.group.repository.GroupRepository;
+import com.gm.db.domain.group.entity.GroupEntity;
+import com.gm.db.domain.group.entity.GroupMemberEntity;
+import com.gm.db.domain.group.mapper.GroupMapper;
+import com.gm.db.domain.group.mapper.GroupMemberMapper;
 
 @Repository
 @RequiredArgsConstructor

@@ -1,4 +1,4 @@
-package com.gm.db.domain.group;
+package com.gm.db.domain.group.repository;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import com.gm.core.domain.group.model.GroupMemberStatus;
+import com.gm.db.domain.group.entity.GroupMemberEntity;
 
 @Repository
 public interface GroupMemberJpaRepository extends JpaRepository<GroupMemberEntity, UUID> {
