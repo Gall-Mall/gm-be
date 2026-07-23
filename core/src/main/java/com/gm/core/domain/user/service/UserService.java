@@ -130,9 +130,11 @@ public class UserService {
      *  유저 세팅 조회
      */
     public UserSetting getUserSetting(UUID userId) {
-        String allergenText = getCustomAllergenText(userId);
-        String preferredText = getPreferenceText(userId);
-        String excludedText = getExcludeFoodText(userId);
+        User user = userRepository.findById(userId).orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+
+        String allergenText = user.customAllergenText();
+        String preferredText = user.preferenceText();
+        String excludedText = user.excludeFoodText();
 
         return new UserSetting(
                 getUserAllergenIds(userId),
@@ -178,17 +180,26 @@ public class UserService {
         return user.excludeFoodText();
     }
 
+    /**
+     *  UserSetting 유효성 검증
+     */
     private void validateUserSetting(UserSetting userSetting) {
         validateCategoryOverlap(userSetting.preferredCategoryIds(), userSetting.excludedCategoryIds());
         validateMenuOverlap(userSetting.preferredMenuIds(), userSetting.excludedMenuIds());
     }
 
+    /**
+     *  UserSetting 삭제
+     */
     private void deleteUserSettings(UUID userId) {
         userAllergenService.deleteUserAllergens(userId);
         userCategoryService.deleteUserCategoryPreferences(userId);
         userMenuService.deleteUserMenuPreferences(userId);
     }
 
+    /**
+     *  UserSetting 저장
+     */
     private void saveUserSetting(UUID userId, UserSetting userSetting) {
         saveUserAllergen(
                 userId,
