@@ -16,11 +16,13 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 import com.gm.api.security.CustomUserPrincipal;
+import com.gm.core.domain.group.service.GroupService;
 import com.gm.core.domain.user.model.Provider;
 import com.gm.core.domain.user.model.User;
 import com.gm.core.domain.user.model.UserStatus;
 import com.gm.core.domain.vote.service.VoteSessionService;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -46,6 +48,9 @@ class GroupIntegrationTest {
 
     @Autowired
     private VoteSessionService voteSessionService;
+
+    @Autowired
+    private GroupService groupService;
 
     /** 요청 회원을 SecurityContext에 직접 주입하는 RequestPostProcessor를 만든다. */
     private static RequestPostProcessor authAs(UUID userId) {
@@ -374,6 +379,58 @@ class GroupIntegrationTest {
                 .andExpect(jsonPath("$.data.recommendationTime").value("17:30"))
                 .andExpect(jsonPath("$.data.maxMemberCount").value(6))
                 .andExpect(jsonPath("$.data.memberCount").value(1));
+    }
+
+    @Test
+    @DisplayName("수정에 성공하면 updatedAt이 갱신된 값으로 응답된다")
+    void updateGroup_succeeds_refreshesUpdatedAt() throws Exception {
+        UUID ownerUserId = UUID.randomUUID();
+        MvcResult createResult = mockMvc.perform(post("/api/groups")
+                        .with(authAs(ownerUserId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(REQUEST_BODY))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String groupId = JsonPath.read(createResult.getResponse().getContentAsString(), "$.data.groupId");
+        String createdUpdatedAt = JsonPath.read(createResult.getResponse().getContentAsString(), "$.data.updatedAt");
+
+        MvcResult updateResult = mockMvc.perform(put("/api/groups/{groupId}", groupId)
+                        .with(authAs(ownerUserId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(UPDATE_REQUEST_BODY))
+                .andExpect(status().isOk())
+                .andReturn();
+        String updatedUpdatedAt = JsonPath.read(updateResult.getResponse().getContentAsString(), "$.data.updatedAt");
+
+        assertThat(updatedUpdatedAt).isNotEqualTo(createdUpdatedAt);
+    }
+
+    @Test
+    @DisplayName("정원을 현재 활성 멤버 수보다 작게 수정하면 GROUP-008 오류를 반환한다")
+    void updateGroup_withCapacityBelowActiveMembers_returnsGroup008() throws Exception {
+        UUID ownerUserId = UUID.randomUUID();
+        UUID groupId = createGroupAndGetId(ownerUserId, REQUEST_BODY);
+        groupService.addMember(groupId, UUID.randomUUID());
+
+        String body = """
+                {
+                  "name": "저녁팟",
+                  "locationAddress": "서울특별시 강남구 역삼동",
+                  "latitude": 37.5001,
+                  "longitude": 127.0365,
+                  "searchRadiusM": 2000,
+                  "recommendationTime": "17:30",
+                  "maxMemberCount": 1
+                }
+                """;
+
+        mockMvc.perform(put("/api/groups/{groupId}", groupId)
+                        .with(authAs(ownerUserId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("GROUP-008"));
     }
 
     @Test

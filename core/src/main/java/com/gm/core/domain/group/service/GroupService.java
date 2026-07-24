@@ -102,6 +102,8 @@ public class GroupService {
      * @return 수정된 그룹
      * @throws GroupException groupId에 해당하는 그룹이 없어 {@code GROUP-001} 오류가 발생하는 경우
      * @throws GroupException 요청 회원이 활성 방장 멤버가 아니어서 {@code GROUP-006} 오류가 발생하는 경우
+     * @throws GroupException 정원을 현재 활성 멤버 수보다 작게 변경하려 해 {@code GROUP-008} 오류가
+     *         발생하는 경우
      */
     @Transactional
     public Group update(UUID groupId, UUID requesterUserId, GroupUpdate groupUpdate) {

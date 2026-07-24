@@ -95,11 +95,16 @@ public interface GroupRepository {
     /**
      * groupId에 해당하는 그룹의 설정 전체를 groupUpdate 내용으로 교체한다.
      *
+     * <p>그룹 행을 비관적 쓰기 잠금으로 조회해 {@link #addActiveMember(UUID, UUID)}와 같은 락
+     * 정책으로 동시 가입 처리와 직렬화하며, 현재 활성 멤버 수보다 작은 {@code maxMemberCount}로는
+     * 변경할 수 없다.</p>
+     *
      * @param groupId 수정할 그룹 식별자
      * @param groupUpdate 교체할 그룹 설정
      * @return 수정된 그룹
      * @throws com.gm.core.domain.group.exception.GroupException groupId에 해당하는 그룹이 없으면
-     *         {@code GROUP_NOT_FOUND}
+     *         {@code GROUP_NOT_FOUND}, 정원을 현재 활성 멤버 수보다 작게 변경하려 하면
+     *         {@code GROUP_CAPACITY_BELOW_ACTIVE_MEMBERS}
      */
     Group update(UUID groupId, GroupUpdate groupUpdate);
 }

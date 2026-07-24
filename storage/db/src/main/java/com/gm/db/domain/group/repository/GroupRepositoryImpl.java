@@ -126,10 +126,22 @@ public class GroupRepositoryImpl implements GroupRepository {
                 groupId, userId, GroupMemberRole.OWNER, GroupMemberStatus.ACTIVE);
     }
 
+    /**
+     * 그룹 행을 비관적 쓰기 잠금으로 조회해, 동시에 진행 중인 가입 처리({@link #addActiveMember})와
+     * 같은 락 정책으로 직렬화한다. 현재 활성 멤버 수보다 작은 정원으로는 변경할 수 없다.
+     * 변경 후 {@code updatedAt}은 flush 시점에만 채워지므로, 응답에 최신 값을 반영하기 위해
+     * dirty checking에 맡기지 않고 {@code saveAndFlush}로 즉시 flush한다.
+     */
     @Override
     public Group update(UUID groupId, GroupUpdate groupUpdate) {
-        DiningGroupEntity group = groupJpaRepository.findById(groupId)
+        DiningGroupEntity group = groupJpaRepository.findByIdForUpdate(groupId)
                 .orElseThrow(() -> new GroupException(GroupErrorCode.GROUP_NOT_FOUND));
+
+        long activeMemberCount = groupMemberJpaRepository
+                .countByDiningGroupIdAndStatus(groupId, GroupMemberStatus.ACTIVE);
+        if (activeMemberCount > groupUpdate.maxMemberCount()) {
+            throw new GroupException(GroupErrorCode.GROUP_CAPACITY_BELOW_ACTIVE_MEMBERS);
+        }
 
         group.update(
                 groupUpdate.name(),
@@ -141,8 +153,8 @@ public class GroupRepositoryImpl implements GroupRepository {
                 groupUpdate.maxMemberCount()
         );
 
-        long memberCount = groupMemberJpaRepository.countByDiningGroupIdAndStatus(groupId, GroupMemberStatus.ACTIVE);
-        return groupMapper.toDomainModel(group, (int) memberCount);
+        DiningGroupEntity saved = groupJpaRepository.saveAndFlush(group);
+        return groupMapper.toDomainModel(saved, (int) activeMemberCount);
     }
 
     private void assertHasCapacity(UUID groupId, int maxMemberCount) {
