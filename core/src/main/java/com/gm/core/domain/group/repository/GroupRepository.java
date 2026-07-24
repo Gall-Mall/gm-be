@@ -9,6 +9,7 @@ import org.springframework.data.domain.Pageable;
 import com.gm.core.domain.group.model.Group;
 import com.gm.core.domain.group.model.GroupDetail;
 import com.gm.core.domain.group.model.GroupMember;
+import com.gm.core.domain.group.model.GroupUpdate;
 import com.gm.core.domain.group.model.NewGroup;
 
 public interface GroupRepository {
@@ -81,4 +82,24 @@ public interface GroupRepository {
      *         {@code MEMBER_KICKED}
      */
     Optional<GroupMember> addActiveMember(UUID groupId, UUID userId);
+
+    /**
+     * 요청 회원이 groupId 그룹의 활성(ACTIVE) 상태 방장(OWNER) 멤버인지 확인한다.
+     *
+     * @param groupId 확인할 그룹 식별자
+     * @param userId 요청 회원 식별자
+     * @return 활성 방장 멤버이면 {@code true}
+     */
+    boolean isActiveOwner(UUID groupId, UUID userId);
+
+    /**
+     * groupId에 해당하는 그룹의 설정 전체를 groupUpdate 내용으로 교체한다.
+     *
+     * @param groupId 수정할 그룹 식별자
+     * @param groupUpdate 교체할 그룹 설정
+     * @return 수정된 그룹
+     * @throws com.gm.core.domain.group.exception.GroupException groupId에 해당하는 그룹이 없으면
+     *         {@code GROUP_NOT_FOUND}
+     */
+    Group update(UUID groupId, GroupUpdate groupUpdate);
 }

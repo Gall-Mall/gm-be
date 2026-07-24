@@ -16,6 +16,7 @@ import com.gm.core.domain.group.exception.GroupException;
 import com.gm.core.domain.group.model.Group;
 import com.gm.core.domain.group.model.GroupDetail;
 import com.gm.core.domain.group.model.GroupMember;
+import com.gm.core.domain.group.model.GroupUpdate;
 import com.gm.core.domain.group.model.NewGroup;
 import com.gm.core.domain.group.repository.GroupRepository;
 
@@ -88,5 +89,30 @@ public class GroupService {
     public Optional<GroupMember> addMember(UUID groupId, UUID userId) {
         log.info("그룹 멤버 추가: groupId: {}, userId: {}", groupId, userId);
         return groupRepository.addActiveMember(groupId, userId);
+    }
+
+    /**
+     * 요청 회원이 groupId 그룹의 활성 방장 멤버인지 확인한 뒤 그룹 설정 전체를 groupUpdate
+     * 내용으로 교체한다. 방장 여부는 {@code group_member}의 역할(role)·상태(status)를 기준으로
+     * 판단한다(그룹의 {@code owner_user_id}는 참조하지 않는다).
+     *
+     * @param groupId 수정할 그룹 식별자
+     * @param requesterUserId 요청 회원 식별자
+     * @param groupUpdate 교체할 그룹 설정
+     * @return 수정된 그룹
+     * @throws GroupException groupId에 해당하는 그룹이 없어 {@code GROUP-001} 오류가 발생하는 경우
+     * @throws GroupException 요청 회원이 활성 방장 멤버가 아니어서 {@code GROUP-006} 오류가 발생하는 경우
+     */
+    @Transactional
+    public Group update(UUID groupId, UUID requesterUserId, GroupUpdate groupUpdate) {
+        log.info("그룹 정보 수정: groupId: {}, requesterUserId: {}", groupId, requesterUserId);
+        if (!groupRepository.existsById(groupId)) {
+            throw new GroupException(GroupErrorCode.GROUP_NOT_FOUND);
+        }
+        if (!groupRepository.isActiveOwner(groupId, requesterUserId)) {
+            throw new GroupException(GroupErrorCode.NOT_GROUP_OWNER);
+        }
+
+        return groupRepository.update(groupId, groupUpdate);
     }
 }

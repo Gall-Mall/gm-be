@@ -16,10 +16,12 @@ import com.gm.core.domain.group.exception.GroupException;
 import com.gm.core.domain.group.model.Group;
 import com.gm.core.domain.group.model.GroupDetail;
 import com.gm.core.domain.group.model.GroupMember;
+import com.gm.core.domain.group.model.GroupMemberRole;
 import com.gm.core.domain.group.model.GroupMemberStatus;
+import com.gm.core.domain.group.model.GroupUpdate;
 import com.gm.core.domain.group.model.NewGroup;
 import com.gm.core.domain.group.repository.GroupRepository;
-import com.gm.db.domain.group.entity.GroupEntity;
+import com.gm.db.domain.group.entity.DiningGroupEntity;
 import com.gm.db.domain.group.entity.GroupMemberEntity;
 import com.gm.db.domain.group.mapper.GroupMapper;
 import com.gm.db.domain.group.mapper.GroupMemberMapper;
@@ -35,7 +37,7 @@ public class GroupRepositoryImpl implements GroupRepository {
 
     @Override
     public Group create(NewGroup newGroup) {
-        GroupEntity group = groupJpaRepository.save(groupMapper.toEntity(newGroup));
+        DiningGroupEntity group = groupJpaRepository.save(groupMapper.toEntity(newGroup));
         groupMemberJpaRepository.save(GroupMemberEntity.ofOwner(group.getId(), newGroup.ownerUserId()));
         return groupMapper.toDomainModel(group, 1);
     }
@@ -89,7 +91,7 @@ public class GroupRepositoryImpl implements GroupRepository {
      */
     @Override
     public Optional<GroupMember> addActiveMember(UUID groupId, UUID userId) {
-        GroupEntity group = groupJpaRepository.findByIdForUpdate(groupId)
+        DiningGroupEntity group = groupJpaRepository.findByIdForUpdate(groupId)
                 .orElseThrow(() -> new GroupException(GroupErrorCode.GROUP_NOT_FOUND));
 
         Optional<GroupMemberEntity> existingMember =
@@ -116,6 +118,31 @@ public class GroupRepositoryImpl implements GroupRepository {
             // 사전 조회와 삽입 사이의 경쟁 상태에 대한 방어. 유니크 제약이 대신 막아준 경우다.
             return Optional.empty();
         }
+    }
+
+    @Override
+    public boolean isActiveOwner(UUID groupId, UUID userId) {
+        return groupMemberJpaRepository.existsByDiningGroupIdAndUserIdAndRoleAndStatus(
+                groupId, userId, GroupMemberRole.OWNER, GroupMemberStatus.ACTIVE);
+    }
+
+    @Override
+    public Group update(UUID groupId, GroupUpdate groupUpdate) {
+        DiningGroupEntity group = groupJpaRepository.findById(groupId)
+                .orElseThrow(() -> new GroupException(GroupErrorCode.GROUP_NOT_FOUND));
+
+        group.update(
+                groupUpdate.name(),
+                groupUpdate.locationAddress(),
+                groupUpdate.latitude(),
+                groupUpdate.longitude(),
+                groupUpdate.searchRadiusM(),
+                groupUpdate.recommendationTime(),
+                groupUpdate.maxMemberCount()
+        );
+
+        long memberCount = groupMemberJpaRepository.countByDiningGroupIdAndStatus(groupId, GroupMemberStatus.ACTIVE);
+        return groupMapper.toDomainModel(group, (int) memberCount);
     }
 
     private void assertHasCapacity(UUID groupId, int maxMemberCount) {

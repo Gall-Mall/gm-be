@@ -6,6 +6,7 @@ import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import com.gm.core.domain.group.model.GroupMemberRole;
 import com.gm.core.domain.group.model.GroupMemberStatus;
 import com.gm.db.domain.group.entity.GroupMemberEntity;
 
@@ -21,4 +22,8 @@ public interface GroupMemberJpaRepository extends JpaRepository<GroupMemberEntit
 
     /** 그룹의 특정 상태 멤버 수를 센다. 정원 확인에 사용한다. */
     long countByDiningGroupIdAndStatus(UUID diningGroupId, GroupMemberStatus status);
+
+    /** 요청 회원이 해당 그룹의 특정 역할·상태 멤버인지 확인한다. 방장 전용 작업 권한 검사에 사용한다. */
+    boolean existsByDiningGroupIdAndUserIdAndRoleAndStatus(
+            UUID diningGroupId, UUID userId, GroupMemberRole role, GroupMemberStatus status);
 }

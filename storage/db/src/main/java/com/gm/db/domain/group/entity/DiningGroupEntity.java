@@ -17,7 +17,7 @@ import com.gm.db.common.entity.BaseEntity;
 @Table(name = "dining_group")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class GroupEntity extends BaseEntity {
+public class DiningGroupEntity extends BaseEntity {
 
     @Column(name = "owner_user_id", nullable = false)
     private UUID ownerUserId;
@@ -43,7 +43,7 @@ public class GroupEntity extends BaseEntity {
     @Column(name = "max_member_count", nullable = false)
     private int maxMemberCount;
 
-    public GroupEntity(
+    public DiningGroupEntity(
             UUID ownerUserId,
             String name,
             String locationAddress,
@@ -54,6 +54,24 @@ public class GroupEntity extends BaseEntity {
             int maxMemberCount
     ) {
         this.ownerUserId = ownerUserId;
+        this.name = name;
+        this.locationAddress = locationAddress;
+        this.latitude = latitude;
+        this.longitude = longitude;
+        this.searchRadiusM = searchRadiusM;
+        this.recommendationTime = recommendationTime;
+        this.maxMemberCount = maxMemberCount;
+    }
+
+    public void update(
+            String name,
+            String locationAddress,
+            Double latitude,
+            Double longitude,
+            int searchRadiusM,
+            LocalTime recommendationTime,
+            int maxMemberCount
+    ) {
         this.name = name;
         this.locationAddress = locationAddress;
         this.latitude = latitude;
