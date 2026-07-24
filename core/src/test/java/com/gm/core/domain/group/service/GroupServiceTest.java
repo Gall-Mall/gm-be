@@ -23,6 +23,7 @@ import com.gm.core.domain.group.model.GroupDetail;
 import com.gm.core.domain.group.model.GroupMember;
 import com.gm.core.domain.group.model.GroupMemberRole;
 import com.gm.core.domain.group.model.GroupMemberStatus;
+import com.gm.core.domain.group.model.GroupUpdate;
 import com.gm.core.domain.group.model.NewGroup;
 import com.gm.core.domain.group.repository.GroupRepository;
 
@@ -228,5 +229,72 @@ class GroupServiceTest {
         Optional<GroupMember> actual = groupService.addMember(groupId, userId);
 
         assertThat(actual).isEmpty();
+    }
+
+    private GroupUpdate groupUpdate() {
+        return new GroupUpdate(
+                "저녁팟",
+                "서울특별시 강남구 역삼동",
+                37.5001,
+                127.0365,
+                2000,
+                LocalTime.of(17, 30),
+                6
+        );
+    }
+
+    @Test
+    @DisplayName("요청 회원이 활성 방장 멤버이면 리포지토리에 위임해 그룹 설정을 교체하고 결과를 반환한다")
+    void update_delegatesToRepository_whenRequesterIsActiveOwner() {
+        groupService = new GroupService(groupRepository);
+
+        UUID groupId = UUID.randomUUID();
+        UUID ownerUserId = UUID.randomUUID();
+        GroupUpdate groupUpdate = groupUpdate();
+        Group expected = new Group(
+                groupId, ownerUserId, groupUpdate.name(), groupUpdate.locationAddress(),
+                groupUpdate.latitude(), groupUpdate.longitude(), groupUpdate.searchRadiusM(),
+                groupUpdate.recommendationTime(), groupUpdate.maxMemberCount(), 1,
+                LocalDateTime.now(), LocalDateTime.now()
+        );
+
+        given(groupRepository.existsById(groupId)).willReturn(true);
+        given(groupRepository.isActiveOwner(groupId, ownerUserId)).willReturn(true);
+        given(groupRepository.update(groupId, groupUpdate)).willReturn(expected);
+
+        Group actual = groupService.update(groupId, ownerUserId, groupUpdate);
+
+        assertThat(actual).isEqualTo(expected);
+    }
+
+    @Test
+    @DisplayName("groupId에 해당하는 그룹이 없으면 GROUP-001 오류를 던진다")
+    void update_throwsGroupNotFound_whenGroupDoesNotExist() {
+        groupService = new GroupService(groupRepository);
+
+        UUID groupId = UUID.randomUUID();
+        UUID requesterUserId = UUID.randomUUID();
+        given(groupRepository.existsById(groupId)).willReturn(false);
+
+        assertThatThrownBy(() -> groupService.update(groupId, requesterUserId, groupUpdate()))
+                .isInstanceOf(GroupException.class)
+                .satisfies(exception -> assertThat(((GroupException) exception).getErrorCode().getCode())
+                        .isEqualTo("GROUP-001"));
+    }
+
+    @Test
+    @DisplayName("요청 회원이 활성 방장 멤버가 아니면 GROUP-006 오류를 던진다")
+    void update_throwsNotGroupOwner_whenRequesterIsNotActiveOwner() {
+        groupService = new GroupService(groupRepository);
+
+        UUID groupId = UUID.randomUUID();
+        UUID requesterUserId = UUID.randomUUID();
+        given(groupRepository.existsById(groupId)).willReturn(true);
+        given(groupRepository.isActiveOwner(groupId, requesterUserId)).willReturn(false);
+
+        assertThatThrownBy(() -> groupService.update(groupId, requesterUserId, groupUpdate()))
+                .isInstanceOf(GroupException.class)
+                .satisfies(exception -> assertThat(((GroupException) exception).getErrorCode().getCode())
+                        .isEqualTo("GROUP-006"));
     }
 }

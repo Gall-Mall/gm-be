@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 @Repository
 @RequiredArgsConstructor
@@ -33,15 +34,35 @@ public class UserCategoryRepositoryImpl implements UserCategoryRepository {
     }
 
     @Override
-    public void saveUserCategoryPreference(UUID userId, List<UUID> categoryIds, UserCategoryPreference preference) {
+    public void saveUserCategoryPreference(UUID userId, List<UUID> preferredCategoryIds, List<UUID> disLikeCategoryIds) {
 
-        List<UserCategoryEntity> userCategoryList = categoryIds
-                .stream()
-                .map(categoryId -> foodCategoryJpaRepository
-                        .findById(categoryId)
-                        .orElseThrow(() -> new UserException(UserErrorCode.CATEGORY_NOT_FOUND)))
-                .map(foodCategoryEntity -> new UserCategoryEntity(userId, foodCategoryEntity.getId(), preference))
-                .toList();
-        userCategoryJpaRepository.saveAll(userCategoryList);
+        List<UserCategoryEntity> userCategoryEntities = Stream.concat(
+                preferredCategoryIds.stream()
+                        .map(categoryId -> foodCategoryJpaRepository
+                                .findById(categoryId)
+                                .orElseThrow(() ->
+                                        new UserException(UserErrorCode.CATEGORY_NOT_FOUND)
+                                ))
+                        .map(foodCategoryEntity -> new UserCategoryEntity(
+                                userId,
+                                foodCategoryEntity.getId(),
+                                UserCategoryPreference.LIKE
+                        )),
+
+                disLikeCategoryIds.stream()
+                        .map(categoryId -> foodCategoryJpaRepository
+                                .findById(categoryId)
+                                .orElseThrow(() ->
+                                        new UserException(UserErrorCode.CATEGORY_NOT_FOUND)
+                                ))
+                        .map(foodCategoryEntity -> new UserCategoryEntity(
+                                userId,
+                                foodCategoryEntity.getId(),
+                                UserCategoryPreference.DISLIKE
+                        ))
+        ).toList();
+
+
+        userCategoryJpaRepository.saveAll(userCategoryEntities);
     }
 }

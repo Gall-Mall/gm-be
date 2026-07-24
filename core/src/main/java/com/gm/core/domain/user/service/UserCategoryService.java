@@ -32,7 +32,7 @@ public class UserCategoryService {
     /**
      * 유저가 카테고리를 선택하면 선택카테고리를 user_category_preference에 추가
      */
-    public void saveUserCategoryPreference(UUID userId, List<UUID> categoryIds, UserCategoryPreference preference) {
-        userCategoryRepository.saveUserCategoryPreference(userId, categoryIds, preference);
+    public void saveUserCategoryPreference(UUID userId, List<UUID> preferredCategoryIds, List<UUID> disLikeCategoryIds) {
+        userCategoryRepository.saveUserCategoryPreference(userId, preferredCategoryIds, disLikeCategoryIds);
     }
 }
