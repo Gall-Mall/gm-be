@@ -92,6 +92,35 @@ class RecommendationCurationServiceTest {
     }
 
     @Test
+    void 비표준_알레르기_토큰이_이름에_든_후보는_결정론적으로_제외된다() {
+        // AI가 지시를 놓치고 "파인애플" 든 메뉴를 반환해도, 후보 풀 사전 제외로 애초에 매칭 불가
+        Map<UUID, String> pool = new LinkedHashMap<>();
+        UUID 볶음밥 = UUID.randomUUID();
+        pool.put(볶음밥, "파인애플볶음밥");
+        pool.put(초밥, "초밥");
+        var service = serviceReturning(menu("파인애플볶음밥", "AI가 놓침"), menu("초밥", "정상"));
+
+        List<CuratedCandidate> result = service.curate(
+                pool, List.of("파인애플"), List.of(), List.of(), 10);
+
+        assertThat(result).extracting(CuratedCandidate::menuId).containsExactly(초밥);
+    }
+
+    @Test
+    void 알레르기_텍스트가_콤마로_여러개여도_각각_제외된다() {
+        Map<UUID, String> pool = new LinkedHashMap<>();
+        UUID 키위주스 = UUID.randomUUID();
+        pool.put(키위주스, "키위주스");
+        pool.put(초밥, "초밥");
+        var service = serviceReturning(menu("키위주스", "x"), menu("초밥", "o"));
+
+        List<CuratedCandidate> result = service.curate(
+                pool, List.of("파인애플, 키위"), List.of(), List.of(), 10);
+
+        assertThat(result).extracting(CuratedCandidate::menuId).containsExactly(초밥);
+    }
+
+    @Test
     void AI가_빈_결과를_주면_빈_목록을_반환한다() {
         var service = serviceReturning();
 

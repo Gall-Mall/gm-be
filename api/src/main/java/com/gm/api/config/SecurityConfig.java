@@ -12,6 +12,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 import com.gm.api.security.*;
 import com.gm.api.security.oauth.CustomOAuth2UserService;
+import com.gm.api.security.oauth.OAuth2FailureHandler;
+import com.gm.api.security.oauth.OAuth2SuccessHandler;
 
 @Configuration
 @RequiredArgsConstructor

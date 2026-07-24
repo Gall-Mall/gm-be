@@ -32,8 +32,8 @@ import com.gm.db.domain.menu.menu.entity.QMenuEntity;
 import com.gm.db.domain.user.entity.QUserAllergenEntity;
 import com.gm.db.domain.user.entity.QUserCategoryEntity;
 import com.gm.db.domain.user.entity.QUserMenuEntity;
-import com.gm.db.domain.vote.entity.QVoteCandidateEntity;
-import com.gm.db.domain.vote.entity.QVoteSessionEntity;
+import com.gm.db.domain.vote.candidate.entity.QVoteCandidateEntity;
+import com.gm.db.domain.vote.session.entity.QVoteSessionEntity;
 
 import lombok.RequiredArgsConstructor;
 
