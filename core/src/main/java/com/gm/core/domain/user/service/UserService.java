@@ -3,7 +3,6 @@ package com.gm.core.domain.user.service;
 import java.util.List;
 import java.util.UUID;
 
-import com.gm.core.domain.user.model.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -12,9 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.gm.core.domain.user.exception.UserErrorCode;
 import com.gm.core.domain.user.exception.UserException;
-import com.gm.core.domain.user.model.Provider;
-import com.gm.core.domain.user.model.User;
-import com.gm.core.domain.user.model.UserResult;
+import com.gm.core.domain.user.model.*;
 import com.gm.core.domain.user.repository.UserRepository;
 
 @Slf4j

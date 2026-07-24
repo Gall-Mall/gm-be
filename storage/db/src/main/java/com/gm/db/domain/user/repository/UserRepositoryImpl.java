@@ -1,7 +1,5 @@
 package com.gm.db.domain.user.repository;
 
-import com.gm.db.domain.user.entity.UserEntity;
-import com.gm.db.domain.user.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
 
 import java.util.Optional;
@@ -9,6 +7,8 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Repository;
 
+import com.gm.db.domain.user.entity.UserEntity;
+import com.gm.db.domain.user.mapper.UserMapper;
 import com.gm.core.domain.user.model.Provider;
 import com.gm.core.domain.user.model.User;
 import com.gm.core.domain.user.model.UserResult;

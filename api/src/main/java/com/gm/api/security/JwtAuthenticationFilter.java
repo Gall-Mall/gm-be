@@ -22,6 +22,7 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 
 import com.gm.api.security.jwt.JwtProvider;
+import com.gm.core.domain.auth.repository.AccessTokenBlacklistRepository;
 import com.gm.core.domain.user.exception.UserException;
 import com.gm.core.domain.user.model.User;
 import com.gm.core.domain.user.model.UserStatus;
@@ -37,18 +38,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtProvider jwtProvider;
     private final UserService userService;
+    private final AccessTokenBlacklistRepository accessTokenBlacklistRepository;
 
     @Override
     protected void doFilterInternal(
-            HttpServletRequest request,
-            HttpServletResponse response,
-            FilterChain filterChain
+            HttpServletRequest request, HttpServletResponse response, FilterChain filterChain
     ) throws ServletException, IOException {
 
         String accessToken = resolveToken(request);
 
-        if (accessToken != null
-                && SecurityContextHolder.getContext().getAuthentication() == null) {
+        if (accessToken != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             authenticate(accessToken, request);
         }
 
@@ -63,75 +62,92 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
      * @param accessToken Access Token
      * @param request 현재 HTTP 요청
      */
+    // 1. JWT 검증
     private void authenticate(String accessToken, HttpServletRequest request) {
-        UUID userId;
 
+        Claims claims = validateAccessToken(accessToken, request);
+
+        if (claims == null) { return; }
+        if (isBlacklisted(claims, request)) { return; }
+
+        UUID userId = jwtProvider.getUserId(claims);
+        User user = findAvailableUser(userId, request);
+
+        if (user == null) { return; }
+
+        registerAuthentication(userId, user, request);
+    }
+
+    private Claims validateAccessToken(String accessToken, HttpServletRequest request) {
         try {
-            // 1. Access Token 검증
-            Claims claims = jwtProvider.validate(accessToken);
-            // 2. Claims에서 회원 UUID 추출
-            userId = jwtProvider.getUserId(claims);
+
+            return jwtProvider.validate(accessToken);
         } catch (JwtException | IllegalArgumentException exception) {
 
             log.debug(
                     "JWT 검증에 실패했습니다. method={}, path={}, cause={}",
-                    request.getMethod(),
-                    request.getRequestURI(),
-                    exception.getClass().getSimpleName()
+                    request.getMethod(), request.getRequestURI(), exception.getClass().getSimpleName()
             );
 
-            return;
+            return null;
         }
+    }
+
+    // 2. 블랙리스트 검사
+    private boolean isBlacklisted(Claims claims, HttpServletRequest request) {
+
+        String accessTokenId = jwtProvider.getJti(claims);
+
+        if (!accessTokenBlacklistRepository.exists(accessTokenId)) { return false; }
+
+        log.debug(
+                "블랙리스트 Access Token입니다. method={}, path={}, jti={}",
+                request.getMethod(), request.getRequestURI(), accessTokenId
+        );
+
+        return true;
+    }
+
+    // 3. 회원 조회
+    private User findAvailableUser(UUID userId, HttpServletRequest request) {
 
         User user;
 
         try {
-            // 3. 실제 회원 정보 조회
+
             user = userService.findById(userId);
         } catch (UserException exception) {
 
             log.debug(
                     "JWT 회원 조회에 실패했습니다. method={}, path={}, userId={}, code={}",
-                    request.getMethod(),
-                    request.getRequestURI(),
-                    userId,
-                    exception.getErrorCode().getCode()
+                    request.getMethod(), request.getRequestURI(), userId, exception.getErrorCode().getCode()
             );
 
-            return;
+            return null;
         }
 
-        /*
-         * 4. 탈퇴한 회원은 인증하지 않는다.
-         * ONBOARDING 회원은 온보딩 제출 API를 호출해야 하므로 정상적으로 인증되어야 한다.
-         */
         if (user.status() == UserStatus.WITHDRAWN) {
 
             log.debug(
                     "탈퇴한 회원의 JWT 인증 요청입니다. method={}, path={}, userId={}, status={}",
-                    request.getMethod(),
-                    request.getRequestURI(),
-                    userId,
-                    user.status()
+                    request.getMethod(), request.getRequestURI(), userId, user.status()
             );
 
-            return;
+            return null;
         }
 
-        // 5. 인증 Principal 생성
-        CustomUserPrincipal principal = new CustomUserPrincipal(userId, user);
+        return user;
+    }
 
-        // 6. Spring Security 인증 객체 생성
+    // 4. SecurityContext 등록
+    private void registerAuthentication(UUID userId, User user, HttpServletRequest request) {
+
+        CustomUserPrincipal principal = new CustomUserPrincipal(userId, user);
         UsernamePasswordAuthenticationToken authentication =
                 new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
 
-        // 7. 요청 세부 정보 설정
         authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-
-        // 8. SecurityContext에 인증 정보 등록
-        SecurityContextHolder
-                .getContext()
-                .setAuthentication(authentication);
+        SecurityContextHolder.getContext().setAuthentication(authentication);
     }
 
     /**
