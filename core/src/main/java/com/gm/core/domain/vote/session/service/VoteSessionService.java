@@ -1,17 +1,20 @@
 package com.gm.core.domain.vote.session.service;
 
+import java.time.LocalDateTime;
+import java.util.UUID;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.gm.core.domain.group.service.GroupService;
 import com.gm.core.domain.vote.session.exception.VoteSessionErrorCode;
 import com.gm.core.domain.vote.session.exception.VoteSessionException;
 import com.gm.core.domain.vote.session.model.VoteSession;
 import com.gm.core.domain.vote.session.model.VoteSessionStatus;
 import com.gm.core.domain.vote.session.repository.VoteSessionRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDateTime;
-import java.util.UUID;
 
 /**
  * 투표 세션의 생성·조회·취소·삭제 유스케이스를 수행한다.
@@ -22,11 +25,13 @@ import java.util.UUID;
 public class VoteSessionService {
 
     private final VoteSessionRepository voteSessionRepository;
+    private final GroupService groupService;
 
     /**
      * 수동 투표 세션을 생성하고 저장한다.
      *
      * @param diningGroupId 세션이 속한 식사 그룹 식별자
+     * @param requestUserId 생성을 요청한 회원 식별자
      * @param title 세션 제목
      * @param likeKeyword 종합 선호 키워드
      * @param dislikeKeyword 종합 비선호 키워드
@@ -36,10 +41,12 @@ public class VoteSessionService {
     @Transactional
     public VoteSession createManualVoteSession(
             UUID diningGroupId,
+            UUID requestUserId,
             String title,
             String likeKeyword,
             String dislikeKeyword
     ) {
+        groupService.findGroupDetail(diningGroupId, requestUserId);
         VoteSession voteSession = VoteSession.createVoteSession(
                 diningGroupId,
                 title,

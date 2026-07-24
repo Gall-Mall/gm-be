@@ -1,24 +1,28 @@
 package com.gm.core.domain.vote.candidate.service;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.Assert;
 
-import com.gm.core.domain.vote.session.exception.VoteSessionErrorCode;
-import com.gm.core.domain.vote.session.exception.VoteSessionException;
+import com.gm.core.domain.group.service.GroupService;
+import com.gm.core.domain.vote.candidate.exception.VoteCandidateErrorCode;
+import com.gm.core.domain.vote.candidate.exception.VoteCandidateException;
 import com.gm.core.domain.vote.candidate.model.MenuVoteCandidate;
 import com.gm.core.domain.vote.candidate.model.RecommendedMenuCandidate;
 import com.gm.core.domain.vote.candidate.model.VoteCandidate;
 import com.gm.core.domain.vote.candidate.model.VoteCandidateResult;
+import com.gm.core.domain.vote.candidate.repository.VoteCandidateRepository;
+import com.gm.core.domain.vote.session.exception.VoteSessionErrorCode;
+import com.gm.core.domain.vote.session.exception.VoteSessionException;
 import com.gm.core.domain.vote.session.model.VoteSession;
 import com.gm.core.domain.vote.session.model.VoteSessionStatus;
-import com.gm.core.domain.vote.candidate.repository.VoteCandidateRepository;
-import com.gm.core.domain.vote.session.repository.VoteSessionRepository;
+import com.gm.core.domain.vote.session.service.VoteSessionService;
 
 /**
  * 추천 메뉴 후보를 저장하고 투표 화면용 후보를 조회한다.
@@ -27,7 +31,10 @@ import com.gm.core.domain.vote.session.repository.VoteSessionRepository;
 @RequiredArgsConstructor
 public class MenuCandidateService {
 
-    private final VoteSessionRepository voteSessionRepository;
+    private static final int MAX_CANDIDATE_COUNT = 10;
+
+    private final GroupService groupService;
+    private final VoteSessionService voteSessionService;
     private final VoteCandidateRepository voteCandidateRepository;
 
     /**
@@ -43,9 +50,7 @@ public class MenuCandidateService {
             UUID voteSessionId,
             List<RecommendedMenuCandidate> recommendations
     ) {
-        Assert.notEmpty(recommendations, "recommendations must not be empty");
-        VoteSession session = findVoteSession(voteSessionId);
-        session.changeStatus(VoteSessionStatus.MENU_VOTING);
+        validateRecommendations(recommendations);
 
         List<VoteCandidate> candidates = recommendations.stream()
                 .map(recommendation -> VoteCandidate.builder()
@@ -62,26 +67,48 @@ public class MenuCandidateService {
                         .build())
                 .toList();
 
-        List<VoteCandidate> saved = voteCandidateRepository.saveAll(candidates);
-        voteSessionRepository.updateStatus(voteSessionId, VoteSessionStatus.MENU_VOTING)
-                .orElseThrow(() -> new VoteSessionException(VoteSessionErrorCode.SESSION_NOT_FOUND));
+        List<VoteCandidate> saved = voteCandidateRepository.saveNewCandidates(candidates);
+        voteSessionService.changeVoteSessionStatus(voteSessionId, VoteSessionStatus.MENU_VOTING);
         return saved;
     }
 
     /**
      * 투표 화면에 표시할 메뉴 후보를 조회한다.
      *
+     * @param groupId 경로의 그룹 식별자
+     * @param userId 조회를 요청한 회원 식별자
      * @param voteSessionId 투표 세션 식별자
      * @return 노출 순서대로 정렬된 메뉴 후보
      */
     @Transactional(readOnly = true)
-    public List<MenuVoteCandidate> findMenuCandidates(UUID voteSessionId) {
-        findVoteSession(voteSessionId);
+    public List<MenuVoteCandidate> findMenuCandidates(
+            UUID groupId,
+            UUID userId,
+            UUID voteSessionId
+    ) {
+        groupService.findGroupDetail(groupId, userId);
+        VoteSession session = voteSessionService.findVoteSession(voteSessionId);
+        if (!groupId.equals(session.diningGroupId())) {
+            throw new VoteSessionException(VoteSessionErrorCode.SESSION_NOT_FOUND);
+        }
         return voteCandidateRepository.findAllByVoteSessionId(voteSessionId);
     }
 
-    private VoteSession findVoteSession(UUID voteSessionId) {
-        return voteSessionRepository.findById(voteSessionId)
-                .orElseThrow(() -> new VoteSessionException(VoteSessionErrorCode.SESSION_NOT_FOUND));
+    private void validateRecommendations(List<RecommendedMenuCandidate> recommendations) {
+        if (recommendations == null
+                || recommendations.isEmpty()
+                || recommendations.size() > MAX_CANDIDATE_COUNT) {
+            throw new VoteCandidateException(VoteCandidateErrorCode.INVALID_RECOMMENDATIONS);
+        }
+
+        Set<UUID> menuIds = new HashSet<>();
+        Set<Integer> displayOrders = new HashSet<>();
+        for (RecommendedMenuCandidate recommendation : recommendations) {
+            if (recommendation == null
+                    || !menuIds.add(recommendation.menuId())
+                    || !displayOrders.add(recommendation.displayOrder())) {
+                throw new VoteCandidateException(VoteCandidateErrorCode.INVALID_RECOMMENDATIONS);
+            }
+        }
     }
 }

@@ -17,7 +17,7 @@ public interface VoteCandidateRepository {
      * @param candidates 저장할 후보 목록
      * @return 저장된 후보 목록
      */
-    List<VoteCandidate> saveAll(List<VoteCandidate> candidates);
+    List<VoteCandidate> saveNewCandidates(List<VoteCandidate> candidates);
 
     /**
      * 세션의 메뉴 후보를 노출 순서대로 조회한다.

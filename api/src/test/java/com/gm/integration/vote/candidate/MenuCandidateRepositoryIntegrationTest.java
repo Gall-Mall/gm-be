@@ -7,6 +7,8 @@ import jakarta.persistence.EntityManager;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.hibernate.SessionFactory;
+import org.hibernate.stat.Statistics;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -66,9 +68,16 @@ class MenuCandidateRepositoryIntegrationTest {
                 .description("국물 메뉴 선호 반영")
                 .build();
 
-        List<VoteCandidate> saved = voteCandidateRepository.saveAll(List.of(candidate));
+        List<VoteCandidate> saved = voteCandidateRepository.saveNewCandidates(List.of(candidate));
         entityManager.flush();
         entityManager.clear();
+
+        Statistics statistics = entityManager.getEntityManagerFactory()
+                .unwrap(SessionFactory.class)
+                .getStatistics();
+        statistics.setStatisticsEnabled(true);
+        statistics.clear();
+
         List<MenuVoteCandidate> result = voteCandidateRepository
                 .findAllByVoteSessionId(voteSessionId);
 
@@ -81,6 +90,7 @@ class MenuCandidateRepositoryIntegrationTest {
             assertThat(found.displayOrder()).isEqualTo(1);
             assertThat(found.resultStatus()).isEqualTo(VoteCandidateResult.PENDING);
         });
+        assertThat(statistics.getPrepareStatementCount()).isEqualTo(3);
     }
 
     @Test
