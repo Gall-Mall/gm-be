@@ -2,6 +2,7 @@ package com.gm.db.domain.user.repository;
 
 import com.gm.core.domain.user.exception.UserErrorCode;
 import com.gm.core.domain.user.exception.UserException;
+import com.gm.core.domain.user.model.UserStatus;
 import com.gm.db.domain.user.entity.UserEntity;
 import com.gm.db.domain.user.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
@@ -58,6 +59,9 @@ public class UserRepositoryImpl implements UserRepository {
     @Override
     public void updateUserStatus(UUID userId) {
         UserEntity userEntity = userJpaRepository.findById(userId).orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+        if(userEntity.getStatus() != UserStatus.ONBOARDING) {
+            throw new UserException(UserErrorCode.INVALID_ONBOARDING_STATUS);
+        }
         userEntity.updateTermsAgreed();
         userEntity.updateUserStatusToACTIVE();
     }

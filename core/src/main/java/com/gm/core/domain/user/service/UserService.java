@@ -175,9 +175,10 @@ public class UserService {
      */
     @Transactional
     public void submitOnboarding(UUID userId, Onboarding onboarding) {
-        validateOnboardingSetting(onboarding.userSetting());
-        saveUserSetting(userId,onboarding.userSetting());
         completeOnboarding(userId, onboarding.termsAgreed());
+        validateOnboardingSetting(onboarding.userSetting());
+        deleteUserSettings(userId);
+        saveUserSetting(userId,onboarding.userSetting());
     }
 
 
