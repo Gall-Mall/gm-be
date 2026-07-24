@@ -9,7 +9,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import com.gm.core.domain.user.repository.UserRepository;
 import com.jayway.jsonpath.JsonPath;
 
 import org.junit.jupiter.api.DisplayName;
@@ -65,26 +64,12 @@ class InviteIntegrationTest {
     @Autowired
     private InviteService inviteService;
 
-    @Autowired
-    private UserRepository userRepository;
-
-    // DB에 테스트 사용자를 저장하고 저장된 userId를 반환하는 메서드 추가
+    /**
+     * 테스트용 회원 식별자를 발급한다. Invite 로직은 UserService를 호출하지 않으므로
+     * 실제 DB에 저장된 회원일 필요가 없다(위 클래스 Javadoc 참고).
+     */
     private UUID saveTestUser() {
-        UUID uniqueValue = UUID.randomUUID();
-
-        User user = User.create(
-                "테스터",
-                Provider.NAVER,
-                "naver-provider-" + uniqueValue,
-                "010-0000-0000",
-                uniqueValue + "@example.com"
-        );
-
-        /*
-         * UserResult의 필드명이 userId이므로
-         * id()가 아니라 userId()를 사용한다.
-         */
-        return userRepository.saveResult(user).userId();
+        return UUID.randomUUID();
     }
 
     /** 요청 회원을 SecurityContext에 직접 주입하는 RequestPostProcessor를 만든다. */

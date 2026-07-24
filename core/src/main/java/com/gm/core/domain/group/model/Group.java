@@ -8,7 +8,9 @@ import java.util.UUID;
  * 저장이 완료된 그룹의 도메인 모델이다.
  *
  * @param id 그룹 식별자
- * @param ownerUserId 그룹장 회원 식별자
+ * @param ownerUserId 그룹을 최초로 생성한 회원 식별자(표시 전용). 방장 권한 판단 근거가
+ *         아니다 — 현재 방장 여부는 {@code group_member}의 역할·상태를 기준으로
+ *         {@link com.gm.core.domain.group.repository.GroupRepository#isActiveOwner}로 판단한다
  * @param name 그룹명
  * @param locationAddress 식당 검색 기준 주소
  * @param latitude 기준 위도

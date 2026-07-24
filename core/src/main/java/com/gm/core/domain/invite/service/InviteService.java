@@ -43,7 +43,7 @@ public class InviteService {
      * @param requesterUserId 요청 회원 식별자
      * @return 생성된 초대 코드
      * @throws GroupException groupId에 해당하는 그룹이 없어 {@code GROUP-001} 오류가 발생하는 경우
-     * @throws GroupException 요청 회원이 그룹장이 아니어서 {@code GROUP-006} 오류가 발생하는 경우
+     * @throws GroupException 요청 회원이 활성 방장 멤버가 아니어서 {@code GROUP-006} 오류가 발생하는 경우
      * @throws GroupException 그룹 정원이 가득 차 {@code GROUP-004} 오류가 발생하는 경우
      */
     @Transactional(readOnly = true)
@@ -53,7 +53,7 @@ public class InviteService {
         Group group = groupRepository.findById(groupId)
                 .orElseThrow(() -> new GroupException(GroupErrorCode.GROUP_NOT_FOUND));
 
-        if (!group.ownerUserId().equals(requesterUserId)) {
+        if (!groupRepository.isActiveOwner(groupId, requesterUserId)) {
             throw new GroupException(GroupErrorCode.NOT_GROUP_OWNER);
         }
         if (group.memberCount() >= group.maxMemberCount()) {

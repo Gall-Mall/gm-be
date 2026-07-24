@@ -69,6 +69,7 @@ class InviteServiceTest {
         UUID groupId = UUID.randomUUID();
         UUID ownerUserId = UUID.randomUUID();
         given(groupRepository.findById(groupId)).willReturn(Optional.of(group(groupId, ownerUserId, 3, 6)));
+        given(groupRepository.isActiveOwner(groupId, ownerUserId)).willReturn(true);
         given(inviteRepository.save(anyString(), eq(groupId), any(Duration.class))).willReturn(true);
 
         String inviteCode = inviteService.create(groupId, ownerUserId);
@@ -92,14 +93,15 @@ class InviteServiceTest {
     }
 
     @Test
-    @DisplayName("요청 회원이 그룹장이 아니면 GROUP-006 오류를 던진다")
-    void create_throwsNotGroupOwner_whenRequesterIsNotOwner() {
+    @DisplayName("요청 회원이 활성 방장 멤버가 아니면 GROUP-006 오류를 던진다")
+    void create_throwsNotGroupOwner_whenRequesterIsNotActiveOwner() {
         inviteService = new InviteService(inviteRepository, groupRepository, groupService);
 
         UUID groupId = UUID.randomUUID();
         UUID ownerUserId = UUID.randomUUID();
         UUID requesterUserId = UUID.randomUUID();
         given(groupRepository.findById(groupId)).willReturn(Optional.of(group(groupId, ownerUserId, 3, 6)));
+        given(groupRepository.isActiveOwner(groupId, requesterUserId)).willReturn(false);
 
         assertThatThrownBy(() -> inviteService.create(groupId, requesterUserId))
                 .isInstanceOf(GroupException.class)
@@ -115,6 +117,7 @@ class InviteServiceTest {
         UUID groupId = UUID.randomUUID();
         UUID ownerUserId = UUID.randomUUID();
         given(groupRepository.findById(groupId)).willReturn(Optional.of(group(groupId, ownerUserId, 6, 6)));
+        given(groupRepository.isActiveOwner(groupId, ownerUserId)).willReturn(true);
 
         assertThatThrownBy(() -> inviteService.create(groupId, ownerUserId))
                 .isInstanceOf(GroupException.class)
@@ -132,6 +135,7 @@ class InviteServiceTest {
         UUID groupId = UUID.randomUUID();
         UUID ownerUserId = UUID.randomUUID();
         given(groupRepository.findById(groupId)).willReturn(Optional.of(group(groupId, ownerUserId, 3, 6)));
+        given(groupRepository.isActiveOwner(groupId, ownerUserId)).willReturn(true);
         // 첫 두 번은 충돌(false), 세 번째에 성공(true)
         given(inviteRepository.save(anyString(), eq(groupId), any(Duration.class)))
                 .willReturn(false, false, true);
@@ -150,6 +154,7 @@ class InviteServiceTest {
         UUID groupId = UUID.randomUUID();
         UUID ownerUserId = UUID.randomUUID();
         given(groupRepository.findById(groupId)).willReturn(Optional.of(group(groupId, ownerUserId, 3, 6)));
+        given(groupRepository.isActiveOwner(groupId, ownerUserId)).willReturn(true);
         given(inviteRepository.save(anyString(), eq(groupId), any(Duration.class))).willReturn(false);
 
         assertThatThrownBy(() -> inviteService.create(groupId, ownerUserId))

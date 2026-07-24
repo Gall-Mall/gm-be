@@ -14,12 +14,12 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import com.gm.core.domain.group.model.GroupMemberStatus;
-import com.gm.db.domain.group.entity.GroupEntity;
+import com.gm.db.domain.group.entity.DiningGroupEntity;
 import com.gm.db.domain.group.projection.GroupDetailProjection;
 import com.gm.db.domain.group.projection.GroupSummaryProjection;
 
 @Repository
-public interface GroupJpaRepository extends JpaRepository<GroupEntity, UUID> {
+public interface GroupJpaRepository extends JpaRepository<DiningGroupEntity, UUID> {
 
     /**
      * 요청 회원이 특정 상태의 멤버로 참여 중인 그룹을 멤버 수와 함께 단일 쿼리로 페이지 조회한다.
@@ -41,7 +41,7 @@ public interface GroupJpaRepository extends JpaRepository<GroupEntity, UUID> {
                                 where m2.diningGroupId = g.id and m2.status = :status),
                         g.createdAt, g.updatedAt
                     )
-                    from GroupEntity g
+                    from DiningGroupEntity g
                     join GroupMemberEntity m on m.diningGroupId = g.id
                     where m.userId = :userId and m.status = :status
                     order by
@@ -50,7 +50,7 @@ public interface GroupJpaRepository extends JpaRepository<GroupEntity, UUID> {
                     """,
             countQuery = """
                     select count(g)
-                    from GroupEntity g
+                    from DiningGroupEntity g
                     join GroupMemberEntity m on m.diningGroupId = g.id
                     where m.userId = :userId and m.status = :status
                     """
@@ -77,7 +77,7 @@ public interface GroupJpaRepository extends JpaRepository<GroupEntity, UUID> {
                         where m2.diningGroupId = g.id and m2.status = :status),
                 g.createdAt, g.updatedAt, m.role
             )
-            from GroupEntity g
+            from DiningGroupEntity g
             join GroupMemberEntity m on m.diningGroupId = g.id
             where g.id = :groupId and m.userId = :userId and m.status = :status
             """)
@@ -99,7 +99,7 @@ public interface GroupJpaRepository extends JpaRepository<GroupEntity, UUID> {
                         where m.diningGroupId = g.id and m.status = :status),
                 g.createdAt, g.updatedAt
             )
-            from GroupEntity g
+            from DiningGroupEntity g
             where g.id = :groupId
             """)
     Optional<GroupSummaryProjection> findByIdWithMemberCount(
@@ -112,6 +112,6 @@ public interface GroupJpaRepository extends JpaRepository<GroupEntity, UUID> {
      * 하나의 원자적 흐름으로 처리하기 위해, 동일 그룹에 대한 동시 가입 요청을 이 잠금으로 직렬화한다.
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select g from GroupEntity g where g.id = :groupId")
-    Optional<GroupEntity> findByIdForUpdate(@Param("groupId") UUID groupId);
+    @Query("select g from DiningGroupEntity g where g.id = :groupId")
+    Optional<DiningGroupEntity> findByIdForUpdate(@Param("groupId") UUID groupId);
 }

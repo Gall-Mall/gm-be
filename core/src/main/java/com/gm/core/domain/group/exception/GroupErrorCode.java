@@ -26,7 +26,10 @@ public enum GroupErrorCode implements ErrorCode {
     NOT_GROUP_OWNER(403, "GROUP-006", "그룹장만 수행할 수 있습니다."),
 
     /** 강퇴(KICKED)된 사용자가 같은 그룹에 재가입을 시도하는 경우 사용한다. */
-    MEMBER_KICKED(403, "GROUP-007", "강퇴된 그룹에는 재가입할 수 없습니다.");
+    MEMBER_KICKED(403, "GROUP-007", "강퇴된 그룹에는 재가입할 수 없습니다."),
+
+    /** 그룹 정보 수정 시 현재 활성 멤버 수보다 작은 maxMemberCount로 변경을 시도하는 경우 사용한다. */
+    GROUP_CAPACITY_BELOW_ACTIVE_MEMBERS(409, "GROUP-008", "정원이 현재 활성 멤버 수보다 작을 수 없습니다.");
 
     private final int status;
     private final String code;
