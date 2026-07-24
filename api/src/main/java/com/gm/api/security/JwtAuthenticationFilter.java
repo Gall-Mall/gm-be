@@ -18,6 +18,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 
 import com.gm.api.security.jwt.JwtProvider;
@@ -56,13 +57,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     /**
      * Access Token을 검증하고 Spring Security 인증 정보를 등록한다.
+     * ONBOARDING 회원과 ACTIVE 회원은 인증할 수 있다.
+     * WITHDRAWN 회원은 인증하지 않는다.
+     *
+     * @param accessToken Access Token
+     * @param request 현재 HTTP 요청
      */
     private void authenticate(String accessToken, HttpServletRequest request) {
         UUID userId;
 
         try {
-            // 1. Access Token 검증 및 회원 UUID 추출
-            userId = jwtProvider.validateAndGetUserId(accessToken);
+            // 1. Access Token 검증
+            Claims claims = jwtProvider.validate(accessToken);
+            // 2. Claims에서 회원 UUID 추출
+            userId = jwtProvider.getUserId(claims);
         } catch (JwtException | IllegalArgumentException exception) {
 
             log.debug(
@@ -78,7 +86,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         User user;
 
         try {
-            // 2. 회원 조회
+            // 3. 실제 회원 정보 조회
             user = userService.findById(userId);
         } catch (UserException exception) {
 
@@ -93,10 +101,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        // 3. 활성 상태 회원인지 확인
-        if (user.status() != UserStatus.ACTIVE) {
+        /*
+         * 4. 탈퇴한 회원은 인증하지 않는다.
+         * ONBOARDING 회원은 온보딩 제출 API를 호출해야 하므로 정상적으로 인증되어야 한다.
+         */
+        if (user.status() == UserStatus.WITHDRAWN) {
+
             log.debug(
-                    "비활성 상태 회원의 JWT 인증 요청입니다. method={}, path={}, userId={}, status={}",
+                    "탈퇴한 회원의 JWT 인증 요청입니다. method={}, path={}, userId={}, status={}",
                     request.getMethod(),
                     request.getRequestURI(),
                     userId,
@@ -106,24 +118,26 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        // 4. 인증 Principal 생성
+        // 5. 인증 Principal 생성
         CustomUserPrincipal principal = new CustomUserPrincipal(userId, user);
 
-        // 5. 인증 객체 생성
+        // 6. Spring Security 인증 객체 생성
         UsernamePasswordAuthenticationToken authentication =
-                new UsernamePasswordAuthenticationToken(
-                        principal,null, principal.getAuthorities()
-                );
+                new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
 
-        // 6. 요청 세부 정보 설정
+        // 7. 요청 세부 정보 설정
         authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
-        // 7. SecurityContext에 인증 정보 등록
-        SecurityContextHolder.getContext().setAuthentication(authentication);
+        // 8. SecurityContext에 인증 정보 등록
+        SecurityContextHolder
+                .getContext()
+                .setAuthentication(authentication);
     }
 
     /**
      * Authorization 헤더에서 Bearer Access Token을 추출한다.
+     * @param request 현재 HTTP 요청
+     * @return Access Token, 존재하지 않으면 null
      */
     private String resolveToken(HttpServletRequest request) {
         String authorizationHeader = request.getHeader(AUTHORIZATION_HEADER);

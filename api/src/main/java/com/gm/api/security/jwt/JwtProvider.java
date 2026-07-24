@@ -7,6 +7,7 @@ import java.util.UUID;
 
 import javax.crypto.SecretKey;
 
+import com.gm.core.domain.user.model.UserStatus;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -20,6 +21,7 @@ import io.jsonwebtoken.security.Keys;
 public class JwtProvider {
 
     private static final String TOKEN_TYPE_CLAIM = "tokenType";
+    private static final String STATUS_CLAIM = "status";
     private static final String ACCESS_TOKEN_TYPE = "ACCESS";
 
     private final SecretKey key;
@@ -29,6 +31,9 @@ public class JwtProvider {
             @Value("${jwt.secret}") String secret,
             @Value("${jwt.access-token-expiration}") long accessTokenExpiration
     ) {
+        if (!StringUtils.hasText(secret)) { throw new IllegalArgumentException("JWT Secret이 설정되지 않았습니다."); }
+        if (accessTokenExpiration <= 0) { throw new IllegalArgumentException("Access Token 만료 시간은 0보다 커야 합니다."); }
+
         this.key = Keys.hmacShaKeyFor(Base64.getDecoder().decode(secret));
         this.accessTokenExpiration = accessTokenExpiration;
     }
@@ -37,81 +42,103 @@ public class JwtProvider {
      * 서비스 Access Token을 생성한다.
      *
      * @param userId 서비스 회원 UUID
+     * @param status 사용자 상태
      * @return 생성된 Access Token
      */
-    public String createAccessToken(UUID userId) {
+    public String createAccessToken(UUID userId, UserStatus status) {
+
         Instant issuedAt = Instant.now();
         Instant expiration = issuedAt.plusSeconds(accessTokenExpiration);
 
         return Jwts.builder()
-                // JWT 고유 식별자
+                // JWT 고유 식별자(jti)
                 .id(UUID.randomUUID().toString())
-                // 서비스 회원 UUID
+                // 서비스 회원 UUID(sub)
                 .subject(userId.toString())
-                // Access Token임을 나타내는 Claim
+                // Access Token 타입
                 .claim(TOKEN_TYPE_CLAIM, ACCESS_TOKEN_TYPE)
-                // 토큰 발급 시각
+                // 사용자 상태
+                .claim(STATUS_CLAIM, status.name())
+                // 발급 시각
                 .issuedAt(Date.from(issuedAt))
-                // 토큰 만료 시각
+                // 만료 시각
                 .expiration(Date.from(expiration))
-                // JWT 서명
-                .signWith(key)
-                .compact();
+                // 서명
+                .signWith(key).compact();
     }
 
     /**
-     * Access Token을 검증하고 회원 UUID를 반환한다.
+     * Access Token을 검증하고 Claims를 반환한다.
      *
-     * 검증 항목:
+     * 검증 항목
      * - 토큰 존재 여부
      * - JWT 형식
-     * - JWT 서명
-     * - JWT 만료 시간
-     * - JWT 변조 여부
-     * - Access Token 타입 여부
-     * - 회원 UUID 형식
+     * - 서명
+     * - 만료 시간
+     * - Access Token 여부
      *
      * @param token Access Token
-     * @return JWT subject에 저장된 회원 UUID
-     * @throws IllegalArgumentException 토큰이 없거나 회원 UUID 형식이 잘못된 경우
-     * @throws JwtException JWT가 유효하지 않거나 Access Token이 아닌 경우
+     * @return JWT Claims
      */
-    public UUID validateAndGetUserId(String token) {
-        if (!StringUtils.hasText(token)) {
-            throw new IllegalArgumentException("Access Token이 존재하지 않습니다.");
-        }
+    public Claims validate(String token) {
+
+        if (!StringUtils.hasText(token)) { throw new IllegalArgumentException("Access Token이 존재하지 않습니다."); }
 
         Claims claims = parseClaims(token);
-
         String tokenType = claims.get(TOKEN_TYPE_CLAIM, String.class);
 
-        if (!ACCESS_TOKEN_TYPE.equals(tokenType)) {
-            throw new JwtException("Access Token 타입이 올바르지 않습니다.");
-        }
+        if (!ACCESS_TOKEN_TYPE.equals(tokenType)) { throw new JwtException("Access Token 타입이 올바르지 않습니다."); }
+
+        return claims;
+    }
+
+    /**
+     * Claims에서 회원 UUID를 반환한다.
+     */
+    public UUID getUserId(Claims claims) {
 
         String subject = claims.getSubject();
 
-        if (!StringUtils.hasText(subject)) {
-            throw new JwtException("Access Token에 회원 식별자가 존재하지 않습니다.");
-        }
+        if (!StringUtils.hasText(subject)) { throw new JwtException("회원 식별자가 존재하지 않습니다."); }
 
         return UUID.fromString(subject);
     }
 
-    /** Access Token 만료 시간을 초 단위로 반환한다. */
-    public long getAccessTokenExpirationSeconds() {
-        return accessTokenExpiration;
+    /**
+     * Claims에서 회원 상태를 반환한다.
+     */
+    public UserStatus getUserStatus(Claims claims) {
+
+        String status = claims.get(STATUS_CLAIM, String.class);
+
+        if (!StringUtils.hasText(status)) { throw new JwtException("회원 상태가 존재하지 않습니다."); }
+
+        return UserStatus.valueOf(status);
     }
 
     /**
-     * JWT 서명과 만료 시간을 검증한 뒤 Claims를 반환한다.
-     * 잘못된 서명, 만료된 토큰, 변조된 토큰이면 JwtException 계열 예외가 발생한다.
+     * JWT ID(jti)를 반환한다.
+     */
+    public String getJti(Claims claims) {
+
+        String jti = claims.getId();
+
+        if (!StringUtils.hasText(jti)) { throw new JwtException("JWT ID가 존재하지 않습니다."); }
+
+        return jti;
+    }
+
+    /**
+     * Access Token 만료 시간을 초 단위로 반환한다.
+     */
+    public long getAccessTokenExpirationSeconds() { return accessTokenExpiration; }
+
+    /**
+     * JWT 서명 및 만료 시간을 검증한 뒤 Claims를 반환한다.
      */
     private Claims parseClaims(String token) {
+
         return Jwts.parser()
-                .verifyWith(key)
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
+                .verifyWith(key).build().parseSignedClaims(token).getPayload();
     }
 }
