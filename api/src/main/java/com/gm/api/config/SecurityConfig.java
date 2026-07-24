@@ -35,13 +35,17 @@ public class SecurityConfig {
                         .authenticationEntryPoint(authenticationEntryPoint)
                         .accessDeniedHandler(accessDeniedHandler))
                 .authorizeHttpRequests(auth -> auth
+                        // 인증 없이 열어야 하는 경로만 명시 허용한다.
                         .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/api/users/me").authenticated()
+                        .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
+                        // /api/users/me 뿐 아니라 하위 경로(/me/allergens/analyze 등)까지 인증 요구.
+                        .requestMatchers("/api/users/**").authenticated()
                         // Group·Invite 도메인은 실제 JWT 인증을 요구한다. 임시 X-User-Id
                         // 헤더 패턴은 폐기했다.
                         .requestMatchers("/api/groups/**").authenticated()
                         .requestMatchers("/api/invites/**").authenticated()
-                        .anyRequest().permitAll())
+                        // 나머지는 기본 차단(default-deny). 공개가 필요하면 위에 명시 허용을 추가한다.
+                        .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
