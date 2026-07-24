@@ -262,7 +262,7 @@ public class UserService {
      */
     private void completeOnboarding(UUID userId, boolean termsAgreed) {
         if(!termsAgreed) {
-            throw new UserException(UserErrorCode.TERMS_AGREED_APPROVE);
+            throw new UserException(UserErrorCode.TERMS_NOT_AGREED);
         }
         userRepository.updateUserStatus(userId);
     }
@@ -295,16 +295,16 @@ public class UserService {
      */
     private Map<UserCategoryPreference, List<UUID>> getUserCategoryPreferenceIds(UUID userId) {
 
-        HashMap<UserCategoryPreference,List<UUID>> userMenuPreferenceIdMap =  new HashMap<>();
+        HashMap<UserCategoryPreference,List<UUID>> userCategoryPreferenceIdMap =  new HashMap<>();
         List<UserCategory> userCategoryPreferences = userCategoryService.getUserCategoryPreferences(userId);
 
         List<UUID> like = userCategoryPreferences.stream().filter(i -> i.preference() == UserCategoryPreference.LIKE).map(UserCategory::categoryId).toList();
         List<UUID> dislike = userCategoryPreferences.stream().filter(i -> i.preference() == UserCategoryPreference.DISLIKE).map(UserCategory::categoryId).toList();
 
-        userMenuPreferenceIdMap.put(UserCategoryPreference.LIKE, like);
-        userMenuPreferenceIdMap.put(UserCategoryPreference.DISLIKE, dislike);
+        userCategoryPreferenceIdMap.put(UserCategoryPreference.LIKE, like);
+        userCategoryPreferenceIdMap.put(UserCategoryPreference.DISLIKE, dislike);
 
-        return userMenuPreferenceIdMap;
+        return userCategoryPreferenceIdMap;
     }
 
     /**
