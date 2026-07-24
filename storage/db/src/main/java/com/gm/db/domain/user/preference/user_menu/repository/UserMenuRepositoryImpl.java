@@ -6,8 +6,11 @@ import com.gm.core.domain.user.model.UserMenuPreference;
 import com.gm.db.domain.user.preference.user_menu.entity.UserMenuEntity;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
+
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 @RequiredArgsConstructor
 @Repository
@@ -27,11 +30,23 @@ public class UserMenuRepositoryImpl implements UserMenuRepository {
     }
 
     @Override
-    public void addUserMenuPreference(UUID userId, List<UUID> menuIds, UserMenuPreference preference) {
-        List<UserMenuEntity> list = menuIds
-                .stream()
-                .map(menuId -> new UserMenuEntity(userId, menuId, preference))
-                .toList();
-        userMenuJpaRepository.saveAll(list);
+    public void addUserMenuPreference(UUID userId, List<UUID> preferredMenuIds, List<UUID> excludedMenuIds) {
+
+        List<UserMenuEntity> userMenuEntities = Stream.concat(
+                preferredMenuIds.stream()
+                        .map(menuId -> new UserMenuEntity(
+                                userId,
+                                menuId,
+                                UserMenuPreference.LIKE
+                        )),
+                excludedMenuIds.stream()
+                        .map(menuId -> new UserMenuEntity(
+                                userId,
+                                menuId,
+                                UserMenuPreference.EXCLUDE
+                        ))
+        ).toList();
+
+        userMenuJpaRepository.saveAll(userMenuEntities);
     }
 }
