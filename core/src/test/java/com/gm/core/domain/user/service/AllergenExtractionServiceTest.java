@@ -102,11 +102,27 @@ class AllergenExtractionServiceTest {
 
     @Test
     void 비표준_개수는_상한까지만_담긴다() {
-        // 상한 20 초과로 비정상 응답이 와도 20개까지만
+        // 상한 15 초과로 비정상 응답이 와도 15개까지만 (custom_allergen_text 500자 방어)
         String[] many = IntStream.range(0, 50).mapToObj(i -> "성분" + i).toArray(String[]::new);
         var result = serviceReturning(many).extract("...");
 
-        assertThat(result.customAllergens()).hasSize(20);
+        assertThat(result.customAllergens()).hasSize(15);
+    }
+
+    @Test
+    void 표준_매칭은_개수_상한이_없다() {
+        // 매칭은 제한하지 않는다 — 마스터에 있는 건 모두 통과 (여기선 우유/새우 2개)
+        var result = serviceReturning("우유", "새우").extract("...");
+        assertThat(result.standardAllergens()).hasSize(2);
+    }
+
+    @Test
+    void 콤마와_HTML_위험문자는_제거된다() {
+        // 저장 컬럼이 콤마 구분이라 항목 내 콤마는 경계를 깬다 → 공백 치환. < > & " 도 제거.
+        var result = serviceReturning("파인애플, 키위", "<script>").extract("...");
+
+        // "파인애플, 키위"는 콤마가 공백으로 → 한 항목 "파인애플 키위"
+        assertThat(result.customAllergens()).containsExactly("파인애플 키위", "script");
     }
 
     @Test

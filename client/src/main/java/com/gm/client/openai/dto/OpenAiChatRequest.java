@@ -7,12 +7,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
  * OpenAI Chat Completions 요청. (/v1/chat/completions)
- *
- * @param model 사용할 모델명
- * @param messages system/user 메시지 목록
- * @param responseFormat JSON mode 지정 ({"type":"json_object"})
- * @param temperature 낮을수록 결정적 출력 (추출 용도라 0 근처)
- * @param maxTokens 출력 토큰 상한 (비용·응답 폭주 방어)
+ * responseFormat으로 JSON mode를 지정하고, maxTokens로 출력 상한을 둔다.
  */
 public record OpenAiChatRequest(
         String model,
@@ -22,14 +17,11 @@ public record OpenAiChatRequest(
         @JsonProperty("max_tokens") int maxTokens
 ) {
 
-    // 추출 결과 JSON은 짧다. 상한을 넉넉히 두되 무제한 출력은 막는다.
-    private static final int EXTRACTION_MAX_TOKENS = 256;
-
     public record Message(String role, String content) {
     }
 
-    /** JSON mode 추출 요청을 만든다. */
-    public static OpenAiChatRequest jsonExtraction(String model, String systemPrompt, String userPrompt) {
+    /** JSON mode 요청을 만든다. maxTokens로 출력 상한을 지정한다(비용·폭주 방어). */
+    public static OpenAiChatRequest jsonMode(String model, String systemPrompt, String userPrompt, int maxTokens) {
         return new OpenAiChatRequest(
                 model,
                 List.of(
@@ -38,7 +30,7 @@ public record OpenAiChatRequest(
                 ),
                 Map.of("type", "json_object"),
                 0.0,
-                EXTRACTION_MAX_TOKENS
+                maxTokens
         );
     }
 }

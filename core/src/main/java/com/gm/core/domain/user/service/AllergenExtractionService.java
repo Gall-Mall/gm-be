@@ -18,17 +18,19 @@ import lombok.RequiredArgsConstructor;
 /**
  * 자유텍스트 알레르기 추출 서비스 (동기).
  *
- * <p>흐름: 마스터 조회 → [사용자입력 + 마스터 이름 목록] AI 위임 → 화이트리스트 검증 →
+ * 흐름: 마스터 조회 → [사용자입력 + 마스터 이름 목록] AI 위임 → 화이트리스트 검증 →
  * 이름→UUID 매핑. AI가 무엇을 뽑았든 판정 기준은 오직 마스터다.
- * 마스터에 있으면 표준(id 확정), 없으면 비표준(텍스트 보관)이라 무엇도 소실되지 않는다.</p>
+ * 마스터에 있으면 표준(id 확정), 없으면 비표준(텍스트 보관)이라 무엇도 소실되지 않는다.
  */
 @Service
 @RequiredArgsConstructor
 public class AllergenExtractionService {
 
     // 모델 출력을 신뢰하지 않고 상한을 둔다. (프롬프트 인젝션·비정상 응답 방어)
-    private static final int MAX_CUSTOM_COUNT = 20;    // 비표준 알레르기 최대 개수
     private static final int MAX_NAME_LENGTH = 30;     // 개별 이름 최대 길이
+    // 비표준은 custom_allergen_text VARCHAR(500)에 콤마 조인 저장된다.
+    // 개수 × (길이 + 구분자) 가 500 이내가 되도록 상한을 잡는다. (15 × 32 = 480)
+    private static final int MAX_CUSTOM_COUNT = 15;    // 비표준 알레르기 최대 개수
 
     private final AiChatPort aiChatPort;
     private final AllergenRepository allergenRepository;
@@ -49,25 +51,19 @@ public class AllergenExtractionService {
             byNormalizedName.putIfAbsent(normalize(allergen.name()), allergen);
         }
 
-        // null/공백 원소를 제거하고 개별 길이 상한을 적용해 정제한다. (모델 출력 무검증 방지)
-        List<String> names = (raw.allergenNames() == null ? List.<String>of() : raw.allergenNames()).stream()
-                .filter(Objects::nonNull)
-                .map(String::trim)
-                .filter(name -> !name.isEmpty() && name.length() <= MAX_NAME_LENGTH)
-                .toList();
+        // null/위험문자/공백/길이 정제 (콤마·HTML 문자 제거로 저장 계약·XSS 방어). 음식 서비스와 동일 정책.
+        List<String> names = PreferenceKeywords.cleaned(raw.allergenNames(), MAX_NAME_LENGTH);
 
-        // 표준 = 마스터에 정확히 매칭되는 것만. (user_allergen에 id로 저장)
+        // 표준 = 마스터에 정확히 매칭되는 것만. 매칭은 개수 제한하지 않는다. (user_allergen에 id 저장)
         List<Allergen> matched = names.stream()
                 .map(name -> byNormalizedName.get(normalize(name)))
                 .filter(Objects::nonNull)
                 .distinct()
                 .toList();
 
-        // 비표준 = 마스터에 매칭되지 않는 나머지. 개수 상한으로 저장 폭주를 막는다.
-        // (user.custom_allergen_text VARCHAR(500)로 보관)
+        // 비표준 = 마스터 미매칭 나머지. 개수 상한은 비표준에만 적용한다. (custom_allergen_text 보관)
         List<String> custom = names.stream()
                 .filter(name -> !byNormalizedName.containsKey(normalize(name)))
-                .distinct()
                 .limit(MAX_CUSTOM_COUNT)
                 .toList();
 

@@ -5,8 +5,6 @@ import jakarta.validation.constraints.Size;
 
 /**
  * 자유텍스트 음식 취향 분석 요청. 좋아하는/싫어하는 입력칸 공용(극성은 저장 시점 확정).
- *
- * @param text 사용자가 입력한 자유텍스트 (음식 취향 서술)
  */
 public record FoodPreferenceAnalyzeRequest(
         @NotBlank(message = "분석할 텍스트를 입력해주세요.")

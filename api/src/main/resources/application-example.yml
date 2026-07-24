@@ -81,8 +81,9 @@ app:
       info-per-minute: ${INVITE_RATE_LIMIT_INFO_PER_MINUTE:20}
       join-per-minute: ${INVITE_RATE_LIMIT_JOIN_PER_MINUTE:10}
       join-per-hour: ${INVITE_RATE_LIMIT_JOIN_PER_HOUR:30}
+    ai-analyze:
+      per-minute: ${AI_ANALYZE_RATE_LIMIT_PER_MINUTE:5}
 
-# OpenAI 설정. 실제 키는 환경변수 또는 gitignore된 application.yml에만 둔다.
 openai:
   api-key: ${OPENAI_API_KEY:YOUR_OPENAI_API_KEY}
   model: ${OPENAI_MODEL:gpt-4o-mini}
