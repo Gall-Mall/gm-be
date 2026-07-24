@@ -3,7 +3,6 @@ package com.gm.api.controller.invite;
 import java.time.LocalTime;
 import java.util.UUID;
 
-import com.gm.core.domain.user.repository.UserRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -53,9 +52,6 @@ class InviteJoinHourlyRateLimitTest {
     @Autowired
     private InviteService inviteService;
 
-    @Autowired
-    private UserRepository userRepository;
-
     private static RequestPostProcessor authAs(UUID userId) {
         User dummyUser = User.create("테스터", Provider.NAVER, userId.toString(), "010-0000-0000", "test@example.com");
         CustomUserPrincipal principal = new CustomUserPrincipal(userId, dummyUser);
@@ -64,18 +60,12 @@ class InviteJoinHourlyRateLimitTest {
         return authentication(authentication);
     }
 
+    /**
+     * 테스트용 회원 식별자를 발급한다. Invite 로직은 UserService를 호출하지 않으므로
+     * 실제 DB에 저장된 회원일 필요가 없다.
+     */
     private UUID saveTestUser() {
-        UUID uniqueValue = UUID.randomUUID();
-
-        User user = User.create(
-                "테스터",
-                Provider.NAVER,
-                "naver-provider-" + uniqueValue,
-                "010-0000-0000",
-                uniqueValue + "@example.com"
-        );
-
-        return userRepository.saveResult(user).userId();
+        return UUID.randomUUID();
     }
 
     private Group createGroup(UUID ownerUserId, int maxMemberCount) {

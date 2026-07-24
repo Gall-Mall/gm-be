@@ -2,11 +2,8 @@ package com.gm.api.controller.group;
 
 import java.util.UUID;
 
-import com.gm.core.domain.user.model.UserResult;
-import com.gm.core.domain.user.repository.UserRepository;
 import com.jayway.jsonpath.JsonPath;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -55,30 +52,6 @@ class GroupIntegrationTest {
     @Autowired
     private GroupService groupService;
 
-    @Autowired
-    private UserRepository userRepository;
-    private UUID testUserId;
-
-    @BeforeEach
-    void setUp() {
-        User user = new User(
-                "테스터",
-                "테스터닉네임",
-                UserStatus.ACTIVE,
-                Provider.NAVER,
-                "naver-provider-" + UUID.randomUUID(),
-                "010-1234-5678",
-                UUID.randomUUID() + "@example.com",
-                false,
-                null,
-                null,
-                null
-        );
-
-        UserResult savedUser = userRepository.saveResult(user);
-        testUserId = savedUser.userId();
-    }
-
     /** 요청 회원을 SecurityContext에 직접 주입하는 RequestPostProcessor를 만든다. */
     private static RequestPostProcessor authAs(UUID userId) {
         User dummyUser = new User(
@@ -110,7 +83,7 @@ class GroupIntegrationTest {
     @Test
     @DisplayName("그룹 생성에 성공하면 201과 함께 요청자를 그룹장으로 등록한 그룹 정보를 반환한다")
     void createGroup_succeeds() throws Exception {
-        UUID ownerUserId = testUserId;
+        UUID ownerUserId = UUID.randomUUID();
 
         mockMvc.perform(post("/api/groups")
                         .with(authAs(ownerUserId))
@@ -147,7 +120,7 @@ class GroupIntegrationTest {
                 """;
 
         mockMvc.perform(post("/api/groups")
-                        .with(authAs(testUserId))
+                        .with(authAs(UUID.randomUUID()))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isBadRequest())
@@ -171,7 +144,7 @@ class GroupIntegrationTest {
                 """;
 
         mockMvc.perform(post("/api/groups")
-                        .with(authAs(testUserId))
+                        .with(authAs(UUID.randomUUID()))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isBadRequest())
@@ -193,7 +166,7 @@ class GroupIntegrationTest {
     @Test
     @DisplayName("내가 참여 중인 그룹만 목록으로 조회한다")
     void findMyGroups_returnsGroupsOfActiveMember() throws Exception {
-        UUID ownerUserId = testUserId;
+        UUID ownerUserId = UUID.randomUUID();
 
         mockMvc.perform(post("/api/groups")
                         .with(authAs(ownerUserId))
@@ -221,7 +194,7 @@ class GroupIntegrationTest {
     @DisplayName("참여 중인 그룹이 없으면 빈 목록을 반환한다")
     void findMyGroups_withNoMemberships_returnsEmptyContent() throws Exception {
         mockMvc.perform(get("/api/groups")
-                        .with(authAs(testUserId)))
+                        .with(authAs(UUID.randomUUID())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.code").value("SUCCESS"))
@@ -232,7 +205,7 @@ class GroupIntegrationTest {
     @Test
     @DisplayName("투표 세션이 없으면 생성일 내림차순으로 정렬되고, size만큼 페이지가 나뉜다")
     void findMyGroups_ordersByCreatedAtDesc_andPaginates() throws Exception {
-        UUID ownerUserId = testUserId;
+        UUID ownerUserId = UUID.randomUUID();
 
         mockMvc.perform(post("/api/groups")
                         .with(authAs(ownerUserId))
@@ -290,7 +263,7 @@ class GroupIntegrationTest {
     @Test
     @DisplayName("최근 투표 세션이 생성된 그룹이, 더 먼저 만들어진 그룹보다 앞에 온다")
     void findMyGroups_ordersByMostRecentVoteSessionActivity() throws Exception {
-        UUID ownerUserId = testUserId;
+        UUID ownerUserId = UUID.randomUUID();
 
         UUID firstGroupId = createGroupAndGetId(ownerUserId, REQUEST_BODY);
 
@@ -323,7 +296,7 @@ class GroupIntegrationTest {
     @Test
     @DisplayName("그룹장이 상세 조회하면 200과 함께 그룹 정보·OWNER 역할을 반환한다")
     void findGroupDetail_succeeds_forOwner() throws Exception {
-        UUID ownerUserId = testUserId;
+        UUID ownerUserId = UUID.randomUUID();
         UUID groupId = createGroupAndGetId(ownerUserId, REQUEST_BODY);
 
         mockMvc.perform(get("/api/groups/{groupId}", groupId)
@@ -341,8 +314,8 @@ class GroupIntegrationTest {
     @Test
     @DisplayName("존재하지 않는 groupId를 조회하면 GROUP-001 오류를 반환한다")
     void findGroupDetail_withUnknownGroupId_returnsGroup001() throws Exception {
-        mockMvc.perform(get("/api/groups/{groupId}", testUserId)
-                        .with(authAs(testUserId)))
+        mockMvc.perform(get("/api/groups/{groupId}", UUID.randomUUID())
+                        .with(authAs(UUID.randomUUID())))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.code").value("GROUP-001"));
@@ -351,7 +324,7 @@ class GroupIntegrationTest {
     @Test
     @DisplayName("그룹의 활성 멤버가 아닌 회원이 조회하면 GROUP-002 오류를 반환한다")
     void findGroupDetail_withNonMemberRequester_returnsGroup002() throws Exception {
-        UUID ownerUserId = testUserId;
+        UUID ownerUserId = UUID.randomUUID();
         // 그룹장과 다른 비회원 UUID 생성
         UUID nonMemberUserId = UUID.randomUUID();
         UUID groupId = createGroupAndGetId(ownerUserId, REQUEST_BODY);
@@ -367,7 +340,7 @@ class GroupIntegrationTest {
     @DisplayName("groupId가 UUID 형식이 아니면 COMMON-005 오류를 반환한다")
     void findGroupDetail_withMalformedGroupId_returnsCommon005() throws Exception {
         mockMvc.perform(get("/api/groups/{groupId}", "not-a-uuid")
-                        .with(authAs(testUserId)))
+                        .with(authAs(UUID.randomUUID())))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.code").value("COMMON-005"));
@@ -376,7 +349,7 @@ class GroupIntegrationTest {
     @Test
     @DisplayName("인증 없이 요청하면 COMMON-003 오류를 반환한다")
     void findGroupDetail_withoutAuthentication_returnsCommon003() throws Exception {
-        mockMvc.perform(get("/api/groups/{groupId}", testUserId))
+        mockMvc.perform(get("/api/groups/{groupId}", UUID.randomUUID()))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.code").value("COMMON-003"));
