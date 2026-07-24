@@ -1,7 +1,5 @@
 package com.gm.api.config;
 
-import com.gm.api.security.oauth.OAuth2FailureHandler;
-import com.gm.api.security.oauth.OAuth2SuccessHandler;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.context.annotation.Bean;
@@ -15,6 +13,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 import com.gm.api.security.*;
 import com.gm.api.security.oauth.CustomOAuth2UserService;
+import com.gm.api.security.oauth.OAuth2FailureHandler;
+import com.gm.api.security.oauth.OAuth2SuccessHandler;
 
 @Configuration
 @RequiredArgsConstructor
@@ -56,6 +56,7 @@ public class SecurityConfig {
                         // 네이버 OAuth2 로그인 시작 및 콜백 요청 허용
                         .requestMatchers("/api/auth/oauth/**", "/login/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/token", "/api/auth/token/refresh").permitAll()
+                        .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/logout").authenticated()
                         .requestMatchers("/api/users/me", "/api/users/me/**").authenticated()
                         .requestMatchers("/api/groups/**").authenticated()

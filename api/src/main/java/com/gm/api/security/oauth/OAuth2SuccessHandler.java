@@ -31,7 +31,8 @@ import com.gm.core.domain.user.model.UserStatus;
 public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
 
     private static final String EXCHANGE_CODE_QUERY_PARAM = "code";
-    private final String successRedirectUri;
+    private final String onboardingRedirectUri;
+    private final String homeRedirectUri;
     private final AuthTokenService authTokenService;
     private final LoginExchangeService loginExchangeService;
     private final RefreshTokenCookieManager refreshTokenCookieManager;
@@ -39,17 +40,20 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
     /**
      * OAuth2 인증 성공 처리기를 생성한다.
      *
-     * @param successRedirectUri        인증 성공 후 이동할 프런트엔드 URI
+     * @param onboardingRedirectUri     온보딩 미완료(ONBOARDING) 회원이 이동할 프런트엔드 URI
+     * @param homeRedirectUri           온보딩 완료(ACTIVE 등) 회원이 이동할 프런트엔드 URI
      * @param authTokenService          토큰 발급 서비스
      * @param loginExchangeService      로그인 교환 코드 관리 서비스
      * @param refreshTokenCookieManager Refresh Token 쿠키 관리 컴포넌트
      */
     public OAuth2SuccessHandler(
-            @Value("${app.oauth2.success-redirect-uri}") String successRedirectUri,
+            @Value("${app.oauth2.onboarding-redirect-uri}") String onboardingRedirectUri,
+            @Value("${app.oauth2.home-redirect-uri}") String homeRedirectUri,
             AuthTokenService authTokenService,
             LoginExchangeService loginExchangeService,
             RefreshTokenCookieManager refreshTokenCookieManager) {
-        this.successRedirectUri = successRedirectUri;
+        this.onboardingRedirectUri = onboardingRedirectUri;
+        this.homeRedirectUri = homeRedirectUri;
         this.authTokenService = authTokenService;
         this.loginExchangeService = loginExchangeService;
         this.refreshTokenCookieManager = refreshTokenCookieManager;
@@ -84,8 +88,8 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         // Access Token 대신 사용할 일회용 로그인 교환 코드를 생성한다. Redis에는 userId와 Refresh Token의 jti만 저장된다.
         String exchangeCode = loginExchangeService.createExchangeCode(userId, issuedRefreshToken.refreshTokenId());
 
-        // 기존에는 successRedirectUri로 바로 Redirect했지만, 이제는 일회용 로그인 교환 코드만 쿼리 파라미터로 전달한다.
-        String redirectUri = createSuccessRedirectUri(exchangeCode);
+        // 회원 상태에 따라 온보딩/메인 화면으로 보내되, 일회용 로그인 교환 코드를 쿼리 파라미터로 전달한다.
+        String redirectUri = createSuccessRedirectUri(exchangeCode, status);
 
         log.debug(
                 "OAuth2 로그인 교환 코드 발급 완료: " + "userId={}, refreshTokenId={}",
@@ -115,14 +119,17 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
 
     /**
      * OAuth 로그인 성공 Redirect URI를 생성한다.
-     * <p>기존 URI에 쿼리 파라미터가 존재하더라도 안전하게 로그인 교환 코드를 추가한다.</p>
+     * <p>회원 상태에 따라 온보딩/메인 화면 URI를 고르고, 기존 URI에 쿼리 파라미터가 있더라도
+     * 안전하게 로그인 교환 코드를 추가한다.</p>
      *
      * @param exchangeCode 일회용 로그인 교환 코드
+     * @param status       회원 상태 (ONBOARDING이면 온보딩, 그 외는 메인)
      * @return 교환 코드가 포함된 Redirect URI
      */
-    private String createSuccessRedirectUri(String exchangeCode) {
+    private String createSuccessRedirectUri(String exchangeCode, UserStatus status) {
+        String baseUri = status == UserStatus.ONBOARDING ? onboardingRedirectUri : homeRedirectUri;
         return UriComponentsBuilder
-                .fromUriString(successRedirectUri)
+                .fromUriString(baseUri)
                 .queryParam(EXCHANGE_CODE_QUERY_PARAM, exchangeCode)
                 .build()
                 .encode()

@@ -264,6 +264,7 @@ class GroupIntegrationTest {
     @DisplayName("최근 투표 세션이 생성된 그룹이, 더 먼저 만들어진 그룹보다 앞에 온다")
     void findMyGroups_ordersByMostRecentVoteSessionActivity() throws Exception {
         UUID ownerUserId = UUID.randomUUID();
+        UUID testUserId = ownerUserId;
 
         UUID firstGroupId = createGroupAndGetId(ownerUserId, REQUEST_BODY);
 
