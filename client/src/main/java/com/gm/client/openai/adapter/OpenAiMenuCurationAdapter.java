@@ -4,8 +4,8 @@ import java.util.List;
 
 import org.springframework.stereotype.Component;
 
-import com.fasterxml.jackson.core.JacksonException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import com.gm.client.openai.client.OpenAiJsonClient;
 import com.gm.client.openai.dto.MenuCurationJson;
 import com.gm.client.openai.exception.OpenAiApiException;
