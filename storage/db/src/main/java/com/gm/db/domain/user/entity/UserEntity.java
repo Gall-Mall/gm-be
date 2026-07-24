@@ -34,11 +34,9 @@ public class UserEntity extends BaseEntity {
     private String email;
     @Column(nullable = false)
     private Boolean termsAgreed;
-    @Column(nullable = false)
+
     private String customAllergenText;
-    @Column(nullable = false)
     private String preferenceText;
-    @Column(nullable = false)
     private String excludeFoodText;
 
     public UserEntity(
@@ -58,5 +56,19 @@ public class UserEntity extends BaseEntity {
         this.phone = phone;
         this.email = email;
         this.termsAgreed = termsAgreed;
+    }
+
+    public void updateTermsAgreed() {
+        this.termsAgreed = true;
+    }
+
+    public void updateUserInputText(String allergenText, String preferredText, String excludedText) {
+        this.customAllergenText = allergenText;
+        this.preferenceText = preferredText;
+        this.excludeFoodText = excludedText;
+    }
+
+    public void updateUserStatusToACTIVE() {
+        this.status = UserStatus.ACTIVE;
     }
 }
