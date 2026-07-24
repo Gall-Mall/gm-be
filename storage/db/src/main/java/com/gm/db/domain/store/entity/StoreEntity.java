@@ -13,7 +13,6 @@ import java.util.UUID;
 
 public class StoreEntity extends BaseEntity {
 
-    // TODO: 연관관계 매핑 UUID voteSession;
     @Column(nullable = false)
     private UUID voteSessionId;
 
@@ -44,7 +43,8 @@ public class StoreEntity extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private Provider provider;
 
-    public StoreEntity(Boolean selected, String name, String url, String address, Double latitude, Double longitude, Integer distance, String externalPlaceId, Provider provider) {
+    public StoreEntity(UUID voteSessionId, Boolean selected, String name, String url, String address, Double latitude, Double longitude, Integer distance, String externalPlaceId, Provider provider) {
+        this.voteSessionId = voteSessionId;
         this.selected = selected;
         this.name = name;
         this.url = url;
