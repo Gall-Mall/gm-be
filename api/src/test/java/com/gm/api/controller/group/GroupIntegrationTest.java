@@ -18,11 +18,11 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
+import com.gm.core.domain.vote.session.service.VoteSessionService;
 import com.gm.api.security.CustomUserPrincipal;
 import com.gm.core.domain.user.model.Provider;
 import com.gm.core.domain.user.model.User;
 import com.gm.core.domain.user.model.UserStatus;
-import com.gm.core.domain.vote.service.VoteSessionService;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -302,8 +302,8 @@ class GroupIntegrationTest {
 
         // 생성 순서상으로는 저녁팟(둘째 그룹)이 앞서야 하지만,
         // 점심팟(첫째 그룹)에 더 나중에 투표 세션이 생겨 활동이 더 최근이다.
-        voteSessionService.createManualVoteSession(secondGroupId, "저녁 투표", null, null);
-        voteSessionService.createManualVoteSession(firstGroupId, "점심 투표", null, null);
+        voteSessionService.createManualVoteSession(secondGroupId, testUserId, "저녁 투표", null, null);
+        voteSessionService.createManualVoteSession(firstGroupId, testUserId, "점심 투표", null, null);
 
         mockMvc.perform(get("/api/groups")
                         .with(authAs(ownerUserId)))
