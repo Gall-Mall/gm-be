@@ -1,11 +1,10 @@
 package com.gm.api.config;
 
-import com.gm.api.security.oauth.OAuth2FailureHandler;
-import com.gm.api.security.oauth.OAuth2SuccessHandler;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -14,6 +13,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 import com.gm.api.security.*;
 import com.gm.api.security.oauth.CustomOAuth2UserService;
+import com.gm.api.security.oauth.OAuth2FailureHandler;
+import com.gm.api.security.oauth.OAuth2SuccessHandler;
 
 @Configuration
 @RequiredArgsConstructor
@@ -46,24 +47,22 @@ public class SecurityConfig {
                         // 네이버 사용자 정보 조회 및 회원 처리
                         .userInfoEndpoint(userInfo -> userInfo
                                 .userService(customOAuth2UserService))
-                        // OAuth2 로그인 성공 처리
                         .successHandler(oauth2SuccessHandler)
-                        // OAuth2 로그인 실패 처리
-                        .failureHandler(oauth2FailureHandler)
-                )
+                        .failureHandler(oauth2FailureHandler))
                 .exceptionHandling(exception -> exception
                         .authenticationEntryPoint(authenticationEntryPoint)
                         .accessDeniedHandler(accessDeniedHandler))
                 .authorizeHttpRequests(auth -> auth
                         // 네이버 OAuth2 로그인 시작 및 콜백 요청 허용
                         .requestMatchers("/api/auth/oauth/**", "/login/**").permitAll()
-                        // 현재 사용자 정보 조회 API는 인증 필요
-                        .requestMatchers("/api/users/me").authenticated()
-                        // Group·Invite 도메인은 실제 JWT 인증을 요구한다. 임시 X-User-Id
-                        // 헤더 패턴은 폐기했다.
+                        .requestMatchers(HttpMethod.POST, "/api/auth/token", "/api/auth/token/refresh").permitAll()
+                        .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/logout").authenticated()
+                        .requestMatchers("/api/users/me", "/api/users/me/**").authenticated()
                         .requestMatchers("/api/groups/**").authenticated()
                         .requestMatchers("/api/invites/**").authenticated()
-                        .anyRequest().permitAll())
+                        .anyRequest().authenticated())
+                //JwtAuthenticationFilter를 Spring Security의 UsernamePasswordAuthenticationFilter보다 먼저 실행한다.
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }

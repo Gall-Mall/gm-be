@@ -6,6 +6,7 @@ dependencies {
     implementation project(':core')
     implementation 'org.springframework:spring-web'   // RestClient
     implementation 'com.fasterxml.jackson.core:jackson-annotations'
+    implementation 'tools.jackson.core:jackson-databind'  // OpenAI JSON mode 응답 파싱
 }
 
 tasks.register("prepareKotlinBuildScriptModel"){}

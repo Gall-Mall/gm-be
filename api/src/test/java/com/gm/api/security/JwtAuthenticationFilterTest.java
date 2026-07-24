@@ -1,6 +1,7 @@
 package com.gm.api.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -22,6 +23,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import com.gm.api.security.jwt.JwtProvider;
+import com.gm.core.domain.auth.repository.AccessTokenBlacklistRepository;
 import com.gm.core.domain.user.exception.UserErrorCode;
 import com.gm.core.domain.user.exception.UserException;
 import com.gm.core.domain.user.model.Provider;
@@ -36,12 +38,16 @@ import io.jsonwebtoken.JwtException;
 class JwtAuthenticationFilterTest {
 
     private static final String ACCESS_TOKEN = "access-token";
+    private static final String ACCESS_TOKEN_ID = "access-token-jti";
 
     @Mock
     private JwtProvider jwtProvider;
 
     @Mock
     private UserService userService;
+
+    @Mock
+    private AccessTokenBlacklistRepository accessTokenBlacklistRepository;
 
     @Mock
     private Claims claims;
@@ -54,7 +60,8 @@ class JwtAuthenticationFilterTest {
 
         filter = new JwtAuthenticationFilter(
                 jwtProvider,
-                userService
+                userService,
+                accessTokenBlacklistRepository
         );
     }
 
@@ -70,12 +77,14 @@ class JwtAuthenticationFilterTest {
         UUID userId = UUID.randomUUID();
         User user = createUser(UserStatus.ACTIVE);
 
-        when(jwtProvider.validate(ACCESS_TOKEN))
+        when(jwtProvider.validateAccessToken(ACCESS_TOKEN))
                 .thenReturn(claims);
-
+        when(jwtProvider.getJti(claims))
+                .thenReturn(ACCESS_TOKEN_ID);
+        when(accessTokenBlacklistRepository.exists(ACCESS_TOKEN_ID))
+                .thenReturn(false);
         when(jwtProvider.getUserId(claims))
                 .thenReturn(userId);
-
         when(userService.findById(userId))
                 .thenReturn(user);
 
@@ -96,6 +105,9 @@ class JwtAuthenticationFilterTest {
 
         assertThat(principal.getUserId()).isEqualTo(userId);
         assertThat(principal.getUser()).isEqualTo(user);
+
+        verify(accessTokenBlacklistRepository)
+                .exists(ACCESS_TOKEN_ID);
     }
 
     @Test
@@ -105,12 +117,14 @@ class JwtAuthenticationFilterTest {
         UUID userId = UUID.randomUUID();
         User user = createUser(UserStatus.ONBOARDING);
 
-        when(jwtProvider.validate(ACCESS_TOKEN))
+        when(jwtProvider.validateAccessToken(ACCESS_TOKEN))
                 .thenReturn(claims);
-
+        when(jwtProvider.getJti(claims))
+                .thenReturn(ACCESS_TOKEN_ID);
+        when(accessTokenBlacklistRepository.exists(ACCESS_TOKEN_ID))
+                .thenReturn(false);
         when(jwtProvider.getUserId(claims))
                 .thenReturn(userId);
-
         when(userService.findById(userId))
                 .thenReturn(user);
 
@@ -137,12 +151,14 @@ class JwtAuthenticationFilterTest {
         UUID userId = UUID.randomUUID();
         User user = createUser(UserStatus.WITHDRAWN);
 
-        when(jwtProvider.validate(ACCESS_TOKEN))
+        when(jwtProvider.validateAccessToken(ACCESS_TOKEN))
                 .thenReturn(claims);
-
+        when(jwtProvider.getJti(claims))
+                .thenReturn(ACCESS_TOKEN_ID);
+        when(accessTokenBlacklistRepository.exists(ACCESS_TOKEN_ID))
+                .thenReturn(false);
         when(jwtProvider.getUserId(claims))
                 .thenReturn(userId);
-
         when(userService.findById(userId))
                 .thenReturn(user);
 
@@ -153,6 +169,31 @@ class JwtAuthenticationFilterTest {
         assertThat(
                 SecurityContextHolder.getContext().getAuthentication()
         ).isNull();
+    }
+
+    @Test
+    @DisplayName("블랙리스트에 등록된 Access Token이면 인증 정보를 등록하지 않는다")
+    void doesNotAuthenticateBlacklistedToken() throws Exception {
+        // given
+        when(jwtProvider.validateAccessToken(ACCESS_TOKEN))
+                .thenReturn(claims);
+        when(jwtProvider.getJti(claims))
+                .thenReturn(ACCESS_TOKEN_ID);
+        when(accessTokenBlacklistRepository.exists(ACCESS_TOKEN_ID))
+                .thenReturn(true);
+
+        // when
+        executeFilter(ACCESS_TOKEN);
+
+        // then
+        assertThat(
+                SecurityContextHolder.getContext().getAuthentication()
+        ).isNull();
+
+        verify(accessTokenBlacklistRepository)
+                .exists(ACCESS_TOKEN_ID);
+        verify(jwtProvider, never())
+                .getUserId(claims);
     }
 
     @Test
@@ -170,7 +211,10 @@ class JwtAuthenticationFilterTest {
                 SecurityContextHolder.getContext().getAuthentication()
         ).isNull();
 
-        verify(jwtProvider).validate(ACCESS_TOKEN);
+        verify(jwtProvider)
+                .validate(ACCESS_TOKEN);
+        verify(accessTokenBlacklistRepository, never())
+                .exists(ACCESS_TOKEN_ID);
     }
 
     @Test
@@ -179,12 +223,14 @@ class JwtAuthenticationFilterTest {
         // given
         UUID userId = UUID.randomUUID();
 
-        when(jwtProvider.validate(ACCESS_TOKEN))
+        when(jwtProvider.validateAccessToken(ACCESS_TOKEN))
                 .thenReturn(claims);
-
+        when(jwtProvider.getJti(claims))
+                .thenReturn(ACCESS_TOKEN_ID);
+        when(accessTokenBlacklistRepository.exists(ACCESS_TOKEN_ID))
+                .thenReturn(false);
         when(jwtProvider.getUserId(claims))
                 .thenReturn(userId);
-
         when(userService.findById(userId))
                 .thenThrow(new UserException(UserErrorCode.USER_NOT_FOUND));
 
@@ -195,6 +241,66 @@ class JwtAuthenticationFilterTest {
         assertThat(
                 SecurityContextHolder.getContext().getAuthentication()
         ).isNull();
+    }
+
+    @Test
+    @DisplayName("Authorization 헤더가 없으면 인증을 시도하지 않는다")
+    void doesNotAuthenticateWithoutAuthorizationHeader() throws Exception {
+        // given
+        MockHttpServletRequest request =
+                new MockHttpServletRequest();
+
+        request.setMethod("GET");
+        request.setRequestURI("/api/users/me");
+
+        MockHttpServletResponse response =
+                new MockHttpServletResponse();
+
+        MockFilterChain filterChain =
+                new MockFilterChain();
+
+        // when
+        filter.doFilter(request, response, filterChain);
+
+        // then
+        assertThat(
+                SecurityContextHolder.getContext().getAuthentication()
+        ).isNull();
+
+        verify(jwtProvider, never())
+                .validate(ACCESS_TOKEN);
+    }
+
+    @Test
+    @DisplayName("Bearer 형식이 아닌 Authorization 헤더이면 인증을 시도하지 않는다")
+    void doesNotAuthenticateWithInvalidAuthorizationScheme() throws Exception {
+        // given
+        MockHttpServletRequest request =
+                new MockHttpServletRequest();
+
+        request.setMethod("GET");
+        request.setRequestURI("/api/users/me");
+        request.addHeader(
+                "Authorization",
+                "Basic " + ACCESS_TOKEN
+        );
+
+        MockHttpServletResponse response =
+                new MockHttpServletResponse();
+
+        MockFilterChain filterChain =
+                new MockFilterChain();
+
+        // when
+        filter.doFilter(request, response, filterChain);
+
+        // then
+        assertThat(
+                SecurityContextHolder.getContext().getAuthentication()
+        ).isNull();
+
+        verify(jwtProvider, never())
+                .validate(ACCESS_TOKEN);
     }
 
     private void executeFilter(String token) throws Exception {
