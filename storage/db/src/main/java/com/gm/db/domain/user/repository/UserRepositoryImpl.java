@@ -1,14 +1,13 @@
 package com.gm.db.domain.user.repository;
 
+import com.gm.core.domain.user.exception.UserErrorCode;
+import com.gm.core.domain.user.exception.UserException;
 import com.gm.db.domain.user.entity.UserEntity;
 import com.gm.db.domain.user.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
-
 import java.util.Optional;
 import java.util.UUID;
-
 import org.springframework.stereotype.Repository;
-
 import com.gm.core.domain.user.model.Provider;
 import com.gm.core.domain.user.model.User;
 import com.gm.core.domain.user.model.UserResult;
@@ -54,5 +53,18 @@ public class UserRepositoryImpl implements UserRepository {
         UserEntity savedEntity = userJpaRepository.save(entity);
 
         return UserResult.of(savedEntity.getId(), userMapper.toDomain(savedEntity));
+    }
+
+    @Override
+    public void updateUserStatus(UUID userId) {
+        UserEntity userEntity = userJpaRepository.findById(userId).orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+        userEntity.updateTermsAgreed();
+        userEntity.updateUserStatusToACTIVE();
+    }
+
+    @Override
+    public void saveUserInputText(UUID userId, String allergenText, String preferredText, String excludedText) {
+        UserEntity userEntity = userJpaRepository.findById(userId).orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+        userEntity.updateUserInputText(allergenText,preferredText, excludedText);
     }
 }
