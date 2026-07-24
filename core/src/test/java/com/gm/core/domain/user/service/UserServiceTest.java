@@ -7,6 +7,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -20,9 +21,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.gm.core.domain.user.exception.UserErrorCode;
 import com.gm.core.domain.user.exception.UserException;
+import com.gm.core.domain.user.model.Onboarding;
 import com.gm.core.domain.user.model.Provider;
 import com.gm.core.domain.user.model.User;
 import com.gm.core.domain.user.model.UserResult;
+import com.gm.core.domain.user.model.UserSetting;
 import com.gm.core.domain.user.model.UserStatus;
 import com.gm.core.domain.user.repository.UserRepository;
 
@@ -165,6 +168,154 @@ class UserServiceTest {
 
         assertThat(savedUser.status()).isEqualTo(UserStatus.ONBOARDING);
         assertThat(savedUser.termsAgreed()).isFalse();
+    }
+
+    @Test
+    @DisplayName("약관에 동의한 온보딩이면 사용자 설정을 저장하고 회원을 활성화한다")
+    void submitOnboardingSavesSettingsAndCompletesOnboarding() {
+        // given
+        UUID userId = UUID.randomUUID();
+        UUID allergenId = UUID.randomUUID();
+        UUID preferredMenuId = UUID.randomUUID();
+        UUID excludedMenuId = UUID.randomUUID();
+        UUID preferredCategoryId = UUID.randomUUID();
+        UUID excludedCategoryId = UUID.randomUUID();
+
+        UserSetting userSetting = new UserSetting(
+                List.of(allergenId),
+                List.of(preferredMenuId),
+                List.of(excludedMenuId),
+                List.of(preferredCategoryId),
+                List.of(excludedCategoryId),
+                "새우",
+                "매운 음식",
+                "고수"
+        );
+        Onboarding onboarding = new Onboarding(true, userSetting);
+        UserService userService = new UserService(
+                userRepository,
+                userAllergenService,
+                userCategoryService,
+                userMenuService
+        );
+
+        // when
+        userService.submitOnboarding(userId, onboarding);
+
+        // then
+        verify(userRepository).saveUserInputText(userId, "새우", "매운 음식", "고수");
+        verify(userAllergenService).saveUserAllergens(userId, List.of(allergenId));
+        verify(userMenuService).saveUserMenuPreference(
+                userId,
+                List.of(preferredMenuId),
+                List.of(excludedMenuId)
+        );
+        verify(userCategoryService).saveUserCategoryPreference(
+                userId,
+                List.of(preferredCategoryId),
+                List.of(excludedCategoryId)
+        );
+        verify(userRepository).updateUserStatus(userId);
+    }
+
+    @Test
+    @DisplayName("필수 약관에 동의하지 않으면 온보딩을 완료하지 않는다")
+    void submitOnboardingDoesNotCompleteWithoutTermsAgreement() {
+        // given
+        UUID userId = UUID.randomUUID();
+        Onboarding onboarding = new Onboarding(false, emptyUserSetting());
+        UserService userService = new UserService(
+                userRepository,
+                userAllergenService,
+                userCategoryService,
+                userMenuService
+        );
+
+        // when & then
+        assertThatThrownBy(() -> userService.submitOnboarding(userId, onboarding))
+                .isInstanceOf(UserException.class)
+                .satisfies(exception -> assertThat(((UserException) exception).getErrorCode())
+                        .isEqualTo(UserErrorCode.TERMS_AGREED_APPROVE));
+
+        verify(userRepository, never()).updateUserStatus(userId);
+    }
+
+    @Test
+    @DisplayName("온보딩에서 같은 메뉴를 선호와 제외에 함께 선택하면 예외가 발생한다")
+    void submitOnboardingRejectsOverlappingMenuPreferences() {
+        // given
+        UUID userId = UUID.randomUUID();
+        UUID duplicatedMenuId = UUID.randomUUID();
+        UserSetting userSetting = new UserSetting(
+                List.of(),
+                List.of(duplicatedMenuId),
+                List.of(duplicatedMenuId),
+                List.of(),
+                List.of(),
+                "",
+                "",
+                ""
+        );
+        UserService userService = new UserService(
+                userRepository,
+                userAllergenService,
+                userCategoryService,
+                userMenuService
+        );
+
+        // when & then
+        assertThatThrownBy(() -> userService.submitOnboarding(userId, new Onboarding(true, userSetting)))
+                .isInstanceOf(UserException.class)
+                .satisfies(exception -> assertThat(((UserException) exception).getErrorCode())
+                        .isEqualTo(UserErrorCode.MENU_PREFERENCE_CONFLICT));
+
+        verify(userRepository, never()).updateUserStatus(userId);
+    }
+
+    @Test
+    @DisplayName("nullable 자유 입력값도 온보딩 설정으로 저장할 수 있다")
+    void submitOnboardingAllowsNullableInputText() {
+        // given
+        UUID userId = UUID.randomUUID();
+        UserService userService = new UserService(
+                userRepository,
+                userAllergenService,
+                userCategoryService,
+                userMenuService
+        );
+
+        // when
+        userService.submitOnboarding(userId, new Onboarding(true, nullableTextUserSetting()));
+
+        // then
+        verify(userRepository).saveUserInputText(userId, null, null, null);
+        verify(userRepository).updateUserStatus(userId);
+    }
+
+    private UserSetting emptyUserSetting() {
+        return new UserSetting(
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                "",
+                "",
+                ""
+        );
+    }
+
+    private UserSetting nullableTextUserSetting() {
+        return new UserSetting(
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                null,
+                null,
+                null
+        );
     }
 
     private User createUser(UserStatus status) {

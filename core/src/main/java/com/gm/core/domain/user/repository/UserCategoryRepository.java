@@ -13,5 +13,5 @@ public interface UserCategoryRepository {
 
     void deleteByUserId(UUID userId);
 
-    void saveUserCategoryPreference(UUID userId, List<UUID> categoryIds, UserCategoryPreference preference);
+    void saveUserCategoryPreference(UUID userId, List<UUID> preferredCategoryIds, List<UUID> disLikeCategoryIds);
 }

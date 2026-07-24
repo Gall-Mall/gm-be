@@ -15,4 +15,8 @@ public interface UserRepository {
 
     User save(User user);
     UserResult saveResult(User user);
+
+    void updateUserStatus(UUID userId);
+
+    void saveUserInputText(UUID userId, String allergenText, String preferredText, String excludedText);
 }
