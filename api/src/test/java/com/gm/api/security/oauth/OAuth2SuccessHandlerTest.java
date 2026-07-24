@@ -1,13 +1,22 @@
 package com.gm.api.security.oauth;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.Duration;
 import java.util.UUID;
 
+import com.gm.api.auth.service.AuthTokenService;
+import com.gm.api.auth.service.LoginExchangeService;
+import com.gm.api.auth.service.RefreshTokenCookieManager;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -17,10 +26,31 @@ import com.gm.core.domain.user.model.Provider;
 import com.gm.core.domain.user.model.User;
 import com.gm.core.domain.user.model.UserStatus;
 
+@ExtendWith(MockitoExtension.class)
 class OAuth2SuccessHandlerTest {
 
-    private static final String SUCCESS_REDIRECT_URI =
-            "http://localhost:8080/oauth/success";
+    private static final String SUCCESS_REDIRECT_URI = "http://localhost:8080/oauth/success";
+
+    @Mock
+    private AuthTokenService authTokenService;
+
+    @Mock
+    private RefreshTokenCookieManager refreshTokenCookieManager;
+
+    @Mock
+    private LoginExchangeService loginExchangeService;
+
+    private OAuth2SuccessHandler handler;
+
+    @BeforeEach
+    void setUp() {
+        handler = new OAuth2SuccessHandler(
+                SUCCESS_REDIRECT_URI,
+                authTokenService,
+                loginExchangeService,
+                refreshTokenCookieManager
+        );
+    }
 
     @Test
     @DisplayName("네이버 OAuth2 로그인 성공 시 설정된 주소로 리다이렉트한다")
@@ -58,8 +88,20 @@ class OAuth2SuccessHandlerTest {
         MockHttpServletResponse response =
                 new MockHttpServletResponse();
 
-        OAuth2SuccessHandler handler =
-                new OAuth2SuccessHandler(SUCCESS_REDIRECT_URI);
+        AuthTokenService.IssuedRefreshToken issuedRefreshToken =
+                new AuthTokenService.IssuedRefreshToken(
+                        "refresh-token",
+                        "refresh-token-id",
+                        Duration.ofDays(14)
+                );
+
+        when(authTokenService.issueRefreshToken(userId))
+                .thenReturn(issuedRefreshToken);
+
+        when(loginExchangeService.createExchangeCode(
+                userId,
+                "refresh-token-id"
+        )).thenReturn("exchange-code");
 
         // when
         handler.onAuthenticationSuccess(
@@ -71,7 +113,24 @@ class OAuth2SuccessHandlerTest {
         // then
         assertThat(response.getStatus()).isEqualTo(302);
         assertThat(response.getRedirectedUrl())
-                .isEqualTo(SUCCESS_REDIRECT_URI);
+                .isEqualTo(
+                        SUCCESS_REDIRECT_URI + "?code=exchange-code"
+                );
+
+        verify(authTokenService)
+                .issueRefreshToken(userId);
+
+        verify(refreshTokenCookieManager)
+                .addRefreshTokenCookie(
+                        response,
+                        "refresh-token"
+                );
+
+        verify(loginExchangeService)
+                .createExchangeCode(
+                        userId,
+                        "refresh-token-id"
+                );
 
         assertThat(response.getHeader("Cache-Control"))
                 .isEqualTo("no-store");

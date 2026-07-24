@@ -31,7 +31,7 @@ public class UserMenuService {
     /**
      * 유저가 메뉴를 선택하면 user_menu_preference에 추가
      */
-    public void saveUserMenuPreference(UUID userId, List<UUID> menuIds, UserMenuPreference preference) {
-        userMenuRepository.addUserMenuPreference(userId, menuIds, preference);
+    public void saveUserMenuPreference(UUID userId, List<UUID> preferredMenuIds, List<UUID> excludedMenuIds) {
+        userMenuRepository.addUserMenuPreference(userId, preferredMenuIds, excludedMenuIds);
     }
 }

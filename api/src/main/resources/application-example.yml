@@ -105,6 +105,22 @@ jwt:
   # Base64로 인코딩된 256bit 이상의 Secret Key
   secret: ${JWT_SECRET:YOUR_BASE64_SECRET_KEY}
   access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION:3600}
+  refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRATION:1209600}
+
+auth:
+  # OAuth 로그인 성공 후 생성되는
+  # Login Exchange Code의 TTL(초) : LoginExchangeService에서 사용
+  login-exchange-expiration: ${LOGIN_EXCHANGE_EXPIRATION:180}
+  # RefreshTokenCookieManager에서 사용
+  refresh-token-cookie:
+    # Cookie 이름
+    name: ${REFRESH_TOKEN_COOKIE_NAME:refresh_token}
+    # 인증 API에서만 전송
+    path: ${REFRESH_TOKEN_COOKIE_PATH:/api/auth}
+    # local=false / production=true
+    secure: ${REFRESH_TOKEN_COOKIE_SECURE:false}
+    # Strict / Lax / None
+    same-site: ${REFRESH_TOKEN_COOKIE_SAME_SITE:Lax}
 
 app:
   invite:
