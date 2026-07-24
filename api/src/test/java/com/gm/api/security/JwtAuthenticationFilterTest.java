@@ -77,7 +77,7 @@ class JwtAuthenticationFilterTest {
         UUID userId = UUID.randomUUID();
         User user = createUser(UserStatus.ACTIVE);
 
-        when(jwtProvider.validate(ACCESS_TOKEN))
+        when(jwtProvider.validateAccessToken(ACCESS_TOKEN))
                 .thenReturn(claims);
         when(jwtProvider.getJti(claims))
                 .thenReturn(ACCESS_TOKEN_ID);
@@ -117,7 +117,7 @@ class JwtAuthenticationFilterTest {
         UUID userId = UUID.randomUUID();
         User user = createUser(UserStatus.ONBOARDING);
 
-        when(jwtProvider.validate(ACCESS_TOKEN))
+        when(jwtProvider.validateAccessToken(ACCESS_TOKEN))
                 .thenReturn(claims);
         when(jwtProvider.getJti(claims))
                 .thenReturn(ACCESS_TOKEN_ID);
@@ -151,7 +151,7 @@ class JwtAuthenticationFilterTest {
         UUID userId = UUID.randomUUID();
         User user = createUser(UserStatus.WITHDRAWN);
 
-        when(jwtProvider.validate(ACCESS_TOKEN))
+        when(jwtProvider.validateAccessToken(ACCESS_TOKEN))
                 .thenReturn(claims);
         when(jwtProvider.getJti(claims))
                 .thenReturn(ACCESS_TOKEN_ID);
@@ -175,7 +175,7 @@ class JwtAuthenticationFilterTest {
     @DisplayName("블랙리스트에 등록된 Access Token이면 인증 정보를 등록하지 않는다")
     void doesNotAuthenticateBlacklistedToken() throws Exception {
         // given
-        when(jwtProvider.validate(ACCESS_TOKEN))
+        when(jwtProvider.validateAccessToken(ACCESS_TOKEN))
                 .thenReturn(claims);
         when(jwtProvider.getJti(claims))
                 .thenReturn(ACCESS_TOKEN_ID);
@@ -223,7 +223,7 @@ class JwtAuthenticationFilterTest {
         // given
         UUID userId = UUID.randomUUID();
 
-        when(jwtProvider.validate(ACCESS_TOKEN))
+        when(jwtProvider.validateAccessToken(ACCESS_TOKEN))
                 .thenReturn(claims);
         when(jwtProvider.getJti(claims))
                 .thenReturn(ACCESS_TOKEN_ID);

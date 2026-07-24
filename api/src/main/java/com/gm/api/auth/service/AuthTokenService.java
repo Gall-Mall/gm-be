@@ -43,7 +43,6 @@ public class AuthTokenService {
      * @param userId 서비스 회원 UUID
      * @return 발급된 Refresh Token 정보
      */
-    @Transactional(readOnly = true)
     public IssuedRefreshToken issueRefreshToken(UUID userId) {
 
         validateUserId(userId);

@@ -81,7 +81,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private Claims validateAccessToken(String accessToken, HttpServletRequest request) {
         try {
 
-            return jwtProvider.validate(accessToken);
+            return jwtProvider.validateAccessToken(accessToken);
         } catch (JwtException | IllegalArgumentException exception) {
 
             log.debug(
