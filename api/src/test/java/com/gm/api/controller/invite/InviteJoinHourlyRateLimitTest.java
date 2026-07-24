@@ -20,7 +20,6 @@ import com.gm.core.domain.group.service.GroupService;
 import com.gm.core.domain.invite.service.InviteService;
 import com.gm.core.domain.user.model.Provider;
 import com.gm.core.domain.user.model.User;
-import com.gm.core.domain.user.model.UserStatus;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -54,11 +53,19 @@ class InviteJoinHourlyRateLimitTest {
     private InviteService inviteService;
 
     private static RequestPostProcessor authAs(UUID userId) {
-        User dummyUser = User.create("테스터", UserStatus.ACTIVE, Provider.NAVER, userId.toString(), "010-0000-0000", "test@example.com", false, null, null, null);
+        User dummyUser = User.create("테스터", Provider.NAVER, userId.toString(), "010-0000-0000", "test@example.com");
         CustomUserPrincipal principal = new CustomUserPrincipal(userId, dummyUser);
         UsernamePasswordAuthenticationToken authentication =
                 new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
         return authentication(authentication);
+    }
+
+    /**
+     * 테스트용 회원 식별자를 발급한다. Invite 로직은 UserService를 호출하지 않으므로
+     * 실제 DB에 저장된 회원일 필요가 없다.
+     */
+    private UUID saveTestUser() {
+        return UUID.randomUUID();
     }
 
     private Group createGroup(UUID ownerUserId, int maxMemberCount) {
@@ -72,12 +79,12 @@ class InviteJoinHourlyRateLimitTest {
     @Test
     @DisplayName("같은 사용자가 그룹 가입을 시간당 한도보다 많이 호출하면 COMMON-006 오류를 반환한다")
     void joinByInviteCode_returnsCommon006_whenExceedingHourlyRateLimit() throws Exception {
-        UUID requesterUserId = UUID.randomUUID();
+        UUID requesterUserId = saveTestUser();
 
         // join-per-hour=3까지는 통과해야 한다. 매번 다른 그룹으로 가입해야 INVITE-002(이미 가입함)가
         // 아니라 순수하게 rate limit에 걸리는지 확인할 수 있다.
         for (int i = 0; i < 3; i++) {
-            UUID ownerUserId = UUID.randomUUID();
+            UUID ownerUserId = saveTestUser();
             Group group = createGroup(ownerUserId, 6);
             String inviteCode = inviteService.create(group.id(), ownerUserId);
 
@@ -85,7 +92,7 @@ class InviteJoinHourlyRateLimitTest {
                     .andExpect(status().isCreated());
         }
 
-        UUID extraOwnerUserId = UUID.randomUUID();
+        UUID extraOwnerUserId = saveTestUser();
         Group extraGroup = createGroup(extraOwnerUserId, 6);
         String extraInviteCode = inviteService.create(extraGroup.id(), extraOwnerUserId);
 

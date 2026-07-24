@@ -15,20 +15,24 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
+import com.gm.core.domain.vote.session.service.VoteSessionService;
 import com.gm.api.security.CustomUserPrincipal;
+import com.gm.core.domain.group.service.GroupService;
 import com.gm.core.domain.user.model.Provider;
 import com.gm.core.domain.user.model.User;
 import com.gm.core.domain.user.model.UserStatus;
-import com.gm.core.domain.vote.service.VoteSessionService;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * 그룹 생성(GROUP-001), 내 그룹 목록 조회(GROUP-002), 그룹 상세 조회(GROUP-003) API의 통합 테스트이다.
+ * 그룹 생성(GROUP-001), 내 그룹 목록 조회(GROUP-002), 그룹 상세 조회(GROUP-003),
+ * 그룹 정보 수정(GROUP-004) API의 통합 테스트이다.
  *
  * <p>실제 웹 계층부터 H2 기반 영속 계층까지 전체 스택을 거쳐,
  * 요청이 계약대로 저장되고 응답되는지 검증한다. 실제 JWT 인증을 요구하므로
@@ -45,9 +49,19 @@ class GroupIntegrationTest {
     @Autowired
     private VoteSessionService voteSessionService;
 
+    @Autowired
+    private GroupService groupService;
+
     /** 요청 회원을 SecurityContext에 직접 주입하는 RequestPostProcessor를 만든다. */
     private static RequestPostProcessor authAs(UUID userId) {
-        User dummyUser = User.create("테스터", UserStatus.ACTIVE, Provider.NAVER, userId.toString(), "010-0000-0000", "test@example.com", false, null, null, null);
+        User dummyUser = new User(
+                "테스터", "테스터닉네임",
+                UserStatus.ACTIVE, Provider.NAVER, "naver-provider-id",
+                "010-1234-5678", "user@example.com",
+                false, null,
+                null, null
+        );
+
         CustomUserPrincipal principal = new CustomUserPrincipal(userId, dummyUser);
         UsernamePasswordAuthenticationToken authentication =
                 new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
@@ -268,8 +282,8 @@ class GroupIntegrationTest {
 
         // 생성 순서상으로는 저녁팟(둘째 그룹)이 앞서야 하지만,
         // 점심팟(첫째 그룹)에 더 나중에 투표 세션이 생겨 활동이 더 최근이다.
-        voteSessionService.createManualVoteSession(secondGroupId, "저녁 투표", null, null);
-        voteSessionService.createManualVoteSession(firstGroupId, "점심 투표", null, null);
+        voteSessionService.createManualVoteSession(secondGroupId, testUserId, "저녁 투표", null, null);
+        voteSessionService.createManualVoteSession(firstGroupId, testUserId, "점심 투표", null, null);
 
         mockMvc.perform(get("/api/groups")
                         .with(authAs(ownerUserId)))
@@ -311,10 +325,12 @@ class GroupIntegrationTest {
     @DisplayName("그룹의 활성 멤버가 아닌 회원이 조회하면 GROUP-002 오류를 반환한다")
     void findGroupDetail_withNonMemberRequester_returnsGroup002() throws Exception {
         UUID ownerUserId = UUID.randomUUID();
+        // 그룹장과 다른 비회원 UUID 생성
+        UUID nonMemberUserId = UUID.randomUUID();
         UUID groupId = createGroupAndGetId(ownerUserId, REQUEST_BODY);
 
         mockMvc.perform(get("/api/groups/{groupId}", groupId)
-                        .with(authAs(UUID.randomUUID())))
+                        .with(authAs(nonMemberUserId)))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.code").value("GROUP-002"));
@@ -334,6 +350,170 @@ class GroupIntegrationTest {
     @DisplayName("인증 없이 요청하면 COMMON-003 오류를 반환한다")
     void findGroupDetail_withoutAuthentication_returnsCommon003() throws Exception {
         mockMvc.perform(get("/api/groups/{groupId}", UUID.randomUUID()))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("COMMON-003"));
+    }
+
+    private static final String UPDATE_REQUEST_BODY = """
+            {
+              "name": "저녁팟",
+              "locationAddress": "서울특별시 강남구 역삼동",
+              "latitude": 37.5001,
+              "longitude": 127.0365,
+              "searchRadiusM": 2000,
+              "recommendationTime": "17:30",
+              "maxMemberCount": 6
+            }
+            """;
+
+    @Test
+    @DisplayName("그룹장이 수정하면 200과 함께 교체된 그룹 정보를 반환한다")
+    void updateGroup_succeeds_forOwner() throws Exception {
+        UUID ownerUserId = UUID.randomUUID();
+        UUID groupId = createGroupAndGetId(ownerUserId, REQUEST_BODY);
+
+        mockMvc.perform(put("/api/groups/{groupId}", groupId)
+                        .with(authAs(ownerUserId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(UPDATE_REQUEST_BODY))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.code").value("SUCCESS"))
+                .andExpect(jsonPath("$.data.groupId").value(groupId.toString()))
+                .andExpect(jsonPath("$.data.ownerUserId").value(ownerUserId.toString()))
+                .andExpect(jsonPath("$.data.name").value("저녁팟"))
+                .andExpect(jsonPath("$.data.locationAddress").value("서울특별시 강남구 역삼동"))
+                .andExpect(jsonPath("$.data.searchRadiusM").value(2000))
+                .andExpect(jsonPath("$.data.recommendationTime").value("17:30"))
+                .andExpect(jsonPath("$.data.maxMemberCount").value(6))
+                .andExpect(jsonPath("$.data.memberCount").value(1));
+    }
+
+    @Test
+    @DisplayName("수정에 성공하면 updatedAt이 갱신된 값으로 응답된다")
+    void updateGroup_succeeds_refreshesUpdatedAt() throws Exception {
+        UUID ownerUserId = UUID.randomUUID();
+        MvcResult createResult = mockMvc.perform(post("/api/groups")
+                        .with(authAs(ownerUserId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(REQUEST_BODY))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String groupId = JsonPath.read(createResult.getResponse().getContentAsString(), "$.data.groupId");
+        String createdUpdatedAt = JsonPath.read(createResult.getResponse().getContentAsString(), "$.data.updatedAt");
+
+        MvcResult updateResult = mockMvc.perform(put("/api/groups/{groupId}", groupId)
+                        .with(authAs(ownerUserId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(UPDATE_REQUEST_BODY))
+                .andExpect(status().isOk())
+                .andReturn();
+        String updatedUpdatedAt = JsonPath.read(updateResult.getResponse().getContentAsString(), "$.data.updatedAt");
+
+        assertThat(updatedUpdatedAt).isNotEqualTo(createdUpdatedAt);
+    }
+
+    @Test
+    @DisplayName("정원을 현재 활성 멤버 수보다 작게 수정하면 GROUP-008 오류를 반환한다")
+    void updateGroup_withCapacityBelowActiveMembers_returnsGroup008() throws Exception {
+        UUID ownerUserId = UUID.randomUUID();
+        UUID groupId = createGroupAndGetId(ownerUserId, REQUEST_BODY);
+        groupService.addMember(groupId, UUID.randomUUID());
+
+        String body = """
+                {
+                  "name": "저녁팟",
+                  "locationAddress": "서울특별시 강남구 역삼동",
+                  "latitude": 37.5001,
+                  "longitude": 127.0365,
+                  "searchRadiusM": 2000,
+                  "recommendationTime": "17:30",
+                  "maxMemberCount": 1
+                }
+                """;
+
+        mockMvc.perform(put("/api/groups/{groupId}", groupId)
+                        .with(authAs(ownerUserId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("GROUP-008"));
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 groupId를 수정하면 GROUP-001 오류를 반환한다")
+    void updateGroup_withUnknownGroupId_returnsGroup001() throws Exception {
+        mockMvc.perform(put("/api/groups/{groupId}", UUID.randomUUID())
+                        .with(authAs(UUID.randomUUID()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(UPDATE_REQUEST_BODY))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("GROUP-001"));
+    }
+
+    @Test
+    @DisplayName("그룹장이 아닌 회원이 수정하면 GROUP-006 오류를 반환한다")
+    void updateGroup_withNonOwnerRequester_returnsGroup006() throws Exception {
+        UUID ownerUserId = UUID.randomUUID();
+        UUID groupId = createGroupAndGetId(ownerUserId, REQUEST_BODY);
+
+        mockMvc.perform(put("/api/groups/{groupId}", groupId)
+                        .with(authAs(UUID.randomUUID()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(UPDATE_REQUEST_BODY))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("GROUP-006"));
+    }
+
+    @Test
+    @DisplayName("그룹명이 비어 있으면 COMMON-002 오류를 반환한다")
+    void updateGroup_withBlankName_returnsCommon002() throws Exception {
+        UUID ownerUserId = UUID.randomUUID();
+        UUID groupId = createGroupAndGetId(ownerUserId, REQUEST_BODY);
+
+        String body = """
+                {
+                  "name": "",
+                  "locationAddress": "서울특별시 강남구 역삼동",
+                  "latitude": 37.5001,
+                  "longitude": 127.0365,
+                  "searchRadiusM": 2000,
+                  "recommendationTime": "17:30",
+                  "maxMemberCount": 6
+                }
+                """;
+
+        mockMvc.perform(put("/api/groups/{groupId}", groupId)
+                        .with(authAs(ownerUserId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("COMMON-002"));
+    }
+
+    @Test
+    @DisplayName("groupId가 UUID 형식이 아니면 COMMON-005 오류를 반환한다")
+    void updateGroup_withMalformedGroupId_returnsCommon005() throws Exception {
+        mockMvc.perform(put("/api/groups/{groupId}", "not-a-uuid")
+                        .with(authAs(UUID.randomUUID()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(UPDATE_REQUEST_BODY))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("COMMON-005"));
+    }
+
+    @Test
+    @DisplayName("인증 없이 요청하면 COMMON-003 오류를 반환한다")
+    void updateGroup_withoutAuthentication_returnsCommon003() throws Exception {
+        mockMvc.perform(put("/api/groups/{groupId}", UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(UPDATE_REQUEST_BODY))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.code").value("COMMON-003"));

@@ -28,7 +28,6 @@ import com.gm.core.domain.group.service.GroupService;
 import com.gm.core.domain.invite.service.InviteService;
 import com.gm.core.domain.user.model.Provider;
 import com.gm.core.domain.user.model.User;
-import com.gm.core.domain.user.model.UserStatus;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
@@ -65,9 +64,17 @@ class InviteIntegrationTest {
     @Autowired
     private InviteService inviteService;
 
+    /**
+     * 테스트용 회원 식별자를 발급한다. Invite 로직은 UserService를 호출하지 않으므로
+     * 실제 DB에 저장된 회원일 필요가 없다(위 클래스 Javadoc 참고).
+     */
+    private UUID saveTestUser() {
+        return UUID.randomUUID();
+    }
+
     /** 요청 회원을 SecurityContext에 직접 주입하는 RequestPostProcessor를 만든다. */
     private static RequestPostProcessor authAs(UUID userId) {
-        User dummyUser = User.create("테스터", UserStatus.ACTIVE, Provider.NAVER, userId.toString(), "010-0000-0000", "test@example.com", false, null, null, null);
+        User dummyUser = User.create("테스터", Provider.NAVER, userId.toString(), "010-0000-0000", "test@example.com");
         CustomUserPrincipal principal = new CustomUserPrincipal(userId, dummyUser);
         UsernamePasswordAuthenticationToken authentication =
                 new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
@@ -86,7 +93,8 @@ class InviteIntegrationTest {
     @Test
     @DisplayName("그룹장이 초대 코드를 요청하면 201과 함께 6자리 코드와 초대 링크를 반환한다")
     void createInvite_succeeds_whenRequesterIsOwner() throws Exception {
-        UUID ownerUserId = UUID.randomUUID();
+        UUID ownerUserId = saveTestUser();
+
         Group group = createGroup(ownerUserId, 6);
 
         MvcResult result = mockMvc.perform(post("/api/groups/{groupId}/invites", group.id())
@@ -106,7 +114,7 @@ class InviteIntegrationTest {
     @Test
     @DisplayName("그룹장이 아닌 회원이 초대 코드를 요청하면 GROUP-006 오류를 반환한다")
     void createInvite_returnsGroup006_whenRequesterIsNotOwner() throws Exception {
-        UUID ownerUserId = UUID.randomUUID();
+        UUID ownerUserId = saveTestUser();
         UUID otherUserId = UUID.randomUUID();
         Group group = createGroup(ownerUserId, 6);
 
@@ -128,7 +136,7 @@ class InviteIntegrationTest {
     @Test
     @DisplayName("정원이 가득 찬 그룹의 그룹장이 초대 코드를 요청하면 GROUP-004 오류를 반환한다")
     void createInvite_returnsGroup004_whenGroupIsFull() throws Exception {
-        UUID ownerUserId = UUID.randomUUID();
+        UUID ownerUserId = saveTestUser();
         // 정원 1명 그룹은 생성 시점에 그룹장 혼자로 이미 가득 찬다.
         Group group = createGroup(ownerUserId, 1);
 
@@ -141,7 +149,7 @@ class InviteIntegrationTest {
     @Test
     @DisplayName("인증 없이 초대 코드를 요청하면 COMMON-003 오류를 반환한다")
     void createInvite_returnsCommon003_whenUnauthenticated() throws Exception {
-        UUID ownerUserId = UUID.randomUUID();
+        UUID ownerUserId = saveTestUser();
         Group group = createGroup(ownerUserId, 6);
 
         mockMvc.perform(post("/api/groups/{groupId}/invites", group.id()))
@@ -152,7 +160,7 @@ class InviteIntegrationTest {
     @Test
     @DisplayName("정원이 남은 그룹의 초대 코드를 조회하면 joinable=true를 반환한다")
     void getInviteInfo_returnsJoinableTrue_whenGroupHasCapacity() throws Exception {
-        UUID ownerUserId = UUID.randomUUID();
+        UUID ownerUserId = saveTestUser();
         Group group = createGroup(ownerUserId, 6);
         String inviteCode = inviteService.create(group.id(), ownerUserId);
 
@@ -178,8 +186,8 @@ class InviteIntegrationTest {
     @Test
     @DisplayName("초대 코드로 가입에 성공하면 201과 함께 MEMBER 역할·ACTIVE 상태의 멤버십을 반환한다")
     void joinByInviteCode_succeeds() throws Exception {
-        UUID ownerUserId = UUID.randomUUID();
-        UUID joinerUserId = UUID.randomUUID();
+        UUID ownerUserId = saveTestUser();
+        UUID joinerUserId = saveTestUser();
         Group group = createGroup(ownerUserId, 6);
         String inviteCode = inviteService.create(group.id(), ownerUserId);
 
@@ -204,8 +212,8 @@ class InviteIntegrationTest {
     @Test
     @DisplayName("이미 가입한 그룹에 같은 초대 코드로 재가입을 시도하면 INVITE-002 오류를 반환한다")
     void joinByInviteCode_returnsInvite002_whenAlreadyMember() throws Exception {
-        UUID ownerUserId = UUID.randomUUID();
-        UUID joinerUserId = UUID.randomUUID();
+        UUID ownerUserId = saveTestUser();
+        UUID joinerUserId = saveTestUser();
         Group group = createGroup(ownerUserId, 6);
         String inviteCode = inviteService.create(group.id(), ownerUserId);
 
@@ -220,9 +228,9 @@ class InviteIntegrationTest {
     @Test
     @DisplayName("가입 도중 그룹이 가득 차면 GROUP-004 오류를 반환한다")
     void joinByInviteCode_returnsGroup004_whenGroupFillsUpAfterCodeIssued() throws Exception {
-        UUID ownerUserId = UUID.randomUUID();
-        UUID firstJoinerUserId = UUID.randomUUID();
-        UUID secondJoinerUserId = UUID.randomUUID();
+        UUID ownerUserId = saveTestUser();
+        UUID firstJoinerUserId = saveTestUser();
+        UUID secondJoinerUserId = saveTestUser();
         // 정원 2명: 그룹장(1) + 첫 번째 가입자(1) = 정원 도달. 코드 발급 시점엔 자리가 있었다.
         Group group = createGroup(ownerUserId, 2);
         String inviteCode = inviteService.create(group.id(), ownerUserId);
@@ -246,9 +254,9 @@ class InviteIntegrationTest {
     @Test
     @DisplayName("정원이 하나 남은 그룹에 두 사용자가 동시에 가입을 시도하면 한 명만 성공한다")
     void joinByInviteCode_onlyOneSucceeds_whenTwoUsersRaceForLastSpot() throws Exception {
-        UUID ownerUserId = UUID.randomUUID();
-        UUID firstUserId = UUID.randomUUID();
-        UUID secondUserId = UUID.randomUUID();
+        UUID ownerUserId = saveTestUser();
+        UUID firstUserId = saveTestUser();
+        UUID secondUserId = saveTestUser();
         // 정원 2명: 그룹장(1) + 마지막 한 자리를 두 사용자가 동시에 다툰다.
         Group group = createGroup(ownerUserId, 2);
         String inviteCode = inviteService.create(group.id(), ownerUserId);
@@ -291,13 +299,13 @@ class InviteIntegrationTest {
     @Test
     @DisplayName("같은 사용자가 그룹 가입을 분당 한도보다 많이 호출하면 COMMON-006 오류를 반환한다")
     void joinByInviteCode_returnsCommon006_whenExceedingPerMinuteRateLimit() throws Exception {
-        UUID requesterUserId = UUID.randomUUID();
+        UUID requesterUserId = saveTestUser();
 
         // application.yml의 app.rate-limit.invite.join-per-minute 기본값(10)만큼은 통과해야 한다.
         // 시간당 한도(30)보다 낮아 분당 한도가 먼저 걸리는지 검증한다. 매번 다른 그룹으로 가입해야
         // "이미 가입함"(INVITE-002)이 아니라 순수하게 rate limit에 걸리는지 확인할 수 있다.
         for (int i = 0; i < 10; i++) {
-            UUID ownerUserId = UUID.randomUUID();
+            UUID ownerUserId = saveTestUser();
             Group group = createGroup(ownerUserId, 6);
             String inviteCode = inviteService.create(group.id(), ownerUserId);
 
@@ -305,7 +313,7 @@ class InviteIntegrationTest {
                     .andExpect(status().isCreated());
         }
 
-        UUID extraOwnerUserId = UUID.randomUUID();
+        UUID extraOwnerUserId = saveTestUser();
         Group extraGroup = createGroup(extraOwnerUserId, 6);
         String extraInviteCode = inviteService.create(extraGroup.id(), extraOwnerUserId);
 
@@ -317,7 +325,7 @@ class InviteIntegrationTest {
     @Test
     @DisplayName("같은 사용자가 초대 정보 조회를 분당 한도보다 많이 호출하면 COMMON-006 오류를 반환한다")
     void getInviteInfo_returnsCommon006_whenExceedingRateLimit() throws Exception {
-        UUID ownerUserId = UUID.randomUUID();
+        UUID ownerUserId = saveTestUser();
         UUID requesterUserId = UUID.randomUUID();
         Group group = createGroup(ownerUserId, 6);
         String inviteCode = inviteService.create(group.id(), ownerUserId);

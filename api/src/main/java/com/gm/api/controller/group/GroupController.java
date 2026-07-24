@@ -14,6 +14,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.gm.api.common.response.PageResponse;
 import com.gm.api.common.response.ResponseEnvelope;
 import com.gm.api.controller.group.dto.request.GroupCreateRequest;
+import com.gm.api.controller.group.dto.request.GroupUpdateRequest;
 import com.gm.api.controller.group.dto.response.GroupDetailResponse;
 import com.gm.api.controller.group.dto.response.GroupResponse;
 import com.gm.api.security.CustomUserPrincipal;
@@ -92,5 +94,25 @@ public class GroupController {
     ) {
         GroupDetail groupDetail = groupService.findGroupDetail(groupId, principal.getUserId());
         return ResponseEnvelope.success(GroupDetailResponse.from(groupDetail));
+    }
+
+    /**
+     * 그룹 정보 수정 (GROUP-004)
+     *
+     * <p>그룹 이름·위치·추천 설정 전체를 요청 본문 값으로 교체한다. 그룹장만 수정할 수 있다.</p>
+     *
+     * @param principal 요청 회원 (인증 주체)
+     * @param groupId 수정할 그룹 식별자
+     * @param request 그룹 수정 요청
+     * @return 수정된 그룹 정보
+     */
+    @PutMapping("/{groupId}")
+    public ResponseEnvelope<GroupResponse> update(
+            @AuthenticationPrincipal CustomUserPrincipal principal,
+            @PathVariable UUID groupId,
+            @Valid @RequestBody GroupUpdateRequest request
+    ) {
+        Group group = groupService.update(groupId, principal.getUserId(), request.toGroupUpdate());
+        return ResponseEnvelope.success(GroupResponse.from(group));
     }
 }
