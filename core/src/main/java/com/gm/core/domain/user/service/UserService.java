@@ -1,8 +1,10 @@
 package com.gm.core.domain.user.service;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import lombok.RequiredArgsConstructor;
@@ -11,6 +13,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.gm.core.domain.menu.repository.AllergenRepository;
+import com.gm.core.domain.menu.repository.CategoryRepository;
+import com.gm.core.domain.menu.repository.MenuRepository;
 import com.gm.core.domain.user.exception.UserErrorCode;
 import com.gm.core.domain.user.exception.UserException;
 import com.gm.core.domain.user.model.*;
@@ -25,6 +30,9 @@ public class UserService {
     private final UserAllergenService userAllergenService;
     private final UserCategoryService userCategoryService;
     private final UserMenuService userMenuService;
+    private final AllergenRepository allergenRepository;
+    private final MenuRepository menuRepository;
+    private final CategoryRepository categoryRepository;
 
     /**
      * 회원 식별자로 회원을 조회한다.
@@ -172,8 +180,10 @@ public class UserService {
      */
     @Transactional
     public void submitOnboarding(UUID userId, Onboarding onboarding) {
-        completeOnboarding(userId, onboarding.termsAgreed());
+        validateTermsAgreement(onboarding.termsAgreed());
         validateOnboardingSetting(onboarding.userSetting());
+        validateMasterIds(onboarding.userSetting());
+        completeOnboarding(userId);
         deleteUserSettings(userId);
         saveUserSetting(userId,onboarding.userSetting());
     }
@@ -185,6 +195,7 @@ public class UserService {
     @Transactional
     public void changeUserSetting(UUID userId, UserSetting userSetting) {
         validateUserSetting(userSetting);
+        validateMasterIds(userSetting);
         deleteUserSettings(userId);
         saveUserSetting(userId, userSetting);
     }
@@ -228,6 +239,50 @@ public class UserService {
         }
     }
 
+    private void validateMasterIds(UserSetting userSetting) {
+        validateAllergenIds(userSetting.allergenIds());
+        validateMenuIds(userSetting.preferredMenuIds(), userSetting.excludedMenuIds());
+        validateCategoryIds(userSetting.preferredCategoryIds(), userSetting.excludedCategoryIds());
+    }
+
+    private void validateAllergenIds(List<UUID> allergenIds) {
+        if (allergenIds.isEmpty()) {
+            return;
+        }
+
+        Set<UUID> requestedIds = new HashSet<>(allergenIds);
+        Set<UUID> existingIds = allergenRepository.findExistingIds(requestedIds);
+        if (!existingIds.containsAll(requestedIds)) {
+            throw new UserException(UserErrorCode.ALLERGEN_NOT_FOUND);
+        }
+    }
+
+    private void validateMenuIds(List<UUID> preferredIds, List<UUID> excludedIds) {
+        Set<UUID> requestedIds = new HashSet<>(preferredIds);
+        requestedIds.addAll(excludedIds);
+        if (requestedIds.isEmpty()) {
+            return;
+        }
+
+        Set<UUID> existingIds = menuRepository.findExistingIds(requestedIds);
+        if (!existingIds.containsAll(requestedIds)) {
+            throw new UserException(UserErrorCode.MENU_NOT_FOUND);
+        }
+    }
+
+    private void validateCategoryIds(List<UUID> preferredIds, List<UUID> excludedIds) {
+        Set<UUID> requestedIds = new HashSet<>(preferredIds);
+        requestedIds.addAll(excludedIds);
+        if (requestedIds.isEmpty()) {
+            return;
+        }
+
+        Set<UUID> existingIds = categoryRepository.findExistingIds(requestedIds);
+        if (!existingIds.containsAll(requestedIds)) {
+            throw new UserException(UserErrorCode.CATEGORY_NOT_FOUND);
+        }
+    }
+
     /**
      *  UserSetting 삭제
      */
@@ -253,14 +308,14 @@ public class UserService {
         saveUserPreferredCategory(userId, userSetting.preferredCategoryIds(), userSetting.excludedCategoryIds());
     }
 
-    /**
-     *
-     * 온보딩 시 유저의 terms_agreed 를 true 로 user_status를 active로 변경한다
-     */
-    private void completeOnboarding(UUID userId, boolean termsAgreed) {
+    /** 필수 약관 동의 여부를 확인한다. */
+    private void validateTermsAgreement(boolean termsAgreed) {
         if(!termsAgreed) {
             throw new UserException(UserErrorCode.TERMS_NOT_AGREED);
         }
+    }
+
+    private void completeOnboarding(UUID userId) {
         userRepository.updateUserStatus(userId);
     }
 
@@ -329,10 +384,9 @@ public class UserService {
      * 선호 비선호 카테고리 중복에러
      */
     private void validateCategoryOverlap(List<UUID> preferredIds, List<UUID> excludedIds) {
-        for (UUID excludedId : excludedIds) {
-            if (preferredIds.contains(excludedId)) {
-                throw new UserException(UserErrorCode.CATEGORY_PREFERENCE_CONFLICT);
-            }
+        Set<UUID> preferredIdSet = new HashSet<>(preferredIds);
+        if (excludedIds.stream().anyMatch(preferredIdSet::contains)) {
+            throw new UserException(UserErrorCode.CATEGORY_PREFERENCE_CONFLICT);
         }
     }
 
@@ -340,10 +394,9 @@ public class UserService {
      * 선호 비선호 메뉴 중복 에러
      */
     private void validateMenuOverlap(List<UUID> preferredIds, List<UUID> excludedIds) {
-        for (UUID excludedId : excludedIds) {
-            if (preferredIds.contains(excludedId)) {
-                throw new UserException(UserErrorCode.MENU_PREFERENCE_CONFLICT);
-            }
+        Set<UUID> preferredIdSet = new HashSet<>(preferredIds);
+        if (excludedIds.stream().anyMatch(preferredIdSet::contains)) {
+            throw new UserException(UserErrorCode.MENU_PREFERENCE_CONFLICT);
         }
     }
 }

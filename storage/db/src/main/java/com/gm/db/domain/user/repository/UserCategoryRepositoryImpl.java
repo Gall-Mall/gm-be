@@ -1,11 +1,8 @@
 package com.gm.db.domain.user.repository;
 
-import com.gm.core.domain.user.exception.UserErrorCode;
-import com.gm.core.domain.user.exception.UserException;
 import com.gm.core.domain.user.model.UserCategory;
 import com.gm.core.domain.user.model.UserCategoryPreference;
 import com.gm.core.domain.user.repository.UserCategoryRepository;
-import com.gm.db.domain.menu.category.repository.FoodCategoryJpaRepository;
 import com.gm.db.domain.user.mapper.UserCategoryMapper;
 import com.gm.db.domain.user.entity.UserCategoryEntity;
 import lombok.RequiredArgsConstructor;
@@ -19,7 +16,6 @@ import java.util.stream.Stream;
 public class UserCategoryRepositoryImpl implements UserCategoryRepository {
 
     private final UserCategoryJpaRepository userCategoryJpaRepository;
-    private final FoodCategoryJpaRepository foodCategoryJpaRepository;
     private final UserCategoryMapper userCategoryMapper;
 
     @Override
@@ -38,26 +34,16 @@ public class UserCategoryRepositoryImpl implements UserCategoryRepository {
 
         List<UserCategoryEntity> userCategoryEntities = Stream.concat(
                 preferredCategoryIds.stream()
-                        .map(categoryId -> foodCategoryJpaRepository
-                                .findById(categoryId)
-                                .orElseThrow(() ->
-                                        new UserException(UserErrorCode.CATEGORY_NOT_FOUND)
-                                ))
-                        .map(foodCategoryEntity -> new UserCategoryEntity(
+                        .map(categoryId -> new UserCategoryEntity(
                                 userId,
-                                foodCategoryEntity.getId(),
+                                categoryId,
                                 UserCategoryPreference.LIKE
                         )),
 
                 disLikeCategoryIds.stream()
-                        .map(categoryId -> foodCategoryJpaRepository
-                                .findById(categoryId)
-                                .orElseThrow(() ->
-                                        new UserException(UserErrorCode.CATEGORY_NOT_FOUND)
-                                ))
-                        .map(foodCategoryEntity -> new UserCategoryEntity(
+                        .map(categoryId -> new UserCategoryEntity(
                                 userId,
-                                foodCategoryEntity.getId(),
+                                categoryId,
                                 UserCategoryPreference.DISLIKE
                         ))
         ).toList();
