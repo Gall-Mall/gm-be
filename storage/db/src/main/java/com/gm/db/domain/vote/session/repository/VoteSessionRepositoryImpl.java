@@ -6,10 +6,11 @@ import com.gm.core.domain.vote.session.repository.VoteSessionRepository;
 import com.gm.db.domain.vote.session.entity.VoteSessionEntity;
 import com.gm.db.domain.vote.session.mapper.VoteSessionMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -42,6 +43,13 @@ public class VoteSessionRepositoryImpl implements VoteSessionRepository {
 
     /** {@inheritDoc} */
     @Override
+    public Optional<VoteSession> findByIdForUpdate(UUID id) {
+        return voteSessionJpaRepository.findByIdForUpdate(id)
+                .map(voteSessionMapper::toDomain);
+    }
+
+    /** {@inheritDoc} */
+    @Override
     public Optional<VoteSession> updateStatus(
             UUID voteSessionId,
             VoteSessionStatus voteSessionStatus
@@ -51,6 +59,30 @@ public class VoteSessionRepositoryImpl implements VoteSessionRepository {
                     entity.updateStatus(voteSessionStatus);
                     return voteSessionMapper.toDomain(entity);
                 });
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Optional<VoteSession> startMenuVoting(UUID voteSessionId, LocalDateTime startedAt) {
+        return voteSessionJpaRepository.findById(voteSessionId)
+                .map(entity -> {
+                    entity.startMenuVoting(startedAt);
+                    return voteSessionMapper.toDomain(entity);
+                });
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public List<UUID> findExpiredMenuVoting(LocalDateTime cutoff, int limit) {
+        return voteSessionJpaRepository
+                .findAllByVoteSessionStatusAndStartedAtLessThanEqualOrderByStartedAtAsc(
+                        VoteSessionStatus.MENU_VOTING,
+                        cutoff,
+                        PageRequest.of(0, limit)
+                )
+                .stream()
+                .map(VoteSessionEntity::getId)
+                .toList();
     }
 
     /** {@inheritDoc} */

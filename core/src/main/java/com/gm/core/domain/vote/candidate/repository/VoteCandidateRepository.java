@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.UUID;
 
 import com.gm.core.domain.vote.candidate.model.MenuVoteCandidate;
+import com.gm.core.domain.vote.candidate.model.MenuVoteResult;
 import com.gm.core.domain.vote.candidate.model.VoteCandidate;
 
 /**
@@ -26,4 +27,22 @@ public interface VoteCandidateRepository {
      * @return 메뉴 정보와 집계를 포함한 후보 목록
      */
     List<MenuVoteCandidate> findAllByVoteSessionId(UUID voteSessionId);
+
+    /**
+     * 세션 후보의 최종 집계와 판정 결과를 같은 저장 흐름으로 반영한다.
+     *
+     * @param voteSessionId 투표 세션 식별자
+     * @param results Redis 고정 스냅샷을 판정한 결과
+     * @return 저장된 최종 결과
+     */
+    List<MenuVoteResult> saveMenuVoteResults(UUID voteSessionId, List<MenuVoteResult> results);
+
+    /**
+     * 이미 확정된 세션의 최종 결과를 노출 순서대로 조회한다.
+     *
+     * @param voteSessionId 투표 세션 식별자
+     * @return 저장된 최종 결과
+     */
+    List<MenuVoteResult> findMenuVoteResults(UUID voteSessionId);
+
 }

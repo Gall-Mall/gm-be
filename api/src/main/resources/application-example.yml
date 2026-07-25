@@ -122,6 +122,11 @@ auth:
     # Strict / Lax / None
     same-site: ${REFRESH_TOKEN_COOKIE_SAME_SITE:Lax}
 
+gm:
+  vote:
+    # 이전 마감 작업이 끝난 뒤 다음 만료 투표 조회까지 기다릴 고정 지연 시간
+    menu-finalization-interval: ${MENU_VOTE_FINALIZATION_INTERVAL:PT1M}
+
 app:
   invite:
     # 초대 링크 조립에 쓰는 서비스 base URL. 반드시 환경별 실제 값으로 채워야 한다.

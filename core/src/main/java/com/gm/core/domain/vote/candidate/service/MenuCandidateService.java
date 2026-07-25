@@ -1,6 +1,7 @@
 package com.gm.core.domain.vote.candidate.service;
 
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -24,7 +25,6 @@ import com.gm.core.domain.vote.candidate.repository.MenuVoteRepository;
 import com.gm.core.domain.vote.session.exception.VoteSessionErrorCode;
 import com.gm.core.domain.vote.session.exception.VoteSessionException;
 import com.gm.core.domain.vote.session.model.VoteSession;
-import com.gm.core.domain.vote.session.model.VoteSessionStatus;
 import com.gm.core.domain.vote.session.service.VoteSessionService;
 import com.gm.core.transaction.AfterCommitExecutor;
 
@@ -36,7 +36,7 @@ import com.gm.core.transaction.AfterCommitExecutor;
 public class MenuCandidateService {
 
     private static final int MAX_CANDIDATE_COUNT = 10;
-    private static final Duration MENU_VOTING_DURATION = Duration.ofMinutes(30);
+    private static final Duration MENU_VOTING_DURATION = Duration.ofHours(1);
 
     private final GroupService groupService;
     private final VoteSessionService voteSessionService;
@@ -75,7 +75,7 @@ public class MenuCandidateService {
                 .toList();
 
         List<VoteCandidate> saved = voteCandidateRepository.saveNewCandidates(candidates);
-        voteSessionService.changeVoteSessionStatus(voteSessionId, VoteSessionStatus.MENU_VOTING);
+        voteSessionService.startMenuVoting(voteSessionId, LocalDateTime.now());
         MenuVoteSession menuVoteSession = new MenuVoteSession(
                 voteSessionId,
                 saved.stream().map(VoteCandidate::id).toList(),

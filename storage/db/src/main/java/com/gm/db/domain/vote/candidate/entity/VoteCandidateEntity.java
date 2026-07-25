@@ -1,5 +1,6 @@
 package com.gm.db.domain.vote.candidate.entity;
 
+import com.gm.core.domain.vote.candidate.model.MenuVoteCount;
 import com.gm.core.domain.vote.candidate.model.VoteCandidateResult;
 import com.gm.db.common.entity.BaseEntity;
 import jakarta.persistence.Column;
@@ -86,4 +87,19 @@ public class VoteCandidateEntity extends BaseEntity {
         this.resultStatus = resultStatus;
         this.description = description;
     }
+
+    /**
+     * 후보별 고정 스냅샷과 정책 판정을 최종 결과로 반영한다.
+     *
+     * @param count Redis에서 닫힌 후보별 최종 집계
+     * @param result 최종 집계에 대한 정책 판정
+     */
+    public void finalizeMenuVote(MenuVoteCount count, VoteCandidateResult result) {
+        this.goCount = count.goCount();
+        this.maybeCount = count.maybeCount();
+        this.noCount = count.noCount();
+        this.respondentCount = count.respondentCount();
+        this.resultStatus = result;
+    }
+
 }
