@@ -19,15 +19,15 @@ import org.junit.jupiter.api.Test;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
-import com.gm.core.domain.vote.candidate.exception.VoteCandidateErrorCode;
-import com.gm.core.domain.vote.candidate.exception.VoteCandidateException;
 import com.gm.core.domain.vote.candidate.model.MenuVoteChoice;
+import com.gm.core.domain.vote.candidate.model.MenuVoteCloseResult;
 import com.gm.core.domain.vote.candidate.model.MenuVoteCount;
 import com.gm.core.domain.vote.candidate.model.MenuVoteSession;
+import com.gm.core.domain.vote.candidate.model.MenuVoteSubmitResult;
 import com.gm.core.domain.vote.candidate.model.MenuVoteSubmission;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 
 class RedisMenuVoteRepositoryIntegrationTest {
 
@@ -145,9 +145,15 @@ class RedisMenuVoteRepositoryIntegrationTest {
         UUID userId = UUID.randomUUID();
         repository.initialize(session(sessionId, List.of(candidateId)));
 
-        MenuVoteSubmission first = repository.submit(sessionId, candidateId, userId, MenuVoteChoice.GO);
-        MenuVoteSubmission duplicate = repository.submit(sessionId, candidateId, userId, MenuVoteChoice.GO);
-        MenuVoteSubmission changed = repository.submit(sessionId, candidateId, userId, MenuVoteChoice.MAYBE);
+        MenuVoteSubmission first = repository.submit(
+                sessionId, candidateId, userId, MenuVoteChoice.GO
+        ).submission();
+        MenuVoteSubmission duplicate = repository.submit(
+                sessionId, candidateId, userId, MenuVoteChoice.GO
+        ).submission();
+        MenuVoteSubmission changed = repository.submit(
+                sessionId, candidateId, userId, MenuVoteChoice.MAYBE
+        ).submission();
 
         assertThat(first.changed()).isTrue();
         assertThat(first.count()).isEqualTo(new MenuVoteCount(candidateId, 1, 0, 0, 1));
@@ -163,12 +169,9 @@ class RedisMenuVoteRepositoryIntegrationTest {
         UUID sessionId = UUID.randomUUID();
         repository.initialize(session(sessionId, List.of(UUID.randomUUID())));
 
-        assertThatThrownBy(() -> repository.submit(
+        assertThat(repository.submit(
                 sessionId, UUID.randomUUID(), UUID.randomUUID(), MenuVoteChoice.GO
-        ))
-                .isInstanceOf(VoteCandidateException.class)
-                .extracting(exception -> ((VoteCandidateException) exception).getErrorCode())
-                .isEqualTo(VoteCandidateErrorCode.CANDIDATE_NOT_FOUND);
+        ).status()).isEqualTo(MenuVoteSubmitResult.Status.CANDIDATE_NOT_FOUND);
     }
 
     @Test
@@ -183,12 +186,9 @@ class RedisMenuVoteRepositoryIntegrationTest {
         ));
         Thread.sleep(100);
 
-        assertThatThrownBy(() -> expiringRepository.submit(
+        assertThat(expiringRepository.submit(
                 sessionId, candidateId, UUID.randomUUID(), MenuVoteChoice.GO
-        ))
-                .isInstanceOf(VoteCandidateException.class)
-                .extracting(exception -> ((VoteCandidateException) exception).getErrorCode())
-                .isEqualTo(VoteCandidateErrorCode.VOTE_ALREADY_CLOSED);
+        ).status()).isEqualTo(MenuVoteSubmitResult.Status.VOTE_CLOSED);
         assertThat(redisTemplate.opsForHash().get(VoteRedisKeys.session(sessionId), "status"))
                 .isEqualTo("CLOSED");
     }
@@ -209,12 +209,9 @@ class RedisMenuVoteRepositoryIntegrationTest {
         redisTemplate.opsForHash().put(key, "deadlineEpochMillis", "0");
         redisTemplate.expire(key, openTtl);
 
-        assertThatThrownBy(() -> shortTtlRepository.submit(
+        assertThat(shortTtlRepository.submit(
                 sessionId, candidateId, UUID.randomUUID(), MenuVoteChoice.NO
-        ))
-                .isInstanceOf(VoteCandidateException.class)
-                .extracting(exception -> ((VoteCandidateException) exception).getErrorCode())
-                .isEqualTo(VoteCandidateErrorCode.VOTE_ALREADY_CLOSED);
+        ).status()).isEqualTo(MenuVoteSubmitResult.Status.VOTE_CLOSED);
         assertThat(redisTemplate.opsForHash().get(key, "status")).isEqualTo("CLOSED");
         assertThat(redisTemplate.getExpire(key)).isBetween(
                 CLOSED_RECOVERY_TTL.toSeconds() - 2,
@@ -225,7 +222,7 @@ class RedisMenuVoteRepositoryIntegrationTest {
         assertThat(redisTemplate.hasKey(key)).isTrue();
 
         redisTemplate.expire(key, Duration.ofMinutes(1));
-        assertThat(shortTtlRepository.closeAndGetSnapshot(sessionId))
+        assertThat(shortTtlRepository.closeAndGetSnapshot(sessionId).snapshot())
                 .containsExactly(new MenuVoteCount(candidateId, 1, 0, 0, 1));
         assertThat(redisTemplate.getExpire(key)).isBetween(
                 CLOSED_RECOVERY_TTL.toSeconds() - 2,
@@ -240,14 +237,14 @@ class RedisMenuVoteRepositoryIntegrationTest {
         UUID candidateId = UUID.randomUUID();
         repository.initialize(session(sessionId, List.of(candidateId)));
 
-        assertThatThrownBy(() -> repository.closeAndGetSnapshotIfAnyResponse(sessionId))
-                .isInstanceOf(VoteCandidateException.class)
-                .extracting(exception -> ((VoteCandidateException) exception).getErrorCode())
-                .isEqualTo(VoteCandidateErrorCode.VOTE_CLOSE_NOT_ALLOWED);
+        assertThat(repository.closeAndGetSnapshotIfAnyResponse(sessionId).status())
+                .isEqualTo(MenuVoteCloseResult.Status.NO_RESPONSE);
 
         assertThat(redisTemplate.opsForHash().get(VoteRedisKeys.session(sessionId), "status"))
                 .isEqualTo("OPEN");
-        assertThat(repository.submit(sessionId, candidateId, UUID.randomUUID(), MenuVoteChoice.GO).changed())
+        assertThat(repository.submit(
+                sessionId, candidateId, UUID.randomUUID(), MenuVoteChoice.GO
+        ).submission().changed())
                 .isTrue();
     }
 
@@ -260,17 +257,17 @@ class RedisMenuVoteRepositoryIntegrationTest {
         repository.initialize(session(sessionId, List.of(firstCandidateId, secondCandidateId)));
         repository.submit(sessionId, secondCandidateId, UUID.randomUUID(), MenuVoteChoice.NO);
 
-        List<MenuVoteCount> first = repository.closeAndGetSnapshot(sessionId);
-        List<MenuVoteCount> retry = repository.closeAndGetSnapshot(sessionId);
+        List<MenuVoteCount> first = repository.closeAndGetSnapshot(sessionId).snapshot();
+        List<MenuVoteCount> retry = repository.closeAndGetSnapshot(sessionId).snapshot();
 
         assertThat(first).containsExactly(
                 new MenuVoteCount(firstCandidateId, 0, 0, 0, 0),
                 new MenuVoteCount(secondCandidateId, 0, 0, 1, 1)
         );
         assertThat(retry).isEqualTo(first);
-        assertThatThrownBy(() -> repository.submit(
+        assertThat(repository.submit(
                 sessionId, firstCandidateId, UUID.randomUUID(), MenuVoteChoice.GO
-        )).isInstanceOf(VoteCandidateException.class);
+        ).status()).isEqualTo(MenuVoteSubmitResult.Status.VOTE_CLOSED);
     }
 
     @Test
@@ -283,7 +280,7 @@ class RedisMenuVoteRepositoryIntegrationTest {
         String key = VoteRedisKeys.session(sessionId);
         redisTemplate.expire(key, Duration.ofMinutes(1));
 
-        List<MenuVoteCount> first = repository.closeAndGetSnapshot(sessionId);
+        List<MenuVoteCount> first = repository.closeAndGetSnapshot(sessionId).snapshot();
 
         assertThat(first).containsExactly(new MenuVoteCount(candidateId, 1, 0, 0, 1));
         assertThat(redisTemplate.getExpire(key)).isBetween(
@@ -292,7 +289,7 @@ class RedisMenuVoteRepositoryIntegrationTest {
         );
 
         redisTemplate.expire(key, Duration.ofMinutes(1));
-        List<MenuVoteCount> retry = repository.closeAndGetSnapshot(sessionId);
+        List<MenuVoteCount> retry = repository.closeAndGetSnapshot(sessionId).snapshot();
 
         assertThat(retry).isEqualTo(first);
         assertThat(redisTemplate.getExpire(key)).isBetween(
@@ -319,7 +316,7 @@ class RedisMenuVoteRepositoryIntegrationTest {
         executor.shutdown();
         assertThat(executor.awaitTermination(10, TimeUnit.SECONDS)).isTrue();
 
-        assertThat(repository.closeAndGetSnapshot(sessionId))
+        assertThat(repository.closeAndGetSnapshot(sessionId).snapshot())
                 .containsExactly(new MenuVoteCount(candidateId, 20, 20, 0, 40));
     }
 

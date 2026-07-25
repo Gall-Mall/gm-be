@@ -1,6 +1,5 @@
 package com.gm.core.domain.vote.candidate.service;
 
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -15,11 +14,10 @@ import com.gm.core.domain.group.exception.GroupException;
 import com.gm.core.domain.group.service.GroupService;
 import com.gm.core.domain.vote.candidate.exception.VoteCandidateErrorCode;
 import com.gm.core.domain.vote.candidate.exception.VoteCandidateException;
-import com.gm.core.domain.vote.candidate.model.MenuVoteCandidate;
 import com.gm.core.domain.vote.candidate.model.MenuVoteChoice;
 import com.gm.core.domain.vote.candidate.model.MenuVoteCount;
+import com.gm.core.domain.vote.candidate.model.MenuVoteSubmitResult;
 import com.gm.core.domain.vote.candidate.model.MenuVoteSubmission;
-import com.gm.core.domain.vote.candidate.model.VoteCandidateResult;
 import com.gm.core.domain.vote.candidate.repository.MenuVoteRepository;
 import com.gm.core.domain.vote.candidate.repository.VoteCandidateRepository;
 import com.gm.core.domain.vote.session.exception.VoteSessionErrorCode;
@@ -58,15 +56,13 @@ class MenuVoteServiceTest {
         UUID userId = UUID.randomUUID();
         given(voteSessionRepository.findById(voteSessionId))
                 .willReturn(Optional.of(session(voteSessionId, groupId, VoteSessionStatus.MENU_VOTING)));
-        given(voteCandidateRepository.findAllByVoteSessionId(voteSessionId))
-                .willReturn(List.of(candidate(candidateId, voteSessionId)));
         MenuVoteSubmission expected = new MenuVoteSubmission(
                 MenuVoteChoice.GO,
                 new MenuVoteCount(candidateId, 1, 0, 0, 1),
                 true
         );
         given(menuVoteRepository.submit(voteSessionId, candidateId, userId, MenuVoteChoice.GO))
-                .willReturn(expected);
+                .willReturn(MenuVoteSubmitResult.success(expected));
 
         MenuVoteSubmission result = service().submitVote(
                 groupId,
@@ -79,6 +75,7 @@ class MenuVoteServiceTest {
         assertThat(result).isEqualTo(expected);
         verify(groupService).findGroupDetail(groupId, userId);
         verify(menuVoteRepository).submit(voteSessionId, candidateId, userId, MenuVoteChoice.GO);
+        verifyNoInteractions(voteCandidateRepository);
     }
 
     @Test
@@ -154,26 +151,50 @@ class MenuVoteServiceTest {
         UUID candidateId = UUID.randomUUID();
         given(voteSessionRepository.findById(voteSessionId))
                 .willReturn(Optional.of(session(voteSessionId, groupId, VoteSessionStatus.MENU_VOTING)));
-        given(voteCandidateRepository.findAllByVoteSessionId(voteSessionId))
-                .willReturn(List.of(candidate(UUID.randomUUID(), voteSessionId)));
+        UUID userId = UUID.randomUUID();
+        given(menuVoteRepository.submit(voteSessionId, candidateId, userId, MenuVoteChoice.NO))
+                .willReturn(MenuVoteSubmitResult.candidateNotFound());
 
         assertThatThrownBy(() -> service().submitVote(
                 groupId,
                 voteSessionId,
                 candidateId,
-                UUID.randomUUID(),
+                userId,
                 MenuVoteChoice.NO
         )).isInstanceOfSatisfying(VoteCandidateException.class,
                 exception -> assertThat(exception.getErrorCode())
                         .isEqualTo(VoteCandidateErrorCode.CANDIDATE_NOT_FOUND));
-        verifyNoInteractions(menuVoteRepository);
+        verifyNoInteractions(voteCandidateRepository);
+    }
+
+    @Test
+    @DisplayName("Redis에서 닫힌 투표로 판정하면 도메인 오류로 변환한다")
+    void submitVote_mapsClosedStorageOutcomeToDomainError() {
+        UUID groupId = UUID.randomUUID();
+        UUID voteSessionId = UUID.randomUUID();
+        UUID candidateId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        given(voteSessionRepository.findById(voteSessionId))
+                .willReturn(Optional.of(session(voteSessionId, groupId, VoteSessionStatus.MENU_VOTING)));
+        given(menuVoteRepository.submit(voteSessionId, candidateId, userId, MenuVoteChoice.GO))
+                .willReturn(MenuVoteSubmitResult.voteClosed());
+
+        assertThatThrownBy(() -> service().submitVote(
+                groupId,
+                voteSessionId,
+                candidateId,
+                userId,
+                MenuVoteChoice.GO
+        )).isInstanceOfSatisfying(VoteCandidateException.class,
+                exception -> assertThat(exception.getErrorCode())
+                        .isEqualTo(VoteCandidateErrorCode.VOTE_ALREADY_CLOSED));
+        verifyNoInteractions(voteCandidateRepository);
     }
 
     private MenuVoteService service() {
         return new MenuVoteService(
                 groupService,
                 voteSessionRepository,
-                voteCandidateRepository,
                 menuVoteRepository
         );
     }
@@ -185,24 +206,5 @@ class MenuVoteServiceTest {
                 .voteSessionStatus(status)
                 .title("저녁 메뉴 투표")
                 .build();
-    }
-
-    private MenuVoteCandidate candidate(UUID candidateId, UUID voteSessionId) {
-        return new MenuVoteCandidate(
-                candidateId,
-                voteSessionId,
-                UUID.randomUUID(),
-                UUID.randomUUID(),
-                "김치찌개",
-                "한식",
-                null,
-                1,
-                0,
-                0,
-                0,
-                0,
-                VoteCandidateResult.PENDING,
-                "따뜻한 국물 메뉴"
-        );
     }
 }

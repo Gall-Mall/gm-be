@@ -12,9 +12,9 @@ import com.gm.core.domain.group.service.GroupService;
 import com.gm.core.domain.vote.candidate.exception.VoteCandidateErrorCode;
 import com.gm.core.domain.vote.candidate.exception.VoteCandidateException;
 import com.gm.core.domain.vote.candidate.model.MenuVoteChoice;
+import com.gm.core.domain.vote.candidate.model.MenuVoteSubmitResult;
 import com.gm.core.domain.vote.candidate.model.MenuVoteSubmission;
 import com.gm.core.domain.vote.candidate.repository.MenuVoteRepository;
-import com.gm.core.domain.vote.candidate.repository.VoteCandidateRepository;
 import com.gm.core.domain.vote.session.exception.VoteSessionErrorCode;
 import com.gm.core.domain.vote.session.exception.VoteSessionException;
 import com.gm.core.domain.vote.session.model.VoteSession;
@@ -23,7 +23,7 @@ import com.gm.core.domain.vote.session.repository.VoteSessionRepository;
 
 /**
  * 메뉴 후보에 대한 사용자 선택을 검증하고 임시 투표 저장소에 반영한다.
- * 세션 상태와 후보 소속은 DB에서 확인하고, 진행 중인 선택과 집계는 Redis에만 보관한다.
+ * 세션 상태는 DB에서 확인하고, 후보 소속 검증과 진행 중인 선택·집계는 Redis에서 원자적으로 처리한다.
  */
 @Service
 @RequiredArgsConstructor
@@ -31,7 +31,6 @@ public class MenuVoteService {
 
     private final GroupService groupService;
     private final VoteSessionRepository voteSessionRepository;
-    private final VoteCandidateRepository voteCandidateRepository;
     private final MenuVoteRepository menuVoteRepository;
 
     /**
@@ -70,13 +69,13 @@ public class MenuVoteService {
             throw new VoteCandidateException(VoteCandidateErrorCode.VOTE_ALREADY_CLOSED);
         }
 
-        boolean candidateExists = voteCandidateRepository.findAllByVoteSessionId(voteSessionId)
-                .stream()
-                .anyMatch(candidate -> candidate.voteCandidateId().equals(candidateId));
-        if (!candidateExists) {
-            throw new VoteCandidateException(VoteCandidateErrorCode.CANDIDATE_NOT_FOUND);
-        }
-
-        return menuVoteRepository.submit(voteSessionId, candidateId, userId, choice);
+        MenuVoteSubmitResult result = menuVoteRepository.submit(voteSessionId, candidateId, userId, choice);
+        return switch (result.status()) {
+            case SUCCESS -> result.submission();
+            case CANDIDATE_NOT_FOUND ->
+                    throw new VoteCandidateException(VoteCandidateErrorCode.CANDIDATE_NOT_FOUND);
+            case VOTE_CLOSED ->
+                    throw new VoteCandidateException(VoteCandidateErrorCode.VOTE_ALREADY_CLOSED);
+        };
     }
 }

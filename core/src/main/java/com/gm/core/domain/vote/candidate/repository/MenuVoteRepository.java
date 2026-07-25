@@ -1,12 +1,11 @@
 package com.gm.core.domain.vote.candidate.repository;
 
-import java.util.List;
 import java.util.UUID;
 
 import com.gm.core.domain.vote.candidate.model.MenuVoteChoice;
-import com.gm.core.domain.vote.candidate.model.MenuVoteCount;
+import com.gm.core.domain.vote.candidate.model.MenuVoteCloseResult;
 import com.gm.core.domain.vote.candidate.model.MenuVoteSession;
-import com.gm.core.domain.vote.candidate.model.MenuVoteSubmission;
+import com.gm.core.domain.vote.candidate.model.MenuVoteSubmitResult;
 
 /**
  * 진행 중인 메뉴 투표 선택과 집계를 임시 저장한다.
@@ -34,7 +33,7 @@ public interface MenuVoteRepository {
      * @param choice 사용자 선택
      * @return 선택 반영 결과와 최신 후보 집계
      */
-    MenuVoteSubmission submit(
+    MenuVoteSubmitResult submit(
             UUID voteSessionId,
             UUID candidateId,
             UUID userId,
@@ -48,10 +47,10 @@ public interface MenuVoteRepository {
      * @param voteSessionId 투표 세션 ID
      * @return 초기화할 때 전달한 후보 순서대로 정렬된 최종 집계
      */
-    List<MenuVoteCount> closeAndGetSnapshot(UUID voteSessionId);
+    MenuVoteCloseResult closeAndGetSnapshot(UUID voteSessionId);
 
     /** 응답자가 한 명도 없으면 세션을 열어 둔 채 수동 마감을 거절한다. */
-    List<MenuVoteCount> closeAndGetSnapshotIfAnyResponse(UUID voteSessionId);
+    MenuVoteCloseResult closeAndGetSnapshotIfAnyResponse(UUID voteSessionId);
 
     /**
      * DB 저장이 완료된 세션의 임시 투표 데이터를 제거한다.

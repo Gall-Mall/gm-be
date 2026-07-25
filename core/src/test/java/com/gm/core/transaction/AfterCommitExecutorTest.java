@@ -9,6 +9,7 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 
 class AfterCommitExecutorTest {
 
@@ -46,5 +47,18 @@ class AfterCommitExecutorTest {
                 ));
 
         assertThat(executed).isFalse();
+    }
+
+    @Test
+    @DisplayName("커밋 후 작업 실패는 호출자에게 전파하지 않는다")
+    void execute_doesNotPropagateFailureAfterCommit() {
+        TransactionSynchronizationManager.initSynchronization();
+        new AfterCommitExecutor().execute(() -> {
+            throw new IllegalStateException("Redis initialization failed");
+        });
+
+        assertThatCode(() -> TransactionSynchronizationManager.getSynchronizations()
+                .forEach(TransactionSynchronization::afterCommit))
+                .doesNotThrowAnyException();
     }
 }

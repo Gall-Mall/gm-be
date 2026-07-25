@@ -11,12 +11,12 @@ import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Repository;
 import org.springframework.util.Assert;
 
-import com.gm.core.domain.vote.candidate.exception.VoteCandidateErrorCode;
-import com.gm.core.domain.vote.candidate.exception.VoteCandidateException;
 import com.gm.core.domain.vote.candidate.model.MenuVoteChoice;
+import com.gm.core.domain.vote.candidate.model.MenuVoteCloseResult;
 import com.gm.core.domain.vote.candidate.model.MenuVoteCount;
 import com.gm.core.domain.vote.candidate.model.MenuVoteSession;
 import com.gm.core.domain.vote.candidate.model.MenuVoteSubmission;
+import com.gm.core.domain.vote.candidate.model.MenuVoteSubmitResult;
 import com.gm.core.domain.vote.candidate.repository.MenuVoteRepository;
 
 /**
@@ -186,7 +186,7 @@ public class RedisMenuVoteRepository implements MenuVoteRepository {
 
     /** {@inheritDoc} */
     @Override
-    public MenuVoteSubmission submit(
+    public MenuVoteSubmitResult submit(
             UUID voteSessionId,
             UUID candidateId,
             UUID userId,
@@ -202,13 +202,13 @@ public class RedisMenuVoteRepository implements MenuVoteRepository {
         );
         int outcome = result == null || result.isEmpty() ? 0 : number(result, 0);
         if (outcome == -1) {
-            throw new VoteCandidateException(VoteCandidateErrorCode.CANDIDATE_NOT_FOUND);
+            return MenuVoteSubmitResult.candidateNotFound();
         }
         if (outcome != 1) {
-            throw new VoteCandidateException(VoteCandidateErrorCode.VOTE_ALREADY_CLOSED);
+            return MenuVoteSubmitResult.voteClosed();
         }
 
-        return new MenuVoteSubmission(
+        return MenuVoteSubmitResult.success(new MenuVoteSubmission(
                 choice,
                 new MenuVoteCount(
                         candidateId,
@@ -218,22 +218,22 @@ public class RedisMenuVoteRepository implements MenuVoteRepository {
                         number(result, 5)
                 ),
                 number(result, 1) == 1
-        );
+        ));
     }
 
     /** {@inheritDoc} */
     @Override
-    public List<MenuVoteCount> closeAndGetSnapshot(UUID voteSessionId) {
+    public MenuVoteCloseResult closeAndGetSnapshot(UUID voteSessionId) {
         return closeAndGetSnapshot(voteSessionId, false);
     }
 
     /** {@inheritDoc} */
     @Override
-    public List<MenuVoteCount> closeAndGetSnapshotIfAnyResponse(UUID voteSessionId) {
+    public MenuVoteCloseResult closeAndGetSnapshotIfAnyResponse(UUID voteSessionId) {
         return closeAndGetSnapshot(voteSessionId, true);
     }
 
-    private List<MenuVoteCount> closeAndGetSnapshot(UUID voteSessionId, boolean requireAnyResponse) {
+    private MenuVoteCloseResult closeAndGetSnapshot(UUID voteSessionId, boolean requireAnyResponse) {
         List<?> result = redisTemplate.execute(
                 CLOSE_SCRIPT,
                 List.of(VoteRedisKeys.session(voteSessionId)),
@@ -242,10 +242,10 @@ public class RedisMenuVoteRepository implements MenuVoteRepository {
         );
         int outcome = result == null || result.isEmpty() ? 0 : number(result, 0);
         if (outcome == -2) {
-            throw new VoteCandidateException(VoteCandidateErrorCode.VOTE_CLOSE_NOT_ALLOWED);
+            return MenuVoteCloseResult.noResponse();
         }
         if (outcome != 1) {
-            throw new VoteCandidateException(VoteCandidateErrorCode.VOTE_ALREADY_CLOSED);
+            return MenuVoteCloseResult.voteClosed();
         }
 
         List<MenuVoteCount> snapshot = new ArrayList<>();
@@ -258,7 +258,7 @@ public class RedisMenuVoteRepository implements MenuVoteRepository {
                     number(result, index + 4)
             ));
         }
-        return List.copyOf(snapshot);
+        return MenuVoteCloseResult.success(snapshot);
     }
 
     /** {@inheritDoc} */
