@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
+import java.util.Comparator;
 import java.util.List;
 
 
@@ -40,7 +41,12 @@ public class KakaoMapSearchAdapter implements StoreSearchPort {
                 return List.of();
             }
 
-            return kakaoPlaceResponse.documents().stream().map(KakaoPlaceResponse.Document::toStore).toList();
+            return kakaoPlaceResponse
+                    .documents()
+                    .stream()
+                    .map(KakaoPlaceResponse.Document::toStore)
+                    .sorted(Comparator.comparingInt(store -> Integer.parseInt(store.distance())))
+                    .toList();
         } catch (RestClientException e) {
             throw new KakaoApiException(KakaoErrorCode.KAKAO_API_ERROR);
         }
