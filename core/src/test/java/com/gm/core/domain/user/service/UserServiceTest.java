@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.DisplayName;
@@ -27,6 +28,9 @@ import com.gm.core.domain.user.model.User;
 import com.gm.core.domain.user.model.UserResult;
 import com.gm.core.domain.user.model.UserSetting;
 import com.gm.core.domain.user.model.UserStatus;
+import com.gm.core.domain.menu.repository.AllergenRepository;
+import com.gm.core.domain.menu.repository.CategoryRepository;
+import com.gm.core.domain.menu.repository.MenuRepository;
 import com.gm.core.domain.user.repository.UserRepository;
 
 @ExtendWith(MockitoExtension.class)
@@ -44,6 +48,15 @@ class UserServiceTest {
     @Mock
     private UserMenuService userMenuService;
 
+    @Mock
+    private AllergenRepository allergenRepository;
+
+    @Mock
+    private MenuRepository menuRepository;
+
+    @Mock
+    private CategoryRepository categoryRepository;
+
 
     @Test
     @DisplayName("회원 UUID로 기존 회원을 조회한다")
@@ -55,7 +68,7 @@ class UserServiceTest {
         when(userRepository.findById(userId))
                 .thenReturn(Optional.of(user));
 
-        UserService userService = new UserService(userRepository, userAllergenService, userCategoryService, userMenuService);
+        UserService userService = createUserService();
 
         // when
         User result = userService.findById(userId);
@@ -74,7 +87,7 @@ class UserServiceTest {
         when(userRepository.findById(userId))
                 .thenReturn(Optional.empty());
 
-        UserService userService = new UserService(userRepository, userAllergenService, userCategoryService, userMenuService);
+        UserService userService = createUserService();
 
         // when & then
         assertThatThrownBy(() -> userService.findById(userId))
@@ -102,7 +115,7 @@ class UserServiceTest {
                 "naver-provider-id"
         )).thenReturn(Optional.of(existingResult));
 
-        UserService userService = new UserService(userRepository, userAllergenService, userCategoryService, userMenuService);
+        UserService userService = createUserService();
 
         // when
         UserResult result = userService.findOrCreateWithId(
@@ -138,7 +151,7 @@ class UserServiceTest {
                     return UserResult.of(generatedUserId, savedUser);
                 });
 
-        UserService userService = new UserService(userRepository, userAllergenService, userCategoryService, userMenuService);
+        UserService userService = createUserService();
 
         // when
         UserResult result = userService.findOrCreateWithId(
@@ -192,12 +205,13 @@ class UserServiceTest {
                 "고수"
         );
         Onboarding onboarding = new Onboarding(true, userSetting);
-        UserService userService = new UserService(
-                userRepository,
-                userAllergenService,
-                userCategoryService,
-                userMenuService
-        );
+        when(allergenRepository.findExistingIds(Set.of(allergenId)))
+                .thenReturn(Set.of(allergenId));
+        when(menuRepository.findExistingIds(Set.of(preferredMenuId, excludedMenuId)))
+                .thenReturn(Set.of(preferredMenuId, excludedMenuId));
+        when(categoryRepository.findExistingIds(Set.of(preferredCategoryId, excludedCategoryId)))
+                .thenReturn(Set.of(preferredCategoryId, excludedCategoryId));
+        UserService userService = createUserService();
 
         // when
         userService.submitOnboarding(userId, onboarding);
@@ -219,23 +233,102 @@ class UserServiceTest {
     }
 
     @Test
+    @DisplayName("존재하지 않는 알레르기 ID가 있으면 온보딩 설정을 저장하지 않는다")
+    void submitOnboardingRejectsUnknownAllergen() {
+        UUID userId = UUID.randomUUID();
+        UUID unknownAllergenId = UUID.randomUUID();
+        UserSetting userSetting = new UserSetting(
+                List.of(unknownAllergenId),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                "",
+                "",
+                ""
+        );
+        when(allergenRepository.findExistingIds(Set.of(unknownAllergenId)))
+                .thenReturn(Set.of());
+        UserService userService = createUserService();
+
+        assertThatThrownBy(() -> userService.submitOnboarding(userId, new Onboarding(true, userSetting)))
+                .isInstanceOf(UserException.class)
+                .satisfies(exception -> assertThat(((UserException) exception).getErrorCode())
+                        .isEqualTo(UserErrorCode.ALLERGEN_NOT_FOUND));
+
+        verify(userRepository, never()).updateUserStatus(userId);
+        verify(userAllergenService, never()).deleteUserAllergens(userId);
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 메뉴 ID가 있으면 온보딩 설정을 저장하지 않는다")
+    void submitOnboardingRejectsUnknownMenu() {
+        UUID userId = UUID.randomUUID();
+        UUID unknownMenuId = UUID.randomUUID();
+        UserSetting userSetting = new UserSetting(
+                List.of(),
+                List.of(unknownMenuId),
+                List.of(),
+                List.of(),
+                List.of(),
+                "",
+                "",
+                ""
+        );
+        when(menuRepository.findExistingIds(Set.of(unknownMenuId)))
+                .thenReturn(Set.of());
+        UserService userService = createUserService();
+
+        assertThatThrownBy(() -> userService.submitOnboarding(userId, new Onboarding(true, userSetting)))
+                .isInstanceOf(UserException.class)
+                .satisfies(exception -> assertThat(((UserException) exception).getErrorCode())
+                        .isEqualTo(UserErrorCode.MENU_NOT_FOUND));
+
+        verify(userRepository, never()).updateUserStatus(userId);
+        verify(userMenuService, never()).deleteUserMenuPreferences(userId);
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 카테고리 ID가 있으면 온보딩 설정을 저장하지 않는다")
+    void submitOnboardingRejectsUnknownCategory() {
+        UUID userId = UUID.randomUUID();
+        UUID unknownCategoryId = UUID.randomUUID();
+        UserSetting userSetting = new UserSetting(
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(unknownCategoryId),
+                List.of(),
+                "",
+                "",
+                ""
+        );
+        when(categoryRepository.findExistingIds(Set.of(unknownCategoryId)))
+                .thenReturn(Set.of());
+        UserService userService = createUserService();
+
+        assertThatThrownBy(() -> userService.submitOnboarding(userId, new Onboarding(true, userSetting)))
+                .isInstanceOf(UserException.class)
+                .satisfies(exception -> assertThat(((UserException) exception).getErrorCode())
+                        .isEqualTo(UserErrorCode.CATEGORY_NOT_FOUND));
+
+        verify(userRepository, never()).updateUserStatus(userId);
+        verify(userCategoryService, never()).deleteUserCategoryPreferences(userId);
+    }
+
+    @Test
     @DisplayName("필수 약관에 동의하지 않으면 온보딩을 완료하지 않는다")
     void submitOnboardingDoesNotCompleteWithoutTermsAgreement() {
         // given
         UUID userId = UUID.randomUUID();
         Onboarding onboarding = new Onboarding(false, emptyUserSetting());
-        UserService userService = new UserService(
-                userRepository,
-                userAllergenService,
-                userCategoryService,
-                userMenuService
-        );
+        UserService userService = createUserService();
 
         // when & then
         assertThatThrownBy(() -> userService.submitOnboarding(userId, onboarding))
                 .isInstanceOf(UserException.class)
                 .satisfies(exception -> assertThat(((UserException) exception).getErrorCode())
-                        .isEqualTo(UserErrorCode.TERMS_AGREED_APPROVE));
+                        .isEqualTo(UserErrorCode.TERMS_NOT_AGREED));
 
         verify(userRepository, never()).updateUserStatus(userId);
     }
@@ -256,12 +349,7 @@ class UserServiceTest {
                 "",
                 ""
         );
-        UserService userService = new UserService(
-                userRepository,
-                userAllergenService,
-                userCategoryService,
-                userMenuService
-        );
+        UserService userService = createUserService();
 
         // when & then
         assertThatThrownBy(() -> userService.submitOnboarding(userId, new Onboarding(true, userSetting)))
@@ -277,12 +365,7 @@ class UserServiceTest {
     void submitOnboardingAllowsNullableInputText() {
         // given
         UUID userId = UUID.randomUUID();
-        UserService userService = new UserService(
-                userRepository,
-                userAllergenService,
-                userCategoryService,
-                userMenuService
-        );
+        UserService userService = createUserService();
 
         // when
         userService.submitOnboarding(userId, new Onboarding(true, nullableTextUserSetting()));
@@ -290,6 +373,18 @@ class UserServiceTest {
         // then
         verify(userRepository).saveUserInputText(userId, null, null, null);
         verify(userRepository).updateUserStatus(userId);
+    }
+
+    private UserService createUserService() {
+        return new UserService(
+                userRepository,
+                userAllergenService,
+                userCategoryService,
+                userMenuService,
+                allergenRepository,
+                menuRepository,
+                categoryRepository
+        );
     }
 
     private UserSetting emptyUserSetting() {

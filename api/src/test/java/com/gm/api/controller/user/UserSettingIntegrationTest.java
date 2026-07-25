@@ -365,6 +365,92 @@ class UserSettingIntegrationTest {
     }
 
     @Test
+    @DisplayName("존재하지 않는 알레르기가 포함되면 설정 변경 전체를 롤백한다")
+    void changeUserSetting_whenAllergenDoesNotExist_rollsBackEntireChange() throws Exception {
+        SettingReferences references = createSettingReferences();
+        completeOnboarding(userSettingRequest(
+                new UUID[]{references.allergen1()},
+                new UUID[]{references.menu1()},
+                new UUID[]{references.menu2()},
+                new UUID[]{references.category1()},
+                new UUID[]{references.category2()},
+                "기존 알레르기",
+                "기존 선호",
+                "기존 제외"
+        ));
+
+        mockMvc.perform(put(SETTINGS_URI)
+                        .with(authAs(userId, user))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(userSettingRequest(
+                                new UUID[]{UUID.randomUUID()},
+                                new UUID[]{references.menu3()},
+                                new UUID[]{references.menu4()},
+                                new UUID[]{references.category3()},
+                                new UUID[]{references.category4()},
+                                "변경 알레르기",
+                                "변경 선호",
+                                "변경 제외"
+                        )))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("USER-008"));
+
+        assertSettingEquals(
+                references.allergen1(),
+                references.menu1(),
+                references.menu2(),
+                references.category1(),
+                references.category2(),
+                "기존 알레르기",
+                "기존 선호",
+                "기존 제외"
+        );
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 메뉴가 포함되면 설정 변경 전체를 롤백한다")
+    void changeUserSetting_whenMenuDoesNotExist_rollsBackEntireChange() throws Exception {
+        SettingReferences references = createSettingReferences();
+        completeOnboarding(userSettingRequest(
+                new UUID[]{references.allergen1()},
+                new UUID[]{references.menu1()},
+                new UUID[]{references.menu2()},
+                new UUID[]{references.category1()},
+                new UUID[]{references.category2()},
+                "기존 알레르기",
+                "기존 선호",
+                "기존 제외"
+        ));
+
+        mockMvc.perform(put(SETTINGS_URI)
+                        .with(authAs(userId, user))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(userSettingRequest(
+                                new UUID[]{references.allergen2()},
+                                new UUID[]{UUID.randomUUID()},
+                                new UUID[]{references.menu4()},
+                                new UUID[]{references.category3()},
+                                new UUID[]{references.category4()},
+                                "변경 알레르기",
+                                "변경 선호",
+                                "변경 제외"
+                        )))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("USER-009"));
+
+        assertSettingEquals(
+                references.allergen1(),
+                references.menu1(),
+                references.menu2(),
+                references.category1(),
+                references.category2(),
+                "기존 알레르기",
+                "기존 선호",
+                "기존 제외"
+        );
+    }
+
+    @Test
     @DisplayName("설정 저장 도중 존재하지 않는 카테고리가 발견되면 변경 전체를 롤백한다")
     void changeUserSetting_whenCategoryDoesNotExist_rollsBackEntireChange() throws Exception {
         SettingReferences references = createSettingReferences();

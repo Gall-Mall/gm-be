@@ -4,7 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
 
@@ -33,6 +35,12 @@ class FoodPreferenceExtractionServiceTest {
         MenuRepository fakeRepo = new MenuRepository() {
             @Override public List<Menu> findAll() { return MASTER; }
             @Override public List<Menu> findMenusByCategoryId(UUID categoryId) { return List.of(); }
+            @Override public Set<UUID> findExistingIds(Set<UUID> ids) {
+                return MASTER.stream()
+                        .map(Menu::id)
+                        .filter(ids::contains)
+                        .collect(Collectors.toUnmodifiableSet());
+            }
         };
         return new FoodPreferenceExtractionService(fakeAi, fakeRepo);
     }
@@ -146,6 +154,12 @@ class FoodPreferenceExtractionServiceTest {
         MenuRepository repo = new MenuRepository() {
             @Override public List<Menu> findAll() { return MASTER; }
             @Override public List<Menu> findMenusByCategoryId(UUID categoryId) { return List.of(); }
+            @Override public Set<UUID> findExistingIds(Set<UUID> ids) {
+                return MASTER.stream()
+                        .map(Menu::id)
+                        .filter(ids::contains)
+                        .collect(Collectors.toUnmodifiableSet());
+            }
         };
         var service = new FoodPreferenceExtractionService(nullAi, repo);
 
