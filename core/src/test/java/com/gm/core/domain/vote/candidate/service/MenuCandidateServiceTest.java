@@ -19,12 +19,14 @@ import com.gm.core.domain.vote.candidate.model.MenuVoteCandidate;
 import com.gm.core.domain.vote.candidate.model.RecommendedMenuCandidate;
 import com.gm.core.domain.vote.candidate.model.VoteCandidate;
 import com.gm.core.domain.vote.candidate.model.VoteCandidateResult;
+import com.gm.core.domain.vote.candidate.repository.MenuVoteRepository;
 import com.gm.core.domain.vote.session.exception.VoteSessionErrorCode;
 import com.gm.core.domain.vote.session.exception.VoteSessionException;
 import com.gm.core.domain.vote.session.model.VoteSession;
 import com.gm.core.domain.vote.session.model.VoteSessionStatus;
 import com.gm.core.domain.vote.candidate.repository.VoteCandidateRepository;
 import com.gm.core.domain.vote.session.service.VoteSessionService;
+import com.gm.core.transaction.AfterCommitExecutor;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -46,6 +48,12 @@ class MenuCandidateServiceTest {
     @Mock
     private VoteCandidateRepository voteCandidateRepository;
 
+    @Mock
+    private MenuVoteRepository menuVoteRepository;
+
+    @Mock
+    private AfterCommitExecutor afterCommitExecutor;
+
     @Test
     @DisplayName("추천 완료 시 메뉴 후보를 저장하고 세션을 메뉴 투표 상태로 변경한다")
     void completeRecommendation_savesCandidates_andMovesSessionToMenuVoting() {
@@ -55,11 +63,18 @@ class MenuCandidateServiceTest {
                 new RecommendedMenuCandidate(UUID.randomUUID(), 2, "그룹 선호도가 높은 메뉴")
         );
         given(voteCandidateRepository.saveNewCandidates(anyList()))
-                .willAnswer(invocation -> invocation.getArgument(0));
+                .willAnswer(invocation -> {
+                    List<VoteCandidate> candidates = invocation.getArgument(0);
+                    return candidates.stream()
+                            .map(candidate -> candidate.toBuilder().id(UUID.randomUUID()).build())
+                            .toList();
+                });
         MenuCandidateService service = new MenuCandidateService(
                 groupService,
                 voteSessionService,
-                voteCandidateRepository
+                voteCandidateRepository,
+                menuVoteRepository,
+                afterCommitExecutor
         );
 
         List<VoteCandidate> saved = service.completeRecommendation(voteSessionId, recommendations);
@@ -91,7 +106,9 @@ class MenuCandidateServiceTest {
         MenuCandidateService service = new MenuCandidateService(
                 groupService,
                 voteSessionService,
-                voteCandidateRepository
+                voteCandidateRepository,
+                menuVoteRepository,
+                afterCommitExecutor
         );
 
         assertThatThrownBy(() -> service.completeRecommendation(UUID.randomUUID(), List.of()))
@@ -110,7 +127,9 @@ class MenuCandidateServiceTest {
         MenuCandidateService service = new MenuCandidateService(
                 groupService,
                 voteSessionService,
-                voteCandidateRepository
+                voteCandidateRepository,
+                menuVoteRepository,
+                afterCommitExecutor
         );
 
         assertThatThrownBy(() -> service.completeRecommendation(UUID.randomUUID(), recommendations))
@@ -131,7 +150,9 @@ class MenuCandidateServiceTest {
         MenuCandidateService service = new MenuCandidateService(
                 groupService,
                 voteSessionService,
-                voteCandidateRepository
+                voteCandidateRepository,
+                menuVoteRepository,
+                afterCommitExecutor
         );
 
         assertThatThrownBy(() -> service.completeRecommendation(UUID.randomUUID(), recommendations))
@@ -151,7 +172,9 @@ class MenuCandidateServiceTest {
         MenuCandidateService service = new MenuCandidateService(
                 groupService,
                 voteSessionService,
-                voteCandidateRepository
+                voteCandidateRepository,
+                menuVoteRepository,
+                afterCommitExecutor
         );
 
         assertThatThrownBy(() -> service.completeRecommendation(UUID.randomUUID(), recommendations))
@@ -175,7 +198,9 @@ class MenuCandidateServiceTest {
         MenuCandidateService service = new MenuCandidateService(
                 groupService,
                 voteSessionService,
-                voteCandidateRepository
+                voteCandidateRepository,
+                menuVoteRepository,
+                afterCommitExecutor
         );
 
         assertThatThrownBy(() -> service.completeRecommendation(voteSessionId, recommendations))
@@ -218,7 +243,9 @@ class MenuCandidateServiceTest {
         MenuCandidateService service = new MenuCandidateService(
                 groupService,
                 voteSessionService,
-                voteCandidateRepository
+                voteCandidateRepository,
+                menuVoteRepository,
+                afterCommitExecutor
         );
 
         List<MenuVoteCandidate> result = service.findMenuCandidates(groupId, userId, voteSessionId);
@@ -243,7 +270,9 @@ class MenuCandidateServiceTest {
         MenuCandidateService service = new MenuCandidateService(
                 groupService,
                 voteSessionService,
-                voteCandidateRepository
+                voteCandidateRepository,
+                menuVoteRepository,
+                afterCommitExecutor
         );
 
         assertThatThrownBy(() -> service.findMenuCandidates(groupId, userId, voteSessionId))

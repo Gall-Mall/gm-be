@@ -1,5 +1,6 @@
 package com.gm.core.domain.vote.candidate.service;
 
+import java.time.Duration;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -14,15 +15,18 @@ import com.gm.core.domain.group.service.GroupService;
 import com.gm.core.domain.vote.candidate.exception.VoteCandidateErrorCode;
 import com.gm.core.domain.vote.candidate.exception.VoteCandidateException;
 import com.gm.core.domain.vote.candidate.model.MenuVoteCandidate;
+import com.gm.core.domain.vote.candidate.model.MenuVoteSession;
 import com.gm.core.domain.vote.candidate.model.RecommendedMenuCandidate;
 import com.gm.core.domain.vote.candidate.model.VoteCandidate;
 import com.gm.core.domain.vote.candidate.model.VoteCandidateResult;
 import com.gm.core.domain.vote.candidate.repository.VoteCandidateRepository;
+import com.gm.core.domain.vote.candidate.repository.MenuVoteRepository;
 import com.gm.core.domain.vote.session.exception.VoteSessionErrorCode;
 import com.gm.core.domain.vote.session.exception.VoteSessionException;
 import com.gm.core.domain.vote.session.model.VoteSession;
 import com.gm.core.domain.vote.session.model.VoteSessionStatus;
 import com.gm.core.domain.vote.session.service.VoteSessionService;
+import com.gm.core.transaction.AfterCommitExecutor;
 
 /**
  * 추천 메뉴 후보를 저장하고 투표 화면용 후보를 조회한다.
@@ -32,10 +36,13 @@ import com.gm.core.domain.vote.session.service.VoteSessionService;
 public class MenuCandidateService {
 
     private static final int MAX_CANDIDATE_COUNT = 10;
+    private static final Duration MENU_VOTING_DURATION = Duration.ofMinutes(30);
 
     private final GroupService groupService;
     private final VoteSessionService voteSessionService;
     private final VoteCandidateRepository voteCandidateRepository;
+    private final MenuVoteRepository menuVoteRepository;
+    private final AfterCommitExecutor afterCommitExecutor;
 
     /**
      * 추천 결과를 저장하고 메뉴 투표를 시작한다.
@@ -69,6 +76,13 @@ public class MenuCandidateService {
 
         List<VoteCandidate> saved = voteCandidateRepository.saveNewCandidates(candidates);
         voteSessionService.changeVoteSessionStatus(voteSessionId, VoteSessionStatus.MENU_VOTING);
+        MenuVoteSession menuVoteSession = new MenuVoteSession(
+                voteSessionId,
+                saved.stream().map(VoteCandidate::id).toList(),
+                MENU_VOTING_DURATION
+        );
+        // @Transactional 메서드가 끝나야 커밋되므로, 롤백 시 Redis 투표만 남지 않게 커밋 후 초기화한다.
+        afterCommitExecutor.execute(() -> menuVoteRepository.initialize(menuVoteSession));
         return saved;
     }
 
