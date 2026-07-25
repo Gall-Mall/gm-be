@@ -1,7 +1,11 @@
 package com.gm.db.domain.menu.category.repository;
 
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
+import com.gm.db.common.entity.BaseEntity;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,5 +29,16 @@ public class CategoryRepositoryImpl implements CategoryRepository {
         return foodCategoryJpaRepository.findAll().stream()
                 .map(entity -> new Category(entity.getId(), entity.getName()))
                 .toList();
+    }
+
+    @Override
+    public Set<UUID> findExistingIds(Set<UUID> ids) {
+        if (ids.isEmpty()) {
+            return Set.of();
+        }
+
+        return foodCategoryJpaRepository.findAllById(ids).stream()
+                .map(BaseEntity::getId)
+                .collect(Collectors.toSet());
     }
 }

@@ -4,8 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.IntStream;
+import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
 
@@ -32,8 +34,24 @@ class AllergenExtractionServiceTest {
     /** AI가 주어진 이름들을 그대로 뱉는 fake. (프롬프트/HTTP 무관) */
     private AllergenExtractionService serviceReturning(String... aiNames) {
         AiChatPort fakeAi = (text, masterNames) -> new ExtractedAllergen(Arrays.asList(aiNames));
-        AllergenRepository fakeRepo = () -> MASTER;
-        return new AllergenExtractionService(fakeAi, fakeRepo);
+        return new AllergenExtractionService(fakeAi, fakeRepository());
+    }
+
+    private AllergenRepository fakeRepository() {
+        return new AllergenRepository() {
+            @Override
+            public List<Allergen> findAll() {
+                return MASTER;
+            }
+
+            @Override
+            public Set<UUID> findExistingIds(Set<UUID> ids) {
+                return MASTER.stream()
+                        .map(Allergen::id)
+                        .filter(ids::contains)
+                        .collect(Collectors.toUnmodifiableSet());
+            }
+        };
     }
 
     private List<String> names(List<Allergen> allergens) {
@@ -136,7 +154,7 @@ class AllergenExtractionServiceTest {
     @Test
     void allergenNames가_null이어도_안전하다() {
         AiChatPort nullAi = (text, masterNames) -> new ExtractedAllergen(null);
-        var service = new AllergenExtractionService(nullAi, () -> MASTER);
+        var service = new AllergenExtractionService(nullAi, fakeRepository());
 
         AllergenExtractionResult result = service.extract("...");
 
