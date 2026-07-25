@@ -8,6 +8,7 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 
 import com.gm.core.domain.store.model.Coordinate;
 
@@ -19,6 +20,7 @@ public record StoreSearchRequest(
         UUID voteSessionId,
 
         @NotBlank
+        @Size(max = 100)
         String keyword,
 
         @NotNull
