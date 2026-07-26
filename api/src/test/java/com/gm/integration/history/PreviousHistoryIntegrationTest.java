@@ -77,13 +77,13 @@ class PreviousHistoryIntegrationTest {
     private JdbcTemplate jdbcTemplate;
 
     @Test
-    @DisplayName("그룹별 완료 세션의 선택 식당을 식당 생성 시각 최신순으로 반환한다")
-    void getPreviousHistory_returnsSelectedRestaurantsGroupedByRecentCreatedAt() throws Exception {
+    @DisplayName("그룹별 완료 세션의 선택 식당을 세션 완료 시각 최신순으로 반환한다")
+    void getPreviousHistory_returnsSelectedRestaurantsGroupedByRecentClosedAt() throws Exception {
         UUID userId = UUID.randomUUID();
         DiningGroupEntity lunchGroup = createGroup(userId, "강남 점심 모임");
         DiningGroupEntity dinnerGroup = createGroup(userId, "판교 저녁 모임");
 
-        // 세션 생성 순서와 식당 생성 시각 순서를 반대로 만들어 식당 createdAt 정렬임을 검증한다.
+        // 식당 생성 시각과 세션 완료 시각을 반대로 만들어 closedAt 정렬임을 검증한다.
         VoteSessionEntity lunchNewestSession = createSession(
                 lunchGroup.getId(), VoteSessionStatus.COMPLETED, "점심 최신 세션");
         VoteSessionEntity dinnerSession = createSession(
@@ -100,9 +100,12 @@ class PreviousHistoryIntegrationTest {
         createCandidate(lunchNewestSession.getId(), true, 3, 1, 0);
         createCandidate(dinnerSession.getId(), true, 2, 1, 1);
         createCandidate(lunchOlderSession.getId(), true, 1, 0, 2);
-        setCreatedAt(lunchNewest.getId(), LocalDateTime.of(2026, 7, 25, 12, 0));
-        setCreatedAt(dinner.getId(), LocalDateTime.of(2026, 7, 24, 18, 0));
-        setCreatedAt(lunchOlder.getId(), LocalDateTime.of(2026, 7, 23, 12, 0));
+        setCreatedAt(lunchNewest.getId(), LocalDateTime.of(2026, 7, 23, 12, 0));
+        setCreatedAt(dinner.getId(), LocalDateTime.of(2026, 7, 25, 18, 0));
+        setCreatedAt(lunchOlder.getId(), LocalDateTime.of(2026, 7, 24, 12, 0));
+        setClosedAt(lunchNewestSession.getId(), LocalDateTime.of(2026, 7, 25, 12, 0));
+        setClosedAt(dinnerSession.getId(), LocalDateTime.of(2026, 7, 24, 18, 0));
+        setClosedAt(lunchOlderSession.getId(), LocalDateTime.of(2026, 7, 23, 12, 0));
 
         mockMvc.perform(get(URI).with(authAs(userId)))
                 .andExpect(status().isOk())
@@ -126,7 +129,7 @@ class PreviousHistoryIntegrationTest {
                 .andExpect(jsonPath("$.data.previous[0].voteSessions[0].distanceM").value(120))
                 .andExpect(jsonPath("$.data.previous[0].voteSessions[0].externalPlaceId")
                         .value("lunch-newest"))
-                .andExpect(jsonPath("$.data.previous[0].voteSessions[0].createdAt")
+                .andExpect(jsonPath("$.data.previous[0].voteSessions[0].completedAt")
                         .value("2026-07-25T12:00:00"))
                 .andExpect(jsonPath("$.data.previous[0].voteSessions[0].goCount").value(3))
                 .andExpect(jsonPath("$.data.previous[0].voteSessions[0].maybeCount").value(1))
@@ -225,7 +228,7 @@ class PreviousHistoryIntegrationTest {
                 VoteSessionStatus.COMPLETED,
                 "점심 세션"
         );
-        StoreEntity restaurant = createRestaurant(
+        createRestaurant(
                 session.getId(),
                 true,
                 "이자카야 하루",
@@ -233,7 +236,7 @@ class PreviousHistoryIntegrationTest {
                 120
         );
         createCandidate(session.getId(), true, 3, 1, 0);
-        setCreatedAt(restaurant.getId(), LocalDateTime.of(2026, 7, 25, 12, 0));
+        setClosedAt(session.getId(), LocalDateTime.of(2026, 7, 25, 12, 0));
 
         mockMvc.perform(get(DETAIL_URI, session.getId()).with(authAs(userId)))
                 .andExpect(status().isOk())
@@ -253,7 +256,7 @@ class PreviousHistoryIntegrationTest {
                 .andExpect(jsonPath("$.data.goCount").value(3))
                 .andExpect(jsonPath("$.data.maybeCount").value(1))
                 .andExpect(jsonPath("$.data.noCount").value(0))
-                .andExpect(jsonPath("$.data.createdAt").value("2026-07-25T12:00:00"));
+                .andExpect(jsonPath("$.data.completedAt").value("2026-07-25T12:00:00"));
     }
 
     @Test
@@ -391,6 +394,14 @@ class PreviousHistoryIntegrationTest {
                 "update recommended_restaurant set created_at = ? where id = ?",
                 Timestamp.valueOf(createdAt),
                 restaurantId
+        );
+    }
+
+    private void setClosedAt(UUID voteSessionId, LocalDateTime closedAt) {
+        jdbcTemplate.update(
+                "update vote_session set closed_at = ? where id = ?",
+                Timestamp.valueOf(closedAt),
+                voteSessionId
         );
     }
 

@@ -13,6 +13,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.gm.core.domain.history.model.PreviousGroupHistory;
+import com.gm.core.domain.history.model.PreviousHistoryDetail;
 import com.gm.core.domain.history.model.PreviousHistoryRecord;
 import com.gm.core.domain.history.repository.PreviousHistoryRepository;
 import com.gm.core.domain.vote.session.exception.VoteSessionErrorCode;
@@ -105,8 +106,8 @@ class PreviousHistoryServiceTest {
     }
 
     @Test
-    @DisplayName("접근 가능한 완료 세션의 지난 기록을 단건 반환한다")
-    void getPreviousHistoryDetail_returnsRepositoryRecord() {
+    @DisplayName("접근 가능한 완료 세션의 조회 행을 상세 모델로 변환한다")
+    void getPreviousHistoryDetail_convertsRepositoryRecordToDetail() {
         UUID userId = UUID.randomUUID();
         UUID voteSessionId = UUID.randomUUID();
         PreviousHistoryRecord record = record(
@@ -120,10 +121,14 @@ class PreviousHistoryServiceTest {
                 .findPreviousHistoryByUserIdAndVoteSessionId(userId, voteSessionId))
                 .willReturn(Optional.of(record));
 
-        PreviousHistoryRecord result =
+        PreviousHistoryDetail result =
                 previousHistoryService.getPreviousHistoryDetail(userId, voteSessionId);
 
-        assertThat(result).isEqualTo(record);
+        assertThat(result.groupId()).isEqualTo(record.groupId());
+        assertThat(result.groupName()).isEqualTo(record.groupName());
+        assertThat(result.voteSession().voteSessionId()).isEqualTo(voteSessionId);
+        assertThat(result.voteSession().name()).isEqualTo(record.restaurantName());
+        assertThat(result.voteSession().completedAt()).isEqualTo(record.completedAt());
         verify(previousHistoryRepository)
                 .findPreviousHistoryByUserIdAndVoteSessionId(userId, voteSessionId);
     }
@@ -149,7 +154,7 @@ class PreviousHistoryServiceTest {
             String groupName,
             UUID voteSessionId,
             String restaurantName,
-            LocalDateTime restaurantCreatedAt
+            LocalDateTime completedAt
     ) {
         return new PreviousHistoryRecord(
                 groupId,
@@ -165,7 +170,7 @@ class PreviousHistoryServiceTest {
                 3,
                 1,
                 0,
-                restaurantCreatedAt
+                completedAt
         );
     }
 }
