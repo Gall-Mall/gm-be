@@ -2,6 +2,7 @@ package com.gm.api;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.boot.persistence.autoconfigure.EntityScan;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
@@ -17,6 +18,7 @@ import com.gm.db.config.JpaAuditingConfig;
 @EntityScan(basePackages = "com.gm.db")
 @EnableJpaRepositories(basePackages = "com.gm.db")
 @Import(JpaAuditingConfig.class)
+@EnableScheduling
 public class ApiApplication {
 
     /**

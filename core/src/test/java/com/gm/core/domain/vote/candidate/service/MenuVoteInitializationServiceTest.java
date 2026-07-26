@@ -24,8 +24,8 @@ import static org.mockito.Mockito.verify;
 class MenuVoteInitializationServiceTest {
 
     @Test
-    @DisplayName("추천 DB 트랜잭션 커밋 뒤 Redis 메뉴 투표를 정확히 30분으로 연다")
-    void completeRecommendation_initializesRedisAfterCommitForThirtyMinutes() {
+    @DisplayName("추천 DB 트랜잭션 커밋 뒤 Redis 메뉴 투표를 정확히 1시간으로 연다")
+    void completeRecommendation_initializesRedisAfterCommitForOneHour() {
         GroupService groupService = mock(GroupService.class);
         VoteSessionService voteSessionService = mock(VoteSessionService.class);
         VoteCandidateRepository candidateRepository = mock(VoteCandidateRepository.class);
@@ -57,7 +57,7 @@ class MenuVoteInitializationServiceTest {
         verify(menuVoteRepository).initialize(new MenuVoteSession(
                 voteSessionId,
                 List.of(candidateId),
-                Duration.ofMinutes(30)
+                Duration.ofHours(1)
         ));
     }
 

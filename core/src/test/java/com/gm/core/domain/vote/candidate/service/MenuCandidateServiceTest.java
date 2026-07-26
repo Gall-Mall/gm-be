@@ -1,5 +1,6 @@
 package com.gm.core.domain.vote.candidate.service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import java.util.UUID;
@@ -32,6 +33,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -84,7 +86,7 @@ class MenuCandidateServiceTest {
         InOrder inOrder = inOrder(voteCandidateRepository, voteSessionService);
         inOrder.verify(voteCandidateRepository).saveNewCandidates(captor.capture());
         inOrder.verify(voteSessionService)
-                .changeVoteSessionStatus(voteSessionId, VoteSessionStatus.MENU_VOTING);
+                .startMenuVoting(org.mockito.ArgumentMatchers.eq(voteSessionId), any(LocalDateTime.class));
         assertThat(captor.getValue())
                 .allSatisfy(candidate -> {
                     assertThat(candidate.voteSessionId()).isEqualTo(voteSessionId);
@@ -193,7 +195,10 @@ class MenuCandidateServiceTest {
         );
         given(voteCandidateRepository.saveNewCandidates(anyList()))
                 .willAnswer(invocation -> invocation.getArgument(0));
-        given(voteSessionService.changeVoteSessionStatus(voteSessionId, VoteSessionStatus.MENU_VOTING))
+        given(voteSessionService.startMenuVoting(
+                org.mockito.ArgumentMatchers.eq(voteSessionId),
+                any(LocalDateTime.class)
+        ))
                 .willThrow(new VoteSessionException(VoteSessionErrorCode.INVALID_SESSION_STATUS));
         MenuCandidateService service = new MenuCandidateService(
                 groupService,

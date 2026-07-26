@@ -17,9 +17,11 @@ import com.gm.core.domain.user.model.UserStatus;
 import com.gm.core.domain.vote.candidate.model.MenuVoteCandidate;
 import com.gm.core.domain.vote.candidate.model.MenuVoteChoice;
 import com.gm.core.domain.vote.candidate.model.MenuVoteCount;
+import com.gm.core.domain.vote.candidate.model.MenuVoteResult;
 import com.gm.core.domain.vote.candidate.model.MenuVoteSubmission;
 import com.gm.core.domain.vote.candidate.model.VoteCandidateResult;
 import com.gm.core.domain.vote.candidate.service.MenuCandidateService;
+import com.gm.core.domain.vote.candidate.service.MenuVoteFinalizationService;
 import com.gm.core.domain.vote.candidate.service.MenuVoteService;
 
 import static org.mockito.BDDMockito.given;
@@ -37,7 +39,8 @@ class MenuCandidateControllerTest {
         MenuCandidateService menuCandidateService = mock(MenuCandidateService.class);
         MenuCandidateController controller = new MenuCandidateController(
                 menuCandidateService,
-                mock(MenuVoteService.class)
+                mock(MenuVoteService.class),
+                mock(MenuVoteFinalizationService.class)
         );
         MockMvc mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
@@ -110,7 +113,8 @@ class MenuCandidateControllerTest {
         MenuVoteService menuVoteService = mock(MenuVoteService.class);
         MenuCandidateController controller = new MenuCandidateController(
                 menuCandidateService,
-                menuVoteService
+                menuVoteService,
+                mock(MenuVoteFinalizationService.class)
         );
         MockMvc mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
@@ -163,6 +167,57 @@ class MenuCandidateControllerTest {
                     .andExpect(jsonPath("$.data.counts.no").value(0))
                     .andExpect(jsonPath("$.data.respondentCount").value(3))
                     .andExpect(jsonPath("$.data.changed").value(true));
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+
+    @Test
+    @DisplayName("인증된 방장의 메뉴 투표 조기 마감 결과를 반환한다")
+    void finalizeMenuVote_mapsStoredResults() throws Exception {
+        MenuVoteFinalizationService finalizationService = mock(MenuVoteFinalizationService.class);
+        MenuCandidateController controller = new MenuCandidateController(
+                mock(MenuCandidateService.class),
+                mock(MenuVoteService.class),
+                finalizationService
+        );
+        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(controller)
+                .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
+                .build();
+        UUID groupId = UUID.randomUUID();
+        UUID voteSessionId = UUID.randomUUID();
+        UUID candidateId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        given(finalizationService.finalizeVoteManually(groupId, userId, voteSessionId))
+                .willReturn(List.of(new MenuVoteResult(
+                        new MenuVoteCount(candidateId, 2, 1, 0, 3),
+                        VoteCandidateResult.CONFIRMED
+                )));
+
+        User user = new User(
+                "테스터", "테스터닉네임", UserStatus.ACTIVE, Provider.NAVER,
+                "provider-id", "010-1234-5678", "user@example.com",
+                false, null, null, null
+        );
+        CustomUserPrincipal principal = new CustomUserPrincipal(userId, user);
+        SecurityContextHolder.getContext().setAuthentication(
+                new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(
+                        principal,
+                        null,
+                        principal.getAuthorities()
+                )
+        );
+
+        try {
+            mockMvc.perform(put(
+                            "/api/groups/{groupId}/vote-sessions/{voteSessionId}/menu-candidates/close",
+                            groupId,
+                            voteSessionId
+                    ))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data[0].candidateId").value(candidateId.toString()))
+                    .andExpect(jsonPath("$.data[0].goCount").value(2))
+                    .andExpect(jsonPath("$.data[0].result").value("CONFIRMED"));
         } finally {
             SecurityContextHolder.clearContext();
         }

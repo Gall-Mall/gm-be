@@ -84,6 +84,16 @@ public class VoteSessionEntity extends BaseEntity {
     }
 
     /**
+     * 메뉴 투표를 시작하고 DB 자동 마감 조회의 기준 시각을 함께 기록한다.
+     *
+     * @param startedAt 메뉴 투표 시작 시각
+     */
+    public void startMenuVoting(LocalDateTime startedAt) {
+        this.voteSessionStatus = VoteSessionStatus.MENU_VOTING;
+        this.startedAt = startedAt;
+    }
+
+    /**
      * 투표를 취소하고 종료 시각을 기록한다.
      *
      * @param cancelledAt 취소 시각

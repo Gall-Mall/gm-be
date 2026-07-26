@@ -1,6 +1,7 @@
 package com.gm.core.domain.vote.session.service;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 import lombok.RequiredArgsConstructor;
@@ -84,6 +85,18 @@ public class VoteSessionService {
     }
 
     /**
+     * 시작 시각이 마감 기준 이전인 메뉴 투표 세션을 오래된 순서로 제한 조회한다.
+     *
+     * @param cutoff 이 시각을 포함해 먼저 시작한 세션을 만료로 보는 기준
+     * @param limit 한 번에 조회할 최대 세션 수
+     * @return 오래된 순서로 정렬된 만료 세션 식별자
+     */
+    @Transactional(readOnly = true)
+    public List<UUID> findExpiredMenuVoting(LocalDateTime cutoff, int limit) {
+        return voteSessionRepository.findExpiredMenuVoting(cutoff, limit);
+    }
+
+    /**
      * 투표 상태를 변경한다.
      *
      * @param voteSessionId 변경할 투표 세션 식별자
@@ -105,6 +118,22 @@ public class VoteSessionService {
                 )
                 .orElseThrow(() ->
                         new VoteSessionException(VoteSessionErrorCode.SESSION_NOT_FOUND));
+    }
+
+    /**
+     * 추천 중인 세션을 메뉴 투표 상태로 전환하고 자동 마감 기준 시각을 저장한다.
+     *
+     * @param voteSessionId 시작할 투표 세션 식별자
+     * @param startedAt 메뉴 투표 시작 시각
+     * @return 메뉴 투표 상태로 변경된 세션
+     * @throws VoteSessionException 세션이 없거나 메뉴 투표 상태로 변경할 수 없는 경우
+     */
+    @Transactional
+    public VoteSession startMenuVoting(UUID voteSessionId, LocalDateTime startedAt) {
+        VoteSession voteSession = findVoteSession(voteSessionId);
+        voteSession.changeStatus(VoteSessionStatus.MENU_VOTING);
+        return voteSessionRepository.startMenuVoting(voteSessionId, startedAt)
+                .orElseThrow(() -> new VoteSessionException(VoteSessionErrorCode.SESSION_NOT_FOUND));
     }
 
     /**
