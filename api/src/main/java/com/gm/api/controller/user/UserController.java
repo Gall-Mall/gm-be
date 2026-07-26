@@ -1,9 +1,12 @@
 package com.gm.api.controller.user;
 
+import java.util.UUID;
+
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -18,9 +21,12 @@ import com.gm.api.controller.user.dto.request.UserSettingRequest;
 import com.gm.api.controller.user.dto.response.AllergenAnalyzeResponse;
 import com.gm.api.controller.user.dto.response.FoodPreferenceAnalyzeResponse;
 import com.gm.api.controller.user.dto.response.OnboardingSubmitResponse;
+import com.gm.api.controller.user.dto.response.PreviousHistoryDetailResponse;
+import com.gm.api.controller.user.dto.response.PreviousHistoryResponse;
 import com.gm.api.controller.user.dto.response.UserResponse;
 import com.gm.api.controller.user.dto.response.UserSettingResponse;
 import com.gm.api.security.CustomUserPrincipal;
+import com.gm.core.domain.history.service.PreviousHistoryService;
 import com.gm.core.domain.user.model.UserSetting;
 import com.gm.core.domain.user.service.AllergenExtractionService;
 import com.gm.core.domain.user.service.FoodPreferenceExtractionService;
@@ -36,6 +42,7 @@ public class UserController {
     private final AllergenExtractionService allergenExtractionService;
     private final FoodPreferenceExtractionService foodPreferenceExtractionService;
     private final UserService userService;
+    private final PreviousHistoryService previousHistoryService;
 
     @GetMapping("/me")
     public ResponseEnvelope<UserResponse> getMyInfo(
@@ -105,5 +112,37 @@ public class UserController {
         UserSetting userSetting = request.toDomain();
         userService.changeUserSetting(principal.getUserId(), userSetting);
         return ResponseEnvelope.success(UserSettingResponse.from(userSetting));
+    }
+
+    /**
+     * 현재 회원이 활성 멤버로 참여 중인 그룹의 지난 완료 기록을 조회한다.
+     */
+    @GetMapping("/me/previous-groups")
+    public ResponseEnvelope<PreviousHistoryResponse> getPreviousHistory(
+            @AuthenticationPrincipal CustomUserPrincipal principal
+    ) {
+        return ResponseEnvelope.success(
+                PreviousHistoryResponse.from(
+                        previousHistoryService.getPreviousHistory(principal.getUserId())
+                )
+        );
+    }
+
+    /**
+     * 현재 인증 회원이 접근할 수 있는 완료된 지난 기록을 단건 조회한다.
+     */
+    @GetMapping("/me/previous-vote-sessions/{voteSessionId}")
+    public ResponseEnvelope<PreviousHistoryDetailResponse> getPreviousHistoryDetail(
+            @AuthenticationPrincipal CustomUserPrincipal principal,
+            @PathVariable UUID voteSessionId
+    ) {
+        return ResponseEnvelope.success(
+                PreviousHistoryDetailResponse.from(
+                        previousHistoryService.getPreviousHistoryDetail(
+                                principal.getUserId(),
+                                voteSessionId
+                        )
+                )
+        );
     }
 }
