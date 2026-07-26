@@ -30,7 +30,10 @@ class ExpiredMenuVoteFinalizationServiceTest {
         UUID oldest = UUID.randomUUID();
         UUID next = UUID.randomUUID();
         LocalDateTime now = LocalDateTime.of(2026, 7, 25, 12, 0);
-        given(voteSessionService.findExpiredMenuVoting(now.minusHours(1), 100))
+        given(voteSessionService.findExpiredMenuVoting(
+                now.minus(MenuVotePolicy.VOTING_DURATION),
+                100
+        ))
                 .willReturn(List.of(oldest, next));
 
         service().finalizeExpiredVotes(now);
@@ -46,7 +49,10 @@ class ExpiredMenuVoteFinalizationServiceTest {
         UUID failed = UUID.randomUUID();
         UUID healthy = UUID.randomUUID();
         LocalDateTime now = LocalDateTime.of(2026, 7, 25, 12, 0);
-        given(voteSessionService.findExpiredMenuVoting(now.minusHours(1), 100))
+        given(voteSessionService.findExpiredMenuVoting(
+                now.minus(MenuVotePolicy.VOTING_DURATION),
+                100
+        ))
                 .willReturn(List.of(failed, healthy));
         doThrow(new IllegalStateException("temporary failure"))
                 .when(menuVoteFinalizationService).finalizeVote(failed);

@@ -1,6 +1,5 @@
 package com.gm.core.domain.vote.candidate.service;
 
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
@@ -36,7 +35,6 @@ import com.gm.core.transaction.AfterCommitExecutor;
 public class MenuCandidateService {
 
     private static final int MAX_CANDIDATE_COUNT = 10;
-    private static final Duration MENU_VOTING_DURATION = Duration.ofHours(1);
 
     private final GroupService groupService;
     private final VoteSessionService voteSessionService;
@@ -79,7 +77,7 @@ public class MenuCandidateService {
         MenuVoteSession menuVoteSession = new MenuVoteSession(
                 voteSessionId,
                 saved.stream().map(VoteCandidate::id).toList(),
-                MENU_VOTING_DURATION
+                MenuVotePolicy.VOTING_DURATION
         );
         // @Transactional 메서드가 끝나야 커밋되므로, 롤백 시 Redis 투표만 남지 않게 커밋 후 초기화한다.
         afterCommitExecutor.execute(() -> menuVoteRepository.initialize(menuVoteSession));

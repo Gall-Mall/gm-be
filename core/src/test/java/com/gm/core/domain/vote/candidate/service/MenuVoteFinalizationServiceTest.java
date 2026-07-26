@@ -13,6 +13,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.gm.core.domain.group.exception.GroupException;
 import com.gm.core.domain.group.repository.GroupRepository;
+import com.gm.core.domain.vote.candidate.exception.VoteCandidateErrorCode;
 import com.gm.core.domain.vote.candidate.exception.VoteCandidateException;
 import com.gm.core.domain.vote.candidate.model.MenuVoteCloseResult;
 import com.gm.core.domain.vote.candidate.model.MenuVoteCount;
@@ -98,6 +99,26 @@ class MenuVoteFinalizationServiceTest {
                 .hasMessage("db failure");
 
         verifyNoInteractions(afterCommitExecutor);
+    }
+
+    @Test
+    @DisplayName("Redis 스냅샷이 유실되면 세션을 FAILED로 전환한다")
+    void finalizeVote_whenSnapshotIsMissing_marksSessionAsFailed() {
+        UUID voteSessionId = UUID.randomUUID();
+        given(voteSessionRepository.findByIdForUpdate(voteSessionId))
+                .willReturn(Optional.of(session(voteSessionId, VoteSessionStatus.MENU_VOTING)));
+        given(menuVoteRepository.closeAndGetSnapshot(voteSessionId))
+                .willReturn(MenuVoteCloseResult.snapshotNotFound());
+        given(voteSessionRepository.updateStatus(voteSessionId, VoteSessionStatus.FAILED))
+                .willReturn(Optional.of(session(voteSessionId, VoteSessionStatus.FAILED)));
+
+        assertThatThrownBy(() -> service().finalizeVote(voteSessionId))
+                .isInstanceOfSatisfying(VoteCandidateException.class, exception ->
+                        assertThat(exception.getErrorCode())
+                                .isEqualTo(VoteCandidateErrorCode.VOTE_SNAPSHOT_NOT_FOUND));
+
+        verify(voteSessionRepository).updateStatus(voteSessionId, VoteSessionStatus.FAILED);
+        verifyNoInteractions(voteCandidateRepository, afterCommitExecutor);
     }
 
     @Test

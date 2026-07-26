@@ -245,7 +245,7 @@ public class RedisMenuVoteRepository implements MenuVoteRepository {
             return MenuVoteCloseResult.noResponse();
         }
         if (outcome != 1) {
-            return MenuVoteCloseResult.voteClosed();
+            return MenuVoteCloseResult.snapshotNotFound();
         }
 
         List<MenuVoteCount> snapshot = new ArrayList<>();

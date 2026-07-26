@@ -17,7 +17,7 @@ public record MenuVoteCloseResult(
     public enum Status {
         SUCCESS,
         NO_RESPONSE,
-        VOTE_CLOSED
+        SNAPSHOT_NOT_FOUND
     }
 
     public MenuVoteCloseResult {
@@ -38,7 +38,7 @@ public record MenuVoteCloseResult(
         return new MenuVoteCloseResult(Status.NO_RESPONSE, List.of());
     }
 
-    public static MenuVoteCloseResult voteClosed() {
-        return new MenuVoteCloseResult(Status.VOTE_CLOSED, List.of());
+    public static MenuVoteCloseResult snapshotNotFound() {
+        return new MenuVoteCloseResult(Status.SNAPSHOT_NOT_FOUND, List.of());
     }
 }

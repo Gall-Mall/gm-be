@@ -1,5 +1,6 @@
 package com.gm.db.domain.vote.candidate.repository;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -72,15 +73,17 @@ public class VoteCandidateRepositoryImpl implements VoteCandidateRepository {
         if (candidates.size() != resultsByCandidateId.size()) {
             throw new IllegalStateException("Menu vote snapshot does not match stored candidates");
         }
+        List<MenuVoteResult> orderedResults = new ArrayList<>(candidates.size());
         for (VoteCandidateEntity candidate : candidates) {
             MenuVoteResult result = resultsByCandidateId.get(candidate.getId());
             if (result == null) {
                 throw new IllegalStateException("Menu vote snapshot contains an unknown candidate");
             }
             candidate.finalizeMenuVote(result.count(), result.result());
+            orderedResults.add(result);
         }
         voteCandidateJpaRepository.flush();
-        return List.copyOf(results);
+        return List.copyOf(orderedResults);
     }
 
     /** {@inheritDoc} */

@@ -1,6 +1,5 @@
 package com.gm.core.domain.vote.candidate.service;
 
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -22,7 +21,6 @@ import com.gm.core.domain.vote.session.service.VoteSessionService;
 @RequiredArgsConstructor
 public class ExpiredMenuVoteFinalizationService {
 
-    private static final Duration MENU_VOTE_DURATION = Duration.ofHours(1);
     private static final int BATCH_SIZE = 100;
 
     private final VoteSessionService voteSessionService;
@@ -32,7 +30,7 @@ public class ExpiredMenuVoteFinalizationService {
      * 현재 시각 기준으로 만료된 세션을 오래된 순서로 최대 100개 마감한다.
      *
      * <p>마감에 실패한 세션은 성공 건수에 포함하지 않고 다음 세션을 계속 처리한다.
-     * 해당 세션이 {@code MENU_VOTING} 상태로 남아 있으면 다음 실행에서 다시 시도된다.</p>
+     * 재시도 가능한 세션이 {@code MENU_VOTING} 상태로 남아 있으면 다음 실행에서 다시 시도된다.</p>
      *
      * @param now 이번 실행에서 사용할 현재 시각
      * @return 마감 서비스가 정상적으로 끝난 세션 수
@@ -41,14 +39,14 @@ public class ExpiredMenuVoteFinalizationService {
         int completedCount = 0;
         // 한 주기의 작업량을 제한해 오래 걸린 실행이 다음 스케줄을 과도하게 늦추지 않게 한다.
         for (UUID voteSessionId : voteSessionService.findExpiredMenuVoting(
-                now.minus(MENU_VOTE_DURATION),
+                now.minus(MenuVotePolicy.VOTING_DURATION),
                 BATCH_SIZE
         )) {
             try {
                 menuVoteFinalizationService.finalizeVote(voteSessionId);
                 completedCount++;
             } catch (RuntimeException exception) {
-                // 실패한 세션은 상태를 유지해 다음 실행에서 재시도하고, 나머지 세션은 계속 처리한다.
+                // 복구 불가능한 세션은 FAILED로 제외하고, 재시도 가능한 실패와 무관하게 다음 세션을 처리한다.
                 log.warn("만료 메뉴 투표 마감 실패: voteSessionId={}", voteSessionId, exception);
             }
         }

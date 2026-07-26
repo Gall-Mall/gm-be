@@ -249,6 +249,13 @@ class RedisMenuVoteRepositoryIntegrationTest {
     }
 
     @Test
+    @DisplayName("Redis 세션 Hash가 없으면 스냅샷 유실 상태를 반환한다")
+    void close_whenSessionHashIsMissing_returnsSnapshotNotFound() {
+        assertThat(repository.closeAndGetSnapshot(UUID.randomUUID()).status())
+                .isEqualTo(MenuVoteCloseResult.Status.SNAPSHOT_NOT_FOUND);
+    }
+
+    @Test
     @DisplayName("마감은 후보 순서가 고정된 스냅샷을 원자적으로 만들고 재시도에도 그대로 반환한다")
     void close_blocksSubmissionAndKeepsStableSnapshotForRetry() {
         UUID sessionId = UUID.randomUUID();

@@ -52,7 +52,7 @@ public class MenuVoteFinalizationService {
      * @throws VoteSessionException 세션이 없거나 메뉴 투표를 마감할 수 없는 상태인 경우
      * @throws VoteCandidateException Redis 투표를 닫거나 스냅샷을 가져올 수 없는 경우
      */
-    @Transactional
+    @Transactional(noRollbackFor = VoteCandidateException.class)
     public List<MenuVoteResult> finalizeVote(UUID voteSessionId) {
         return finalizeVote(voteSessionId, false, null, null);
     }
@@ -68,7 +68,7 @@ public class MenuVoteFinalizationService {
      * @throws VoteSessionException 그룹과 세션이 일치하지 않거나 마감할 수 없는 상태인 경우
      * @throws VoteCandidateException 응답자가 없거나 Redis 투표를 닫을 수 없는 경우
      */
-    @Transactional
+    @Transactional(noRollbackFor = VoteCandidateException.class)
     public List<MenuVoteResult> finalizeVoteManually(
             UUID groupId,
             UUID requesterUserId,
@@ -119,7 +119,7 @@ public class MenuVoteFinalizationService {
         MenuVoteCloseResult closeResult = requireAnyResponse
                 ? menuVoteRepository.closeAndGetSnapshotIfAnyResponse(voteSessionId)
                 : menuVoteRepository.closeAndGetSnapshot(voteSessionId);
-        List<MenuVoteCount> snapshot = snapshotOrThrow(closeResult);
+        List<MenuVoteCount> snapshot = snapshotOrThrow(voteSessionId, session, closeResult);
 
         /*
          * 후보별 응답자 수를 기준으로 최종 판정을 붙인다.
@@ -157,16 +157,23 @@ public class MenuVoteFinalizationService {
         }
     }
 
-    /** Redis 마감 결과를 스냅샷으로 변환하고 마감할 수 없는 상태는 도메인 오류로 바꾼다. */
-    private List<MenuVoteCount> snapshotOrThrow(MenuVoteCloseResult closeResult) {
+    /** Redis 마감 결과를 스냅샷으로 변환하고 유실된 세션은 재조회 대상에서 제외한다. */
+    private List<MenuVoteCount> snapshotOrThrow(
+            UUID voteSessionId,
+            VoteSession session,
+            MenuVoteCloseResult closeResult
+    ) {
         return switch (closeResult.status()) {
             case SUCCESS -> closeResult.snapshot();
             case NO_RESPONSE -> throw new VoteCandidateException(
                     VoteCandidateErrorCode.VOTE_CLOSE_NOT_ALLOWED
             );
-            case VOTE_CLOSED -> throw new VoteCandidateException(
-                    VoteCandidateErrorCode.VOTE_ALREADY_CLOSED
-            );
+            case SNAPSHOT_NOT_FOUND -> {
+                VoteSession failed = session.changeStatus(VoteSessionStatus.FAILED);
+                voteSessionRepository.updateStatus(voteSessionId, failed.voteSessionStatus())
+                        .orElseThrow(() -> new VoteSessionException(VoteSessionErrorCode.SESSION_NOT_FOUND));
+                throw new VoteCandidateException(VoteCandidateErrorCode.VOTE_SNAPSHOT_NOT_FOUND);
+            }
         };
     }
 
