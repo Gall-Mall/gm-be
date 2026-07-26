@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.Assert;
 
 import com.gm.core.domain.history.model.PreviousGroupHistory;
+import com.gm.core.domain.history.model.PreviousHistoryDetail;
 import com.gm.core.domain.history.model.PreviousHistoryRecord;
 import com.gm.core.domain.history.model.PreviousVoteSessionHistory;
 import com.gm.core.domain.history.repository.PreviousHistoryRepository;
@@ -28,7 +29,7 @@ public class PreviousHistoryService {
     /**
      * 요청 회원의 지난 기록을 그룹별로 묶어 반환한다.
      *
-     * <p>저장소가 선택 식당 생성 시각 내림차순으로 반환한 순서를 {@link LinkedHashMap}으로
+     * <p>저장소가 투표 세션 완료 시각 내림차순으로 반환한 순서를 {@link LinkedHashMap}으로
      * 유지하므로, 그룹은 가장 최근 기록이 있는 순서로, 각 그룹의 세션도 최신순으로 정렬된다.</p>
      */
     @Transactional(readOnly = true)
@@ -60,7 +61,7 @@ public class PreviousHistoryService {
      * 요청 회원이 접근할 수 있는 완료된 지난 기록을 투표 세션 식별자로 조회한다.
      */
     @Transactional(readOnly = true)
-    public PreviousHistoryRecord getPreviousHistoryDetail(
+    public PreviousHistoryDetail getPreviousHistoryDetail(
             UUID userId,
             UUID voteSessionId
     ) {
@@ -69,6 +70,7 @@ public class PreviousHistoryService {
 
         return previousHistoryRepository
                 .findPreviousHistoryByUserIdAndVoteSessionId(userId, voteSessionId)
+                .map(PreviousHistoryDetail::from)
                 .orElseThrow(() ->
                         new VoteSessionException(VoteSessionErrorCode.SESSION_NOT_FOUND));
     }

@@ -4,10 +4,12 @@ import com.gm.core.domain.store.model.Provider;
 import com.gm.db.common.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 import java.util.UUID;
 
 @Entity
+@Getter
 @Table(name = "recommended_restaurant")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 
@@ -61,5 +63,9 @@ public class StoreEntity extends BaseEntity {
      */
     public void selectAsFinalRestaurant() {
         this.selected = true;
+    }
+
+    public boolean isSelected() {
+        return Boolean.TRUE.equals(selected);
     }
 }

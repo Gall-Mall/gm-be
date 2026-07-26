@@ -45,7 +45,7 @@ public class PreviousHistoryRepositoryImpl implements PreviousHistoryRepository 
     @Override
     public List<PreviousHistoryRecord> findPreviousHistoryByUserId(UUID userId) {
         return createHistoryQuery(userId)
-                .orderBy(RESTAURANT.createdAt.desc(), RESTAURANT.id.desc())
+                .orderBy(VOTE_SESSION.closedAt.desc(), VOTE_SESSION.id.desc())
                 .fetch();
     }
 
@@ -96,7 +96,7 @@ public class PreviousHistoryRepositoryImpl implements PreviousHistoryRepository 
                 VOTE_CANDIDATE.goCount.coalesce(0),
                 VOTE_CANDIDATE.maybeCount.coalesce(0),
                 VOTE_CANDIDATE.noCount.coalesce(0),
-                RESTAURANT.createdAt
+                VOTE_SESSION.closedAt
         );
     }
 }

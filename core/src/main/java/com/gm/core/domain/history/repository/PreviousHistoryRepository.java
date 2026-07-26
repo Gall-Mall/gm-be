@@ -12,7 +12,7 @@ public interface PreviousHistoryRepository {
      * 요청 회원이 활성 멤버인 그룹의 완료 세션과 선택 식당을 최신순으로 조회한다.
      *
      * @param userId 요청 회원 식별자
-     * @return 선택 식당 생성 시각 내림차순의 지난 기록 행
+     * @return 투표 세션 완료 시각 내림차순의 지난 기록 행
      */
     List<PreviousHistoryRecord> findPreviousHistoryByUserId(UUID userId);
 

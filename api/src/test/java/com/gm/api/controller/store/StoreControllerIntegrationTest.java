@@ -229,7 +229,7 @@ class StoreControllerIntegrationTest {
                 .findByVoteSessionIdAndExternalPlaceId(voteSessionId, "near-a")
                 .orElseThrow();
 
-        org.assertj.core.api.Assertions.assertThat(savedStore.isSelected()).isTrue();
+        org.assertj.core.api.Assertions.assertThat(savedStore.getSelected()).isTrue();
     }
 
     @Test
