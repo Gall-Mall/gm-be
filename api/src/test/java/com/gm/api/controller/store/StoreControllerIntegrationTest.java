@@ -15,6 +15,8 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Stream;
 
+import jakarta.persistence.EntityManager;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -48,11 +50,15 @@ import com.gm.core.domain.user.model.UserStatus;
 import com.gm.core.domain.vote.session.model.VoteSession;
 import com.gm.core.domain.vote.session.model.VoteSessionStatus;
 import com.gm.core.domain.store.StoreSearchService;
+import com.gm.core.domain.store.exception.StoreErrorCode;
+import com.gm.core.domain.store.exception.StoreException;
 import com.gm.core.domain.store.model.Coordinate;
+import com.gm.core.domain.store.repository.StoreRepository;
 import com.gm.core.domain.vote.session.service.VoteSessionService;
 import com.gm.core.event.DomainEvent;
 import com.gm.core.event.EventPublisher;
 import com.gm.core.event.payload.StoreSearchRequested;
+import com.gm.db.domain.store.entity.StoreEntity;
 import com.gm.db.domain.store.repository.StoreJpaRepository;
 import com.gm.db.domain.vote.session.entity.VoteSessionEntity;
 import com.gm.db.domain.vote.session.repository.VoteSessionJpaRepository;
@@ -143,6 +149,12 @@ class StoreControllerIntegrationTest {
     private StoreJpaRepository storeJpaRepository;
 
     @Autowired
+    private StoreRepository storeRepository;
+
+    @Autowired
+    private EntityManager entityManager;
+
+    @Autowired
     private KakaoMockServer kakaoMockServer;
 
     @Autowired
@@ -201,6 +213,33 @@ class StoreControllerIntegrationTest {
         org.assertj.core.api.Assertions.assertThat(storeJpaRepository.count()).isEqualTo(4);
         org.assertj.core.api.Assertions.assertThat(currentStatus())
                 .isEqualTo(VoteSessionStatus.RESTAURANT_SELECTION);
+    }
+
+    @Test
+    @DisplayName("투표 세션과 외부 장소 식별자로 식당을 최종 선택한다")
+    void selectAsFinalRestaurant_updatesSelectedToTrue() {
+        kakaoMockServer.expectSuccess(KAKAO_RESULTS);
+        storeSearchService.searchAndSave(voteSessionId, "삼겹살", coordinate(), 1000);
+
+        storeRepository.selectAsFinalRestaurant(voteSessionId, "near-a");
+        storeJpaRepository.flush();
+        entityManager.clear();
+
+        StoreEntity savedStore = storeJpaRepository
+                .findByVoteSessionIdAndExternalPlaceId(voteSessionId, "near-a")
+                .orElseThrow();
+
+        org.assertj.core.api.Assertions.assertThat(savedStore.getSelected()).isTrue();
+    }
+
+    @Test
+    @DisplayName("세션에 저장되지 않은 식당은 최종 선택할 수 없다")
+    void selectAsFinalRestaurant_withMissingRestaurant_throwsNotFound() {
+        org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+                        storeRepository.selectAsFinalRestaurant(voteSessionId, "missing"))
+                .isInstanceOfSatisfying(StoreException.class, exception ->
+                        org.assertj.core.api.Assertions.assertThat(exception.getErrorCode())
+                                .isEqualTo(StoreErrorCode.RESTAURANT_NOT_FOUND));
     }
 
     @Test

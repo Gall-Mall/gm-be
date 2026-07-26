@@ -4,10 +4,12 @@ import com.gm.core.domain.store.model.Provider;
 import com.gm.db.common.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 import java.util.UUID;
 
 @Entity
+@Getter
 @Table(name = "recommended_restaurant")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 
@@ -54,5 +56,16 @@ public class StoreEntity extends BaseEntity {
         this.distance = distance;
         this.externalPlaceId = externalPlaceId;
         this.provider = provider;
+    }
+
+    /**
+     * 이 식당을 세션의 최종 식당으로 확정한다.
+     */
+    public void selectAsFinalRestaurant() {
+        this.selected = true;
+    }
+
+    public boolean isSelected() {
+        return Boolean.TRUE.equals(selected);
     }
 }
