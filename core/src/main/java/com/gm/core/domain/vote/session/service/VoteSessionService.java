@@ -73,6 +73,18 @@ public class VoteSessionService {
     }
 
     /**
+     * 세션을 잠근 채 조회한다. 비동기 처리에서 상태 확인과 전이 사이를 보호한다.
+     *
+     * @param voteSessionId 투표 세션 식별자
+     * @return 잠긴 투표 세션
+     */
+    public VoteSession findVoteSessionForUpdate(UUID voteSessionId) {
+        return voteSessionRepository.findByIdForUpdate(voteSessionId)
+                .orElseThrow(() ->
+                        new VoteSessionException(VoteSessionErrorCode.SESSION_NOT_FOUND));
+    }
+
+    /**
      * 시작 시각이 마감 기준 이전인 메뉴 투표 세션을 오래된 순서로 제한 조회한다.
      *
      * @param cutoff 이 시각을 포함해 먼저 시작한 세션을 만료로 보는 기준

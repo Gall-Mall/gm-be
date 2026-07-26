@@ -2,6 +2,7 @@ package com.gm.architecture;
 
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
+import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
@@ -14,8 +15,11 @@ import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.sli
  *
  * <p>api 모듈은 core/storage/client/mq 를 모두 조립하므로, 테스트 클래스패스에서
  * 전체 {@code com.gm} 패키지를 관찰할 수 있어 여기서 규칙을 검증한다.</p>
+ *
+ * <p>운영 코드의 계층만 검사한다. 통합 테스트는 검증을 위해 DB 어댑터를 직접 다뤄야 하는데,
+ * 그걸 막으면 서비스를 통해서만 확인하게 되어 검증이 되지 않는다.</p>
  */
-@AnalyzeClasses(packages = "com.gm")
+@AnalyzeClasses(packages = "com.gm", importOptions = ImportOption.DoNotIncludeTests.class)
 class ArchUnitTest {
 
     /**

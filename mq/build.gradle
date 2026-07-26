@@ -5,6 +5,13 @@
 dependencies {
     implementation project(':core')
     implementation 'org.springframework.boot:spring-boot-starter-amqp'
+
+    // dedup 저장소 구현체는 storage:redis / storage:db 가 가진다. mq는 core 포트만 안다.
+    implementation 'org.springframework:spring-tx'
+
+    // EventEnvelope<T>는 타입 소거로 컨버터가 복원하지 못해 소비 시점에 직접 역직렬화한다.
+    // JacksonJsonMessageConverter와 같은 Jackson 3를 쓴다.
+    implementation 'tools.jackson.core:jackson-databind'
 }
 
 tasks.register("prepareKotlinBuildScriptModel"){}

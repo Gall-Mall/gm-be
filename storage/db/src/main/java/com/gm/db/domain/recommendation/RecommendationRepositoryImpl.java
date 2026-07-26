@@ -17,9 +17,11 @@ import org.springframework.transaction.annotation.Transactional;
 import com.querydsl.core.Tuple;
 import com.querydsl.core.types.dsl.DateTimeExpression;
 import com.querydsl.core.types.dsl.NumberExpression;
+import com.querydsl.core.types.dsl.StringPath;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 
 import com.gm.core.domain.group.model.GroupMemberStatus;
+import com.gm.core.domain.recommendation.model.GroupSoftSignals;
 import com.gm.core.domain.recommendation.model.MemberPreference;
 import com.gm.core.domain.recommendation.model.MenuInfo;
 import com.gm.core.domain.recommendation.model.Recency;
@@ -30,6 +32,7 @@ import com.gm.db.domain.group.entity.QGroupMemberEntity;
 import com.gm.db.domain.menu.allergen.entity.QMenuAllergenEntity;
 import com.gm.db.domain.menu.menu.entity.QMenuEntity;
 import com.gm.db.domain.user.entity.QUserAllergenEntity;
+import com.gm.db.domain.user.entity.QUserEntity;
 import com.gm.db.domain.user.entity.QUserCategoryEntity;
 import com.gm.db.domain.user.entity.QUserMenuEntity;
 import com.gm.db.domain.vote.candidate.entity.QVoteCandidateEntity;
@@ -46,6 +49,36 @@ import lombok.RequiredArgsConstructor;
 public class RecommendationRepositoryImpl implements RecommendationRepository {
 
     private final JPAQueryFactory queryFactory;
+
+    /**
+     * ACTIVE 멤버들의 자유텍스트 신호를 컬럼별로 모은다. 비어 있는 값은 버린다.
+     */
+    @Override
+    public GroupSoftSignals findSoftSignalsByGroupId(UUID groupId) {
+        QGroupMemberEntity groupMember = QGroupMemberEntity.groupMemberEntity;
+        QUserEntity user = QUserEntity.userEntity;
+
+        List<Tuple> rows = queryFactory
+                .select(user.customAllergenText, user.preferenceText, user.excludeFoodText)
+                .from(groupMember)
+                .join(user).on(user.id.eq(groupMember.userId))
+                .where(groupMember.diningGroupId.eq(groupId),
+                        groupMember.status.eq(GroupMemberStatus.ACTIVE))
+                .fetch();
+
+        return new GroupSoftSignals(
+                textsOf(rows, user.customAllergenText),
+                textsOf(rows, user.preferenceText),
+                textsOf(rows, user.excludeFoodText)
+        );
+    }
+
+    private List<String> textsOf(List<Tuple> rows, StringPath column) {
+        return rows.stream()
+                .map(row -> row.get(column))
+                .filter(text -> text != null && !text.isBlank())
+                .toList();
+    }
 
     /**
      * 그룹 ACTIVE 멤버별 선호/알레르기를 조립한다. 메뉴는 LIKE/EXCLUDE, 카테고리는 LIKE/DISLIKE로 갈래를 나눈다.

@@ -2,7 +2,6 @@ package com.gm.mq.recommendation;
 
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
-import org.springframework.amqp.core.Declarables;
 import org.springframework.amqp.core.DirectExchange;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.QueueBuilder;
@@ -10,13 +9,14 @@ import org.springframework.amqp.core.TopicExchange;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import com.gm.core.event.payload.SurveyRequested;
 import com.gm.mq.config.RabbitMQConfig;
 
 /**
  * 추천(3번) 도메인 큐 토폴로지.
  *
  * 1개의 recommendation q와 1개의 recommendation dlq 생성.
- * app.events(topic)에 2개 키 바인딩: user.onboarding.submitted, group.survey.requested
+ * app.events(topic)에 group.survey.requested 바인딩.
  */
 @Configuration
 public class RecommendationQueueConfig {
@@ -39,11 +39,8 @@ public class RecommendationQueueConfig {
     }
 
     @Bean
-    public Declarables recommendationBindings(Queue recommendationQueue, TopicExchange appExchange) {
-        return new Declarables(
-                BindingBuilder.bind(recommendationQueue).to(appExchange).with("user.onboarding.submitted"),
-                BindingBuilder.bind(recommendationQueue).to(appExchange).with("group.survey.requested")
-        );
+    public Binding recommendationBinding(Queue recommendationQueue, TopicExchange appExchange) {
+        return BindingBuilder.bind(recommendationQueue).to(appExchange).with(SurveyRequested.TYPE);
     }
 
     @Bean

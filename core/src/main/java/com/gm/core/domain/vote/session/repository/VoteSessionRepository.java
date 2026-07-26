@@ -30,10 +30,11 @@ public interface VoteSessionRepository {
     Optional<VoteSession> findById(UUID id);
 
     /**
-     * 최종 상태 전이를 한 요청씩 처리하기 위해 세션 행을 쓰기 잠금으로 조회한다.
+     * 처리가 끝날 때까지 세션을 잠근 채 조회한다.
+     * 비동기 처리에서 상태 확인과 전이 사이에 다른 컨슈머가 끼어드는 것을 막는다.
      *
-     * @param id 잠글 투표 세션 식별자
-     * @return 세션이 존재하면 잠금이 적용된 세션, 없으면 빈 값
+     * @param id 투표 세션 식별자
+     * @return 잠긴 투표 세션
      */
     Optional<VoteSession> findByIdForUpdate(UUID id);
 

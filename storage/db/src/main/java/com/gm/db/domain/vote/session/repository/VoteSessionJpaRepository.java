@@ -1,6 +1,7 @@
 package com.gm.db.domain.vote.session.repository;
 
 import com.gm.db.domain.vote.session.entity.VoteSessionEntity;
+import jakarta.persistence.LockModeType;
 import com.gm.core.domain.vote.session.model.VoteSessionStatus;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -8,10 +9,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import jakarta.persistence.LockModeType;
-
 import java.util.Optional;
-
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -22,13 +20,11 @@ import java.util.UUID;
 public interface VoteSessionJpaRepository extends JpaRepository<VoteSessionEntity, UUID> {
 
     /**
-     * 자동·수동 마감의 상태 확인과 변경이 겹치지 않도록 세션 행을 쓰기 잠금으로 조회한다.
-     *
-     * @param id 잠글 투표 세션 식별자
-     * @return 세션이 존재하면 잠금이 적용된 엔티티, 없으면 빈 값
+     * 비동기 처리에서 상태를 읽고 바꾸는 동안 다른 컨슈머가 끼어들지 못하게 잠근다.
+     * 락 없이 읽으면 두 컨슈머가 같은 상태를 보고 각각 외부 API를 호출한다.
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select session from VoteSessionEntity session where session.id = :id")
+    @Query("select s from VoteSessionEntity s where s.id = :id")
     Optional<VoteSessionEntity> findByIdForUpdate(@Param("id") UUID id);
 
     /**
