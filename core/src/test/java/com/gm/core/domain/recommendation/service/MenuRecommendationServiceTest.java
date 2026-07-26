@@ -1,0 +1,250 @@
+package com.gm.core.domain.recommendation.service;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.IntStream;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import com.gm.core.domain.group.exception.GroupErrorCode;
+import com.gm.core.domain.group.exception.GroupException;
+import com.gm.core.domain.group.model.GroupDetail;
+import com.gm.core.domain.group.model.GroupMemberRole;
+import com.gm.core.domain.group.service.GroupService;
+import com.gm.core.domain.menu.model.Menu;
+import com.gm.core.domain.menu.repository.MenuRepository;
+import com.gm.core.domain.recommendation.model.CuratedCandidate;
+import com.gm.core.domain.recommendation.model.GroupSoftSignals;
+import com.gm.core.domain.recommendation.model.ScoredMenu;
+import com.gm.core.domain.recommendation.repository.RecommendationRepository;
+import com.gm.core.domain.vote.candidate.model.RecommendedMenuCandidate;
+import com.gm.core.domain.vote.candidate.service.MenuCandidateService;
+import com.gm.core.domain.vote.session.exception.VoteSessionErrorCode;
+import com.gm.core.domain.vote.session.exception.VoteSessionException;
+import com.gm.core.domain.vote.session.model.VoteSession;
+import com.gm.core.domain.vote.session.model.VoteSessionStatus;
+import com.gm.core.domain.vote.session.service.VoteSessionService;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+
+@ExtendWith(MockitoExtension.class)
+class MenuRecommendationServiceTest {
+
+    @Mock
+    private GroupService groupService;
+
+    @Mock
+    private VoteSessionService voteSessionService;
+
+    @Mock
+    private RecommendationService recommendationService;
+
+    @Mock
+    private RecommendationCurationService recommendationCurationService;
+
+    @Mock
+    private MenuCandidateService menuCandidateService;
+
+    @Mock
+    private RecommendationRepository recommendationRepository;
+
+    @Mock
+    private MenuRepository menuRepository;
+
+    @InjectMocks
+    private MenuRecommendationService menuRecommendationService;
+
+    private final UUID groupId = UUID.randomUUID();
+    private final UUID voteSessionId = UUID.randomUUID();
+    private final UUID ownerId = UUID.randomUUID();
+
+    // ---------- start ----------
+
+    @Test
+    @DisplayName("방장이 선호 입력 단계에서 시작하면 추천 단계로 전이하고 그룹 ID를 반환한다")
+    void start_transitionsToRecommending() {
+        givenSession(VoteSessionStatus.PREFERENCE_INPUT);
+        givenRole(GroupMemberRole.OWNER);
+
+        UUID result = menuRecommendationService.start(ownerId, voteSessionId);
+
+        assertThat(result).isEqualTo(groupId);
+        // 전이를 여기서 해야 같은 요청이 두 번 들어와도 두 번째가 상태 검증에 걸린다.
+        verify(voteSessionService)
+                .changeVoteSessionStatus(voteSessionId, VoteSessionStatus.MENU_RECOMMENDING);
+    }
+
+    @Test
+    @DisplayName("방장이 아니면 추천을 시작할 수 없다")
+    void start_rejectsNonOwner() {
+        givenSession(VoteSessionStatus.PREFERENCE_INPUT);
+        givenRole(GroupMemberRole.MEMBER);
+
+        assertThatThrownBy(() -> menuRecommendationService.start(ownerId, voteSessionId))
+                .isInstanceOf(GroupException.class)
+                .hasFieldOrPropertyWithValue("errorCode", GroupErrorCode.NOT_GROUP_OWNER);
+
+        verify(voteSessionService, org.mockito.Mockito.never())
+                .changeVoteSessionStatus(any(), any());
+    }
+
+    @Test
+    @DisplayName("선호 입력 단계가 아니면 추천을 시작할 수 없다")
+    void start_rejectsWrongStatus() {
+        givenSession(VoteSessionStatus.MENU_VOTING);
+        givenRole(GroupMemberRole.OWNER);
+
+        assertThatThrownBy(() -> menuRecommendationService.start(ownerId, voteSessionId))
+                .isInstanceOf(VoteSessionException.class)
+                .hasFieldOrPropertyWithValue("errorCode", VoteSessionErrorCode.INVALID_SESSION_STATUS);
+
+        verify(voteSessionService, org.mockito.Mockito.never())
+                .changeVoteSessionStatus(any(), any());
+    }
+
+    // ---------- generate ----------
+
+    @Test
+    @DisplayName("AI 큐레이션 순서대로 노출 순서를 매겨 후보를 저장한다")
+    void generate_savesCuratedCandidatesInOrder() {
+        UUID first = UUID.randomUUID();
+        UUID second = UUID.randomUUID();
+        givenScored(List.of(first, second));
+        givenMenuMaster(Map.of(first, "삼겹살", second, "냉면"));
+        givenSoftSignals();
+        given(recommendationCurationService.curate(any(), anyList(), anyList(), anyList(), anyInt()))
+                .willReturn(List.of(
+                        new CuratedCandidate(second, "시원해서"),
+                        new CuratedCandidate(first, "든든해서")));
+
+        menuRecommendationService.generate(groupId, voteSessionId);
+
+        List<RecommendedMenuCandidate> saved = captureSaved();
+        assertThat(saved).hasSize(2);
+        // AI가 준 순서가 추천 순위다. displayOrder는 1부터 매긴다.
+        assertThat(saved.get(0).menuId()).isEqualTo(second);
+        assertThat(saved.get(0).displayOrder()).isEqualTo(1);
+        assertThat(saved.get(0).description()).isEqualTo("시원해서");
+        assertThat(saved.get(1).menuId()).isEqualTo(first);
+        assertThat(saved.get(1).displayOrder()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("AI가 후보를 못 고르면 결정론 상위 순서로 대체한다")
+    void generate_fallsBackToDeterministicOrderWhenCurationIsEmpty() {
+        UUID first = UUID.randomUUID();
+        UUID second = UUID.randomUUID();
+        givenScored(List.of(first, second));
+        givenMenuMaster(Map.of(first, "삼겹살", second, "냉면"));
+        givenSoftSignals();
+        given(recommendationCurationService.curate(any(), anyList(), anyList(), anyList(), anyInt()))
+                .willReturn(List.of());
+
+        menuRecommendationService.generate(groupId, voteSessionId);
+
+        List<RecommendedMenuCandidate> saved = captureSaved();
+        // AI 응답 하나로 세션을 멈추지 않는다. 추천 이유만 비운다.
+        assertThat(saved).extracting(RecommendedMenuCandidate::menuId).containsExactly(first, second);
+        assertThat(saved).allSatisfy(candidate -> assertThat(candidate.description()).isNull());
+    }
+
+    @Test
+    @DisplayName("대체 후보도 최종 후보 수를 넘기지 않는다")
+    void generate_fallbackRespectsFinalCandidateLimit() {
+        List<UUID> menuIds = IntStream.range(0, 15).mapToObj(i -> UUID.randomUUID()).toList();
+        givenScored(menuIds);
+        givenMenuMaster(menuIds.stream()
+                .collect(java.util.stream.Collectors.toMap(id -> id, id -> "메뉴-" + id)));
+        givenSoftSignals();
+        given(recommendationCurationService.curate(any(), anyList(), anyList(), anyList(), anyInt()))
+                .willReturn(List.of());
+
+        menuRecommendationService.generate(groupId, voteSessionId);
+
+        assertThat(captureSaved()).hasSize(10);
+    }
+
+    @Test
+    @DisplayName("마스터에 없는 메뉴는 AI 후보 풀에서 제외한다")
+    void generate_dropsMenusMissingFromMaster() {
+        UUID known = UUID.randomUUID();
+        UUID unknown = UUID.randomUUID();
+        givenScored(List.of(known, unknown));
+        givenMenuMaster(Map.of(known, "삼겹살"));
+        givenSoftSignals();
+        given(recommendationCurationService.curate(any(), anyList(), anyList(), anyList(), anyInt()))
+                .willReturn(List.of(new CuratedCandidate(known, "든든해서")));
+
+        menuRecommendationService.generate(groupId, voteSessionId);
+
+        ArgumentCaptor<Map<UUID, String>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(recommendationCurationService)
+                .curate(captor.capture(), anyList(), anyList(), anyList(), anyInt());
+        assertThat(captor.getValue()).containsOnlyKeys(known);
+    }
+
+    @Test
+    @DisplayName("추천할 메뉴가 없으면 후보를 저장하지 않는다")
+    void generate_rejectsWhenNoCandidate() {
+        given(recommendationService.recommend(eq(groupId), any(), anyInt())).willReturn(List.of());
+
+        assertThatThrownBy(() -> menuRecommendationService.generate(groupId, voteSessionId))
+                .isInstanceOf(VoteSessionException.class);
+
+        verifyNoInteractions(menuCandidateService);
+    }
+
+    // ---------- helpers ----------
+
+    private void givenSession(VoteSessionStatus status) {
+        given(voteSessionService.findVoteSession(voteSessionId)).willReturn(VoteSession.builder()
+                .id(voteSessionId)
+                .diningGroupId(groupId)
+                .voteSessionStatus(status)
+                .title("점심 메뉴 투표")
+                .build());
+    }
+
+    private void givenRole(GroupMemberRole role) {
+        given(groupService.findGroupDetail(groupId, ownerId))
+                .willReturn(new GroupDetail(null, role));
+    }
+
+    private void givenScored(List<UUID> menuIds) {
+        given(recommendationService.recommend(eq(groupId), eq(Set.of()), anyInt()))
+                .willReturn(menuIds.stream().map(id -> new ScoredMenu(id, 1.0)).toList());
+    }
+
+    private void givenMenuMaster(Map<UUID, String> namesById) {
+        given(menuRepository.findAll()).willReturn(namesById.entrySet().stream()
+                .map(entry -> new Menu(entry.getKey(), UUID.randomUUID(), entry.getValue(), null))
+                .toList());
+    }
+
+    private void givenSoftSignals() {
+        given(recommendationRepository.findSoftSignalsByGroupId(groupId))
+                .willReturn(GroupSoftSignals.empty());
+    }
+
+    private List<RecommendedMenuCandidate> captureSaved() {
+        ArgumentCaptor<List<RecommendedMenuCandidate>> captor = ArgumentCaptor.forClass(List.class);
+        verify(menuCandidateService).completeRecommendation(eq(voteSessionId), captor.capture());
+        return captor.getValue();
+    }
+}
