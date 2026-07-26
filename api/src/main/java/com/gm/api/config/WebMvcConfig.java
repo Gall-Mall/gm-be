@@ -6,6 +6,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
+import com.gm.api.common.ratelimit.AsyncJobRateLimitInterceptor;
 import com.gm.api.controller.invite.ratelimit.InviteRateLimitInterceptor;
 import com.gm.api.controller.user.ratelimit.AiAnalyzeRateLimitInterceptor;
 
@@ -18,6 +19,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     private final InviteRateLimitInterceptor inviteRateLimitInterceptor;
     private final AiAnalyzeRateLimitInterceptor aiAnalyzeRateLimitInterceptor;
+    private final AsyncJobRateLimitInterceptor asyncJobRateLimitInterceptor;
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
@@ -28,5 +30,11 @@ public class WebMvcConfig implements WebMvcConfigurer {
         // AI 분석은 매 요청이 유료 LLM 호출이라 사용자별 분당 한도를 둔다.
         // /me/allergens/analyze, /me/food-preferences/analyze 두 경로를 한 단계 와일드카드로 커버.
         registry.addInterceptor(aiAnalyzeRateLimitInterceptor).addPathPatterns("/api/users/me/*/analyze");
+
+        // 비동기 작업 요청도 한 번이 유료 호출(OpenAI·Kakao)로 이어진다.
+        // 202로 즉시 응답해 반복 호출이 쉬우므로 같은 한도를 적용한다.
+        registry.addInterceptor(asyncJobRateLimitInterceptor).addPathPatterns(
+                "/api/groups/*/vote-sessions/*/recommendations",
+                "/api/stores/search");
     }
 }

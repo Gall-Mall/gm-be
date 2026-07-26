@@ -28,6 +28,9 @@ public class MqListenerErrorHandler implements RabbitListenerErrorHandler {
                 props.getReceivedRoutingKey(), props.getMessageId(), cause);
 
         // 재시도해도 성공할 수 없는 예외는 재시도를 건너뛰고 즉시 DLQ로 보낸다.
+        // DataIntegrityViolationException은 넣지 않는다. 멱등 충돌은 INSERT IGNORE가
+        // 예외 없이 걸러내므로, 여기 걸리는 건 비즈니스 제약 위반뿐이다.
+        // 그중 이벤트 순서 역전으로 인한 FK 위반은 재시도로 풀린다.
         if(cause instanceof IllegalArgumentException){
             throw new AmqpRejectAndDontRequeueException(cause);
         }

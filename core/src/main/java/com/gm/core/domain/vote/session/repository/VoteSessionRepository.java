@@ -29,6 +29,15 @@ public interface VoteSessionRepository {
     Optional<VoteSession> findById(UUID id);
 
     /**
+     * 처리가 끝날 때까지 세션을 잠근 채 조회한다.
+     * 비동기 처리에서 상태 확인과 전이 사이에 다른 컨슈머가 끼어드는 것을 막는다.
+     *
+     * @param id 투표 세션 식별자
+     * @return 잠긴 투표 세션
+     */
+    Optional<VoteSession> findByIdForUpdate(UUID id);
+
+    /**
      * 투표 상태를 변경한다.
      *
      * @param voteSessionId 변경할 투표 세션 식별자

@@ -42,6 +42,13 @@ public class VoteSessionRepositoryImpl implements VoteSessionRepository {
 
     /** {@inheritDoc} */
     @Override
+    public Optional<VoteSession> findByIdForUpdate(UUID id) {
+        return voteSessionJpaRepository.findByIdForUpdate(id)
+                .map(voteSessionMapper::toDomain);
+    }
+
+    /** {@inheritDoc} */
+    @Override
     public Optional<VoteSession> updateStatus(
             UUID voteSessionId,
             VoteSessionStatus voteSessionStatus

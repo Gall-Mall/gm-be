@@ -10,6 +10,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import java.util.stream.Stream;
 
@@ -45,7 +47,12 @@ import com.gm.core.domain.user.model.User;
 import com.gm.core.domain.user.model.UserStatus;
 import com.gm.core.domain.vote.session.model.VoteSession;
 import com.gm.core.domain.vote.session.model.VoteSessionStatus;
+import com.gm.core.domain.store.StoreSearchService;
+import com.gm.core.domain.store.model.Coordinate;
 import com.gm.core.domain.vote.session.service.VoteSessionService;
+import com.gm.core.event.DomainEvent;
+import com.gm.core.event.EventPublisher;
+import com.gm.core.event.payload.StoreSearchRequested;
 import com.gm.db.domain.store.repository.StoreJpaRepository;
 import com.gm.db.domain.vote.session.entity.VoteSessionEntity;
 import com.gm.db.domain.vote.session.repository.VoteSessionJpaRepository;
@@ -138,6 +145,12 @@ class StoreControllerIntegrationTest {
     @Autowired
     private KakaoMockServer kakaoMockServer;
 
+    @Autowired
+    private StoreSearchService storeSearchService;
+
+    @Autowired
+    private RecordingEventPublisher eventPublisher;
+
     private UUID ownerUserId;
     private UUID groupId;
     private UUID voteSessionId;
@@ -145,29 +158,46 @@ class StoreControllerIntegrationTest {
     @BeforeEach
     void setUp() {
         kakaoMockServer.reset();
+        eventPublisher.reset();
         ownerUserId = UUID.randomUUID();
         groupId = createGroup(ownerUserId).id();
         voteSessionId = createRestaurantSearchingSession().id();
     }
 
     @Test
-    @DisplayName("그룹장이 식당을 검색하면 가까운 순으로 반환하고 저장한 뒤 식당 선택 단계로 변경한다")
-    void searchNearby_asOwner_savesSortedStoresAndChangesStatus() throws Exception {
-        kakaoMockServer.expectSuccess(KAKAO_RESULTS);
-
+    @DisplayName("그룹장이 검색을 요청하면 202와 함께 검색 요청 이벤트를 발행한다")
+    void searchNearby_asOwner_acceptsAndPublishesEvent() throws Exception {
         mockMvc.perform(post(SEARCH_URI)
                         .with(authAs(ownerUserId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(validRequest()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.length()").value(4))
-                .andExpect(jsonPath("$.data[0].distanceM").value(100))
-                .andExpect(jsonPath("$.data[1].distanceM").value(100))
-                .andExpect(jsonPath("$.data[2].distanceM").value(200))
-                .andExpect(jsonPath("$.data[3].distanceM").value(300));
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.success").value(true));
+
+        // 실제 검색은 리스너가 하므로 이 시점에는 아무것도 저장되지 않는다.
+        org.assertj.core.api.Assertions.assertThat(eventPublisher.published())
+                .singleElement()
+                .isInstanceOfSatisfying(StoreSearchRequested.class, event -> {
+                    org.assertj.core.api.Assertions.assertThat(event.voteSessionId()).isEqualTo(voteSessionId);
+                    org.assertj.core.api.Assertions.assertThat(event.keyword()).isEqualTo("삼겹살");
+                    org.assertj.core.api.Assertions.assertThat(event.radius()).isEqualTo(1000);
+                });
+        org.assertj.core.api.Assertions.assertThat(storeJpaRepository.count()).isZero();
+        org.assertj.core.api.Assertions.assertThat(currentStatus())
+                .isEqualTo(VoteSessionStatus.RESTAURANT_SEARCHING);
+    }
+
+    @Test
+    @DisplayName("리스너가 검색을 수행하면 가까운 순으로 저장하고 식당 선택 단계로 변경한다")
+    void searchAndSave_savesSortedStoresAndChangesStatus() {
+        kakaoMockServer.expectSuccess(KAKAO_RESULTS);
+
+        var stores = storeSearchService.searchAndSave(voteSessionId, "삼겹살", coordinate(), 1000);
 
         kakaoMockServer.verify();
+        org.assertj.core.api.Assertions.assertThat(stores)
+                .extracting(store -> String.valueOf(store.distance()))
+                .containsExactly("100", "100", "200", "300");
         org.assertj.core.api.Assertions.assertThat(storeJpaRepository.count()).isEqualTo(4);
         org.assertj.core.api.Assertions.assertThat(currentStatus())
                 .isEqualTo(VoteSessionStatus.RESTAURANT_SELECTION);
@@ -222,20 +252,14 @@ class StoreControllerIntegrationTest {
     }
 
     @Test
-    @DisplayName("검색 결과가 없으면 빈 목록을 반환하고 검색 단계에 머문다")
-    void searchNearby_whenResultIsEmpty_returnsEmptyAndKeepsSearchingStatus() throws Exception {
+    @DisplayName("검색 결과가 없으면 저장하지 않고 검색 단계에 머문다")
+    void searchAndSave_whenResultIsEmpty_keepsSearchingStatus() {
         kakaoMockServer.expectSuccess("{\"documents\":[]}");
 
-        mockMvc.perform(post(SEARCH_URI)
-                        .with(authAs(ownerUserId))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(validRequest()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data").isArray())
-                .andExpect(jsonPath("$.data").isEmpty());
+        var stores = storeSearchService.searchAndSave(voteSessionId, "삼겹살", coordinate(), 1000);
 
         kakaoMockServer.verify();
+        org.assertj.core.api.Assertions.assertThat(stores).isEmpty();
         org.assertj.core.api.Assertions.assertThat(storeJpaRepository.count()).isZero();
         org.assertj.core.api.Assertions.assertThat(currentStatus())
                 .isEqualTo(VoteSessionStatus.RESTAURANT_SEARCHING);
@@ -243,27 +267,18 @@ class StoreControllerIntegrationTest {
 
     @Test
     @DisplayName("빈 결과 후 반경을 넓혀 다시 검색하면 결과를 저장하고 식당 선택 단계로 변경한다")
-    void searchNearby_afterEmptyResult_canRetryWithWiderRadius() throws Exception {
+    void searchAndSave_afterEmptyResult_canRetryWithWiderRadius() {
         kakaoMockServer.expectSuccess("{\"documents\":[]}", 1000);
         kakaoMockServer.expectSuccess(KAKAO_RESULTS, 3000);
 
-        mockMvc.perform(post(SEARCH_URI)
-                        .with(authAs(ownerUserId))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(requestWithRadius(1000)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data").isEmpty());
-
+        org.assertj.core.api.Assertions.assertThat(
+                storeSearchService.searchAndSave(voteSessionId, "삼겹살", coordinate(), 1000)).isEmpty();
         org.assertj.core.api.Assertions.assertThat(storeJpaRepository.count()).isZero();
         org.assertj.core.api.Assertions.assertThat(currentStatus())
                 .isEqualTo(VoteSessionStatus.RESTAURANT_SEARCHING);
 
-        mockMvc.perform(post(SEARCH_URI)
-                        .with(authAs(ownerUserId))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(requestWithRadius(3000)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.length()").value(4));
+        org.assertj.core.api.Assertions.assertThat(
+                storeSearchService.searchAndSave(voteSessionId, "삼겹살", coordinate(), 3000)).hasSize(4);
 
         kakaoMockServer.verify();
         org.assertj.core.api.Assertions.assertThat(storeJpaRepository.count()).isEqualTo(4);
@@ -272,15 +287,11 @@ class StoreControllerIntegrationTest {
     }
 
     @Test
-    @DisplayName("검색이 완료된 세션에 같은 요청을 다시 보내면 거부하고 중복 저장하지 않는다")
-    void searchNearby_whenRepeated_returnsConflictWithoutDuplicateSave() throws Exception {
+    @DisplayName("검색이 완료된 세션에 다시 요청하면 발행 전에 거부한다")
+    void searchNearby_whenRepeated_returnsConflictWithoutPublishing() throws Exception {
         kakaoMockServer.expectSuccess(KAKAO_RESULTS);
-
-        mockMvc.perform(post(SEARCH_URI)
-                        .with(authAs(ownerUserId))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(validRequest()))
-                .andExpect(status().isOk());
+        storeSearchService.searchAndSave(voteSessionId, "삼겹살", coordinate(), 1000);
+        eventPublisher.reset();
 
         mockMvc.perform(post(SEARCH_URI)
                         .with(authAs(ownerUserId))
@@ -290,6 +301,7 @@ class StoreControllerIntegrationTest {
                 .andExpect(jsonPath("$.code").value("SESSION-003"));
 
         kakaoMockServer.verify();
+        org.assertj.core.api.Assertions.assertThat(eventPublisher.published()).isEmpty();
         org.assertj.core.api.Assertions.assertThat(storeJpaRepository.count()).isEqualTo(4);
         org.assertj.core.api.Assertions.assertThat(currentStatus())
                 .isEqualTo(VoteSessionStatus.RESTAURANT_SELECTION);
@@ -314,20 +326,23 @@ class StoreControllerIntegrationTest {
 
     @Test
     @DisplayName("카카오 API 오류가 발생하면 저장하지 않고 검색 단계에 머문다")
-    void searchNearby_whenKakaoFails_returnsBadGatewayAndKeepsSearchingStatus() throws Exception {
+    void searchAndSave_whenKakaoFails_keepsSearchingStatus() {
         kakaoMockServer.expectServerError();
 
-        mockMvc.perform(post(SEARCH_URI)
-                        .with(authAs(ownerUserId))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(validRequest()))
-                .andExpect(status().isBadGateway())
-                .andExpect(jsonPath("$.code").value("KAKAOMAP-001"));
+        // 리스너에서는 이 예외가 재시도 후 DLQ로 간다.
+        org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+                storeSearchService.searchAndSave(voteSessionId, "삼겹살", coordinate(), 1000))
+                .isInstanceOf(RuntimeException.class);
 
         kakaoMockServer.verify();
         org.assertj.core.api.Assertions.assertThat(storeJpaRepository.count()).isZero();
         org.assertj.core.api.Assertions.assertThat(currentStatus())
                 .isEqualTo(VoteSessionStatus.RESTAURANT_SEARCHING);
+    }
+
+    /** Coordinate는 (x=경도, y=위도) 순이다. */
+    private Coordinate coordinate() {
+        return new Coordinate(127.0, 37.5);
     }
 
     private String validRequest() {
@@ -447,10 +462,35 @@ class StoreControllerIntegrationTest {
             return new KakaoMockServer();
         }
 
+        /** 브로커 없이 발행 여부만 확인한다. */
+        @Bean
+        @Primary
+        RecordingEventPublisher recordingEventPublisher() {
+            return new RecordingEventPublisher();
+        }
+
         @Bean
         @Primary
         RestClient testKakaoClient(KakaoMockServer mockServer) {
             return mockServer.restClient();
+        }
+    }
+
+    static class RecordingEventPublisher implements EventPublisher {
+
+        private final List<DomainEvent> published = new ArrayList<>();
+
+        @Override
+        public void publish(DomainEvent event) {
+            published.add(event);
+        }
+
+        List<DomainEvent> published() {
+            return published;
+        }
+
+        void reset() {
+            published.clear();
         }
     }
 
