@@ -235,7 +235,7 @@ class UserServiceTest {
         assertThatThrownBy(() -> userService.submitOnboarding(userId, onboarding))
                 .isInstanceOf(UserException.class)
                 .satisfies(exception -> assertThat(((UserException) exception).getErrorCode())
-                        .isEqualTo(UserErrorCode.TERMS_AGREED_APPROVE));
+                        .isEqualTo(UserErrorCode.TERMS_NOT_AGREED));
 
         verify(userRepository, never()).updateUserStatus(userId);
     }
