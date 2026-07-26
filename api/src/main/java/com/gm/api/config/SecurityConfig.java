@@ -27,6 +27,7 @@ public class SecurityConfig {
     private final OAuth2SuccessHandler oauth2SuccessHandler;
     private final OAuth2FailureHandler oauth2FailureHandler;
 
+    /** HTTP 요청의 인증·인가와 예외 처리 규칙을 구성한다. */
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 

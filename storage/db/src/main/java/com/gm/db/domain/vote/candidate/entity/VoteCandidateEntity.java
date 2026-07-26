@@ -1,7 +1,7 @@
 package com.gm.db.domain.vote.candidate.entity;
 
-import com.gm.core.domain.vote.candidate.model.MenuVoteCount;
-import com.gm.core.domain.vote.candidate.model.VoteCandidateResult;
+import com.gm.core.domain.vote.candidate.model.menuvote.MenuVoteCount;
+import com.gm.core.domain.vote.candidate.model.menu.VoteCandidateResult;
 import com.gm.db.common.entity.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

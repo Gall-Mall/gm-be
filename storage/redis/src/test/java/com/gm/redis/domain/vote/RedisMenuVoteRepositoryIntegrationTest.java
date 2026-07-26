@@ -19,12 +19,12 @@ import org.junit.jupiter.api.Test;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
-import com.gm.core.domain.vote.candidate.model.MenuVoteChoice;
-import com.gm.core.domain.vote.candidate.model.MenuVoteCloseResult;
-import com.gm.core.domain.vote.candidate.model.MenuVoteCount;
-import com.gm.core.domain.vote.candidate.model.MenuVoteSession;
-import com.gm.core.domain.vote.candidate.model.MenuVoteSubmitResult;
-import com.gm.core.domain.vote.candidate.model.MenuVoteSubmission;
+import com.gm.core.domain.vote.candidate.model.menuvote.MenuVoteChoice;
+import com.gm.core.domain.vote.candidate.model.menuvote.MenuVoteCloseResult;
+import com.gm.core.domain.vote.candidate.model.menuvote.MenuVoteCount;
+import com.gm.core.domain.vote.candidate.model.menuvote.MenuVoteSession;
+import com.gm.core.domain.vote.candidate.model.menuvote.MenuVoteSubmitResult;
+import com.gm.core.domain.vote.candidate.model.menuvote.MenuVoteSubmission;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -174,7 +174,7 @@ class RedisMenuVoteRepositoryIntegrationTest {
         var state = repository.findState(sessionId).orElseThrow();
 
         assertThat(state.status()).isEqualTo(
-                com.gm.core.domain.vote.candidate.model.MenuVoteState.Status.OPEN);
+                com.gm.core.domain.vote.candidate.model.menuvote.MenuVoteState.Status.OPEN);
         assertThat(state.deadline()).isAfter(java.time.Instant.now());
         assertThat(state.counts()).containsExactly(
                 new MenuVoteCount(candidateId, 1, 0, 0, 1));

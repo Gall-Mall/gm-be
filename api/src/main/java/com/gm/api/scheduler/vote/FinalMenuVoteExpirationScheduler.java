@@ -7,7 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import com.gm.core.domain.vote.candidate.service.ExpiredFinalMenuVoteService;
+import com.gm.core.domain.vote.candidate.service.finalmenu.ExpiredFinalMenuVoteService;
 
 /**
  * Redis deadline 인덱스에서 만료된 두 후보 최종투표를 1분 주기로 마감한다.

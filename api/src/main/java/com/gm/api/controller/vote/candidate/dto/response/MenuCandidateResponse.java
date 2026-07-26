@@ -2,8 +2,8 @@ package com.gm.api.controller.vote.candidate.dto.response;
 
 import java.util.UUID;
 
-import com.gm.core.domain.vote.candidate.model.MenuVoteCandidate;
-import com.gm.core.domain.vote.candidate.model.VoteCandidateResult;
+import com.gm.core.domain.vote.candidate.model.menu.MenuVoteCandidate;
+import com.gm.core.domain.vote.candidate.model.menu.VoteCandidateResult;
 
 /**
  * 메뉴 투표 화면에 표시할 후보 정보이다.

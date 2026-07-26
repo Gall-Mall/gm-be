@@ -14,12 +14,12 @@ import org.springframework.stereotype.Repository;
 
 import com.gm.core.domain.vote.candidate.exception.VoteCandidateErrorCode;
 import com.gm.core.domain.vote.candidate.exception.VoteCandidateException;
-import com.gm.core.domain.vote.candidate.model.MenuVoteCandidate;
-import com.gm.core.domain.vote.candidate.model.MenuVoteCount;
-import com.gm.core.domain.vote.candidate.model.MenuVoteResult;
-import com.gm.core.domain.vote.candidate.model.VoteCandidate;
-import com.gm.core.domain.vote.candidate.model.VoteCandidateResult;
-import com.gm.core.domain.vote.candidate.repository.VoteCandidateRepository;
+import com.gm.core.domain.vote.candidate.model.menu.MenuVoteCandidate;
+import com.gm.core.domain.vote.candidate.model.menuvote.MenuVoteCount;
+import com.gm.core.domain.vote.candidate.model.menuvote.MenuVoteResult;
+import com.gm.core.domain.vote.candidate.model.menu.VoteCandidate;
+import com.gm.core.domain.vote.candidate.model.menu.VoteCandidateResult;
+import com.gm.core.domain.vote.candidate.repository.menu.VoteCandidateRepository;
 import com.gm.db.domain.menu.category.entity.FoodCategoryEntity;
 import com.gm.db.domain.menu.category.repository.FoodCategoryJpaRepository;
 import com.gm.db.domain.menu.menu.entity.MenuEntity;
@@ -41,6 +41,7 @@ public class VoteCandidateRepositoryImpl implements VoteCandidateRepository {
     private final VoteCandidateMapper voteCandidateMapper;
     private final MenuVoteCandidateMapper menuVoteCandidateMapper;
 
+    /** {@inheritDoc} */
     @Override
     public List<VoteCandidate> saveNewCandidates(List<VoteCandidate> candidates) {
         List<VoteCandidateEntity> entities = candidates.stream()
@@ -51,6 +52,7 @@ public class VoteCandidateRepositoryImpl implements VoteCandidateRepository {
                 .toList();
     }
 
+    /** {@inheritDoc} */
     @Override
     public List<MenuVoteCandidate> findAllByVoteSessionId(UUID voteSessionId) {
         return voteCandidateJpaRepository
@@ -60,6 +62,7 @@ public class VoteCandidateRepositoryImpl implements VoteCandidateRepository {
                 .toList();
     }
 
+    /** {@inheritDoc} */
     @Override
     public Optional<VoteCandidate> findSelectedCandidate(UUID voteSessionId) {
         return voteCandidateJpaRepository.findFirstByVoteSessionIdAndSelectedTrue(voteSessionId)
@@ -115,6 +118,7 @@ public class VoteCandidateRepositoryImpl implements VoteCandidateRepository {
                 .toList();
     }
 
+    /** {@inheritDoc} */
     @Override
     public List<UUID> findRemainingCandidateIdsForUpdate(UUID voteSessionId) {
         return voteCandidateJpaRepository.findAllByVoteSessionIdForUpdate(voteSessionId).stream()
@@ -124,6 +128,7 @@ public class VoteCandidateRepositoryImpl implements VoteCandidateRepository {
                 .toList();
     }
 
+    /** {@inheritDoc} */
     @Override
     public VoteCandidate selectFinalCandidate(UUID voteSessionId, UUID candidateId) {
         List<VoteCandidateEntity> candidates = voteCandidateJpaRepository
@@ -140,6 +145,7 @@ public class VoteCandidateRepositoryImpl implements VoteCandidateRepository {
         return voteCandidateMapper.toDomain(selected);
     }
 
+    /** 후보와 메뉴·카테고리 정보를 합쳐 투표 화면 모델로 변환한다. */
     private MenuVoteCandidate toMenuVoteCandidate(VoteCandidateEntity candidate) {
         MenuEntity menu = menuJpaRepository.findById(candidate.getMenuId())
                 .orElseThrow(() -> new IllegalStateException(

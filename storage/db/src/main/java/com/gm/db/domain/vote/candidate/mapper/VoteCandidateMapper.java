@@ -1,6 +1,6 @@
 package com.gm.db.domain.vote.candidate.mapper;
 
-import com.gm.core.domain.vote.candidate.model.VoteCandidate;
+import com.gm.core.domain.vote.candidate.model.menu.VoteCandidate;
 import com.gm.db.domain.vote.candidate.entity.VoteCandidateEntity;
 import org.mapstruct.Mapper;
 

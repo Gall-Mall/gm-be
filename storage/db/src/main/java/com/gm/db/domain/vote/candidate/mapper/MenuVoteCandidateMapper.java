@@ -3,7 +3,7 @@ package com.gm.db.domain.vote.candidate.mapper;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
-import com.gm.core.domain.vote.candidate.model.MenuVoteCandidate;
+import com.gm.core.domain.vote.candidate.model.menu.MenuVoteCandidate;
 import com.gm.db.domain.menu.category.entity.FoodCategoryEntity;
 import com.gm.db.domain.menu.menu.entity.MenuEntity;
 import com.gm.db.domain.vote.candidate.entity.VoteCandidateEntity;
@@ -14,6 +14,7 @@ import com.gm.db.domain.vote.candidate.entity.VoteCandidateEntity;
 @Mapper(componentModel = "spring")
 public interface MenuVoteCandidateMapper {
 
+    /** 후보와 메뉴·카테고리를 투표 화면 조회 모델로 변환한다. */
     @Mapping(target = "voteCandidateId", source = "candidate.id")
     @Mapping(target = "voteSessionId", source = "candidate.voteSessionId")
     @Mapping(target = "menuId", source = "candidate.menuId")

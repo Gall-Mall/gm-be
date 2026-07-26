@@ -7,7 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import com.gm.core.domain.vote.candidate.service.ExpiredMenuVoteFinalizationService;
+import com.gm.core.domain.vote.candidate.service.menuvote.ExpiredMenuVoteFinalizationService;
 
 /**
  * API 인스턴스에서 DB 시작 시각 기준으로 만료된 메뉴 투표를 주기적으로 마감한다.

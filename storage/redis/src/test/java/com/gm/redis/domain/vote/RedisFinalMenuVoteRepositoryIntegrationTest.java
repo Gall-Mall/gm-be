@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
-import com.gm.core.domain.vote.candidate.model.FinalMenuVoteResult;
+import com.gm.core.domain.vote.candidate.model.finalmenu.FinalMenuVoteResult;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

@@ -18,12 +18,12 @@ import org.springframework.util.Assert;
 
 import com.gm.core.domain.vote.candidate.exception.VoteCandidateErrorCode;
 import com.gm.core.domain.vote.candidate.exception.VoteCandidateException;
-import com.gm.core.domain.vote.candidate.model.FinalMenuVoteCloseResult;
-import com.gm.core.domain.vote.candidate.model.FinalMenuVoteCount;
-import com.gm.core.domain.vote.candidate.model.FinalMenuVoteResult;
-import com.gm.core.domain.vote.candidate.model.FinalMenuVoteState;
-import com.gm.core.domain.vote.candidate.repository.FinalMenuVoteRepository;
-import com.gm.core.domain.vote.candidate.service.MenuVotePolicy;
+import com.gm.core.domain.vote.candidate.model.finalmenu.FinalMenuVoteCloseResult;
+import com.gm.core.domain.vote.candidate.model.finalmenu.FinalMenuVoteCount;
+import com.gm.core.domain.vote.candidate.model.finalmenu.FinalMenuVoteResult;
+import com.gm.core.domain.vote.candidate.model.finalmenu.FinalMenuVoteState;
+import com.gm.core.domain.vote.candidate.repository.finalmenu.FinalMenuVoteRepository;
+import com.gm.core.domain.vote.candidate.service.menuvote.MenuVotePolicy;
 
 /** 두 후보 최종 투표와 deadline 인덱스를 Redis Hash·Sorted Set·Lua로 관리한다. */
 @Repository
@@ -149,6 +149,7 @@ public class RedisFinalMenuVoteRepository implements FinalMenuVoteRepository {
     private final Duration ttl;
     private final Duration votingDuration;
 
+    /** Redis 저장소와 최종 투표 만료·진행 시간을 설정한다. */
     @Autowired
     public RedisFinalMenuVoteRepository(
             StringRedisTemplate redisTemplate,
@@ -166,10 +167,12 @@ public class RedisFinalMenuVoteRepository implements FinalMenuVoteRepository {
         this.votingDuration = votingDuration;
     }
 
+    /** 테스트와 기본 구성에서 1차 투표 시간을 최종 투표 시간으로 사용한다. */
     public RedisFinalMenuVoteRepository(StringRedisTemplate redisTemplate, Duration ttl) {
         this(redisTemplate, ttl, MenuVotePolicy.VOTING_DURATION);
     }
 
+    /** {@inheritDoc} */
     @Override
     public void initialize(UUID voteSessionId, List<UUID> candidateIds, int eligibleVoterCount) {
         Assert.notNull(voteSessionId, "voteSessionId must not be null");
@@ -187,6 +190,7 @@ public class RedisFinalMenuVoteRepository implements FinalMenuVoteRepository {
                 String.valueOf(effectiveTtl), voteSessionId.toString());
     }
 
+    /** {@inheritDoc} */
     @Override
     public FinalMenuVoteResult submit(UUID voteSessionId, UUID userId, UUID candidateId) {
         List<?> result = redisTemplate.execute(
@@ -201,6 +205,7 @@ public class RedisFinalMenuVoteRepository implements FinalMenuVoteRepository {
         return FinalMenuVoteResult.tied(List.of(uuid(result, 1), uuid(result, 2)));
     }
 
+    /** {@inheritDoc} */
     @Override
     public Optional<FinalMenuVoteState> findState(UUID voteSessionId) {
         Map<Object, Object> values = redisTemplate.opsForHash()
@@ -221,6 +226,7 @@ public class RedisFinalMenuVoteRepository implements FinalMenuVoteRepository {
         ));
     }
 
+    /** {@inheritDoc} */
     @Override
     public List<UUID> findExpired(Instant now, int limit) {
         if (limit <= 0) return List.of();
@@ -230,6 +236,7 @@ public class RedisFinalMenuVoteRepository implements FinalMenuVoteRepository {
         return members.stream().map(UUID::fromString).toList();
     }
 
+    /** {@inheritDoc} */
     @Override
     public FinalMenuVoteCloseResult closeExpired(UUID voteSessionId) {
         List<?> result = redisTemplate.execute(
@@ -242,11 +249,13 @@ public class RedisFinalMenuVoteRepository implements FinalMenuVoteRepository {
         return FinalMenuVoteCloseResult.ownerSelectionPending();
     }
 
+    /** {@inheritDoc} */
     @Override
     public void removeExpiration(UUID voteSessionId) {
         redisTemplate.opsForZSet().remove(DEADLINE_INDEX, voteSessionId.toString());
     }
 
+    /** {@inheritDoc} */
     @Override
     public boolean isTiedCandidate(UUID voteSessionId, UUID candidateId) {
         Long result = redisTemplate.execute(
@@ -255,35 +264,42 @@ public class RedisFinalMenuVoteRepository implements FinalMenuVoteRepository {
         return Long.valueOf(1L).equals(result);
     }
 
+    /** {@inheritDoc} */
     @Override
     public void delete(UUID voteSessionId) {
         redisTemplate.delete(VoteRedisKeys.finalSession(voteSessionId));
         removeExpiration(voteSessionId);
     }
 
+    /** Lua 반환 목록의 첫 값을 결과 코드로 변환한다. */
     private static int outcome(List<?> result) {
         return result == null || result.isEmpty() ? -1 : number(result.get(0));
     }
 
+    /** Lua 반환 목록의 값을 UUID로 변환한다. */
     private static UUID uuid(List<?> result, int index) {
         return UUID.fromString(result.get(index).toString());
     }
 
+    /** Redis Hash 숫자 필드를 읽고 값이 없으면 0을 반환한다. */
     private static int integer(Map<Object, Object> values, String key) {
         Object value = values.get(key);
         return value == null ? 0 : Integer.parseInt(value.toString());
     }
 
+    /** 필수 Redis Hash 필드를 문자열로 읽는다. */
     private static String value(Map<Object, Object> values, String key) {
         Object value = values.get(key);
         if (value == null) throw new IllegalStateException("Missing final vote field: " + key);
         return value.toString();
     }
 
+    /** Redis 실행 결과를 정수로 변환한다. */
     private static int number(Object value) {
         return value instanceof Number number ? number.intValue() : Integer.parseInt(value.toString());
     }
 
+    /** Lua 원문과 반환 형식으로 실행 스크립트를 만든다. */
     private static <T> DefaultRedisScript<T> script(String source, Class<T> resultType) {
         DefaultRedisScript<T> script = new DefaultRedisScript<>();
         script.setScriptText(source);

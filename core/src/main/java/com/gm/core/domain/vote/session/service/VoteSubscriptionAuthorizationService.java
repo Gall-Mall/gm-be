@@ -22,6 +22,7 @@ public class VoteSubscriptionAuthorizationService {
     private final GroupService groupService;
     private final VoteSessionRepository voteSessionRepository;
 
+    /** 세션을 조회하고 요청 사용자가 해당 그룹의 활성 멤버인지 확인한다. */
     @Transactional(readOnly = true)
     public void authorize(UUID voteSessionId, UUID userId) {
         Assert.notNull(voteSessionId, "voteSessionId must not be null");

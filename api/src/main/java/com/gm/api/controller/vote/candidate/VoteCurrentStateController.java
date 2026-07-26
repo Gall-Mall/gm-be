@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.gm.api.common.response.ResponseEnvelope;
 import com.gm.api.controller.vote.candidate.dto.response.VoteCurrentStateResponse;
 import com.gm.api.security.CustomUserPrincipal;
-import com.gm.core.domain.vote.candidate.service.VoteCurrentStateService;
+import com.gm.core.domain.vote.candidate.service.state.VoteCurrentStateService;
 
 /** Socket 연결 전후에 클라이언트가 다시 동기화할 투표 세션 현재 상태 API를 제공한다. */
 @RestController

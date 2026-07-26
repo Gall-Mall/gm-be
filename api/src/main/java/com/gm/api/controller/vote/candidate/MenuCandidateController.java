@@ -25,10 +25,10 @@ import com.gm.api.controller.vote.candidate.dto.response.MenuCandidateResponse;
 import com.gm.api.controller.vote.candidate.dto.response.MenuVoteResultResponse;
 import com.gm.api.controller.vote.candidate.dto.response.MenuVoteSubmissionResponse;
 import com.gm.api.security.CustomUserPrincipal;
-import com.gm.core.domain.vote.candidate.service.FinalMenuSelectionService;
-import com.gm.core.domain.vote.candidate.service.MenuCandidateService;
-import com.gm.core.domain.vote.candidate.service.MenuVoteFinalizationService;
-import com.gm.core.domain.vote.candidate.service.MenuVoteService;
+import com.gm.core.domain.vote.candidate.service.finalmenu.FinalMenuSelectionService;
+import com.gm.core.domain.vote.candidate.service.menu.MenuCandidateService;
+import com.gm.core.domain.vote.candidate.service.menuvote.MenuVoteFinalizationService;
+import com.gm.core.domain.vote.candidate.service.menuvote.MenuVoteService;
 
 /** 메뉴 투표 후보 조회, 선택 제출, 수동 마감 및 최종 메뉴 선택 API를 제공한다. */
 @RestController

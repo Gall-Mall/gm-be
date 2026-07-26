@@ -2,8 +2,8 @@ package com.gm.api.controller.vote.candidate.dto.response;
 
 import java.util.UUID;
 
-import com.gm.core.domain.vote.candidate.model.MenuVoteResult;
-import com.gm.core.domain.vote.candidate.model.VoteCandidateResult;
+import com.gm.core.domain.vote.candidate.model.menuvote.MenuVoteResult;
+import com.gm.core.domain.vote.candidate.model.menu.VoteCandidateResult;
 
 /**
  * 1차 메뉴 투표 마감 시 고정된 후보별 집계와 판정이다.

@@ -14,14 +14,14 @@ import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Repository;
 import org.springframework.util.Assert;
 
-import com.gm.core.domain.vote.candidate.model.MenuVoteChoice;
-import com.gm.core.domain.vote.candidate.model.MenuVoteCloseResult;
-import com.gm.core.domain.vote.candidate.model.MenuVoteCount;
-import com.gm.core.domain.vote.candidate.model.MenuVoteSession;
-import com.gm.core.domain.vote.candidate.model.MenuVoteState;
-import com.gm.core.domain.vote.candidate.model.MenuVoteSubmission;
-import com.gm.core.domain.vote.candidate.model.MenuVoteSubmitResult;
-import com.gm.core.domain.vote.candidate.repository.MenuVoteRepository;
+import com.gm.core.domain.vote.candidate.model.menuvote.MenuVoteChoice;
+import com.gm.core.domain.vote.candidate.model.menuvote.MenuVoteCloseResult;
+import com.gm.core.domain.vote.candidate.model.menuvote.MenuVoteCount;
+import com.gm.core.domain.vote.candidate.model.menuvote.MenuVoteSession;
+import com.gm.core.domain.vote.candidate.model.menuvote.MenuVoteState;
+import com.gm.core.domain.vote.candidate.model.menuvote.MenuVoteSubmission;
+import com.gm.core.domain.vote.candidate.model.menuvote.MenuVoteSubmitResult;
+import com.gm.core.domain.vote.candidate.repository.menuvote.MenuVoteRepository;
 
 /**
  * 메뉴 투표의 불변 메타데이터, 사용자 선택, 후보별 집계를 세션별 단일 Redis Hash에 저장한다.
@@ -264,6 +264,7 @@ public class RedisMenuVoteRepository implements MenuVoteRepository {
         return closeAndGetSnapshot(voteSessionId, true);
     }
 
+    /** 응답자 조건을 적용해 투표를 닫고 고정된 집계를 반환한다. */
     private MenuVoteCloseResult closeAndGetSnapshot(UUID voteSessionId, boolean requireAnyResponse) {
         List<?> result = redisTemplate.execute(
                 CLOSE_SCRIPT,

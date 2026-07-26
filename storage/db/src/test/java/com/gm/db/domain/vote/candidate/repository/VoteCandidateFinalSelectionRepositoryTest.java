@@ -7,8 +7,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import com.gm.core.domain.vote.candidate.exception.VoteCandidateException;
-import com.gm.core.domain.vote.candidate.model.VoteCandidate;
-import com.gm.core.domain.vote.candidate.model.VoteCandidateResult;
+import com.gm.core.domain.vote.candidate.model.menu.VoteCandidate;
+import com.gm.core.domain.vote.candidate.model.menu.VoteCandidateResult;
 import com.gm.db.domain.menu.category.repository.FoodCategoryJpaRepository;
 import com.gm.db.domain.menu.menu.repository.MenuJpaRepository;
 import com.gm.db.domain.vote.candidate.entity.VoteCandidateEntity;

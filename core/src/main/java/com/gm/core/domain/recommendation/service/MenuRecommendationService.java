@@ -24,8 +24,8 @@ import com.gm.core.domain.recommendation.model.CuratedCandidate;
 import com.gm.core.domain.recommendation.model.GroupSoftSignals;
 import com.gm.core.domain.recommendation.model.ScoredMenu;
 import com.gm.core.domain.recommendation.repository.RecommendationRepository;
-import com.gm.core.domain.vote.candidate.model.RecommendedMenuCandidate;
-import com.gm.core.domain.vote.candidate.service.MenuCandidateService;
+import com.gm.core.domain.vote.candidate.model.menu.RecommendedMenuCandidate;
+import com.gm.core.domain.vote.candidate.service.menu.MenuCandidateService;
 import com.gm.core.domain.vote.session.exception.VoteSessionErrorCode;
 import com.gm.core.domain.vote.session.exception.VoteSessionException;
 import com.gm.core.domain.vote.session.model.VoteSession;
@@ -165,6 +165,7 @@ public class MenuRecommendationService {
         return candidates;
     }
 
+    /** AI가 고른 후보에 노출 순서를 부여하고 저장 모델로 변환한다. */
     private List<RecommendedMenuCandidate> toCandidates(List<CuratedCandidate> curated) {
         return IntStream.range(0, curated.size())
                 .mapToObj(i -> new RecommendedMenuCandidate(
@@ -172,6 +173,7 @@ public class MenuRecommendationService {
                 .toList();
     }
 
+    /** 추천 이유를 DB 컬럼의 최대 길이에 맞춘다. */
     private String truncate(String description) {
         if (description == null || description.length() <= MAX_DESCRIPTION_LENGTH) {
             return description;
@@ -180,6 +182,7 @@ public class MenuRecommendationService {
         return description.substring(0, MAX_DESCRIPTION_LENGTH);
     }
 
+    /** AI 결과가 없을 때 결정론 점수 상위 메뉴를 후보로 사용한다. */
     private List<RecommendedMenuCandidate> fallbackCandidates(Map<UUID, String> candidatesByMenuId) {
         List<UUID> menuIds = candidatesByMenuId.keySet().stream().limit(FINAL_CANDIDATE_COUNT).toList();
         return IntStream.range(0, menuIds.size())

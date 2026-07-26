@@ -15,12 +15,12 @@ import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.gm.api.ApiApplication;
-import com.gm.core.domain.vote.candidate.model.MenuVoteCandidate;
-import com.gm.core.domain.vote.candidate.model.RecommendedMenuCandidate;
-import com.gm.core.domain.vote.candidate.model.VoteCandidate;
-import com.gm.core.domain.vote.candidate.model.VoteCandidateResult;
-import com.gm.core.domain.vote.candidate.repository.VoteCandidateRepository;
-import com.gm.core.domain.vote.candidate.service.MenuCandidateService;
+import com.gm.core.domain.vote.candidate.model.menu.MenuVoteCandidate;
+import com.gm.core.domain.vote.candidate.model.menu.RecommendedMenuCandidate;
+import com.gm.core.domain.vote.candidate.model.menu.VoteCandidate;
+import com.gm.core.domain.vote.candidate.model.menu.VoteCandidateResult;
+import com.gm.core.domain.vote.candidate.repository.menu.VoteCandidateRepository;
+import com.gm.core.domain.vote.candidate.service.menu.MenuCandidateService;
 import com.gm.core.domain.vote.session.model.VoteSessionStatus;
 import com.gm.db.domain.menu.category.entity.FoodCategoryEntity;
 import com.gm.db.domain.menu.menu.entity.MenuEntity;

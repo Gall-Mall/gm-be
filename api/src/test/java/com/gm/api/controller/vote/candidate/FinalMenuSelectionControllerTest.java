@@ -6,12 +6,12 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import com.gm.api.security.CustomUserPrincipal;
-import com.gm.core.domain.vote.candidate.model.FinalMenuVoteResult;
-import com.gm.core.domain.vote.candidate.model.VoteCandidate;
-import com.gm.core.domain.vote.candidate.service.FinalMenuSelectionService;
-import com.gm.core.domain.vote.candidate.service.MenuCandidateService;
-import com.gm.core.domain.vote.candidate.service.MenuVoteFinalizationService;
-import com.gm.core.domain.vote.candidate.service.MenuVoteService;
+import com.gm.core.domain.vote.candidate.model.finalmenu.FinalMenuVoteResult;
+import com.gm.core.domain.vote.candidate.model.menu.VoteCandidate;
+import com.gm.core.domain.vote.candidate.service.finalmenu.FinalMenuSelectionService;
+import com.gm.core.domain.vote.candidate.service.menu.MenuCandidateService;
+import com.gm.core.domain.vote.candidate.service.menuvote.MenuVoteFinalizationService;
+import com.gm.core.domain.vote.candidate.service.menuvote.MenuVoteService;
 
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
