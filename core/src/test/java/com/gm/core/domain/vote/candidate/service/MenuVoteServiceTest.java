@@ -19,6 +19,7 @@ import com.gm.core.domain.vote.candidate.model.MenuVoteCount;
 import com.gm.core.domain.vote.candidate.model.MenuVoteSubmitResult;
 import com.gm.core.domain.vote.candidate.model.MenuVoteSubmission;
 import com.gm.core.domain.vote.candidate.repository.MenuVoteRepository;
+import com.gm.core.domain.vote.event.VoteSocketEventPublisher;
 import com.gm.core.domain.vote.candidate.repository.VoteCandidateRepository;
 import com.gm.core.domain.vote.session.exception.VoteSessionErrorCode;
 import com.gm.core.domain.vote.session.exception.VoteSessionException;
@@ -46,6 +47,9 @@ class MenuVoteServiceTest {
 
     @Mock
     private MenuVoteRepository menuVoteRepository;
+
+    @Mock
+    private VoteSocketEventPublisher voteSocketEventPublisher;
 
     @Test
     @DisplayName("ACTIVE 멤버가 메뉴 투표 중인 세션 후보에 선택을 반영한다")
@@ -195,7 +199,8 @@ class MenuVoteServiceTest {
         return new MenuVoteService(
                 groupService,
                 voteSessionRepository,
-                menuVoteRepository
+                menuVoteRepository,
+                voteSocketEventPublisher
         );
     }
 

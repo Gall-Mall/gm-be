@@ -1,8 +1,11 @@
 package com.gm.redis.domain.vote;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -15,6 +18,7 @@ import com.gm.core.domain.vote.candidate.model.MenuVoteChoice;
 import com.gm.core.domain.vote.candidate.model.MenuVoteCloseResult;
 import com.gm.core.domain.vote.candidate.model.MenuVoteCount;
 import com.gm.core.domain.vote.candidate.model.MenuVoteSession;
+import com.gm.core.domain.vote.candidate.model.MenuVoteState;
 import com.gm.core.domain.vote.candidate.model.MenuVoteSubmission;
 import com.gm.core.domain.vote.candidate.model.MenuVoteSubmitResult;
 import com.gm.core.domain.vote.candidate.repository.MenuVoteRepository;
@@ -223,6 +227,33 @@ public class RedisMenuVoteRepository implements MenuVoteRepository {
 
     /** {@inheritDoc} */
     @Override
+    public Optional<MenuVoteState> findState(UUID voteSessionId) {
+        Map<Object, Object> values = redisTemplate.opsForHash()
+                .entries(VoteRedisKeys.session(voteSessionId));
+        if (values.isEmpty()) {
+            return Optional.empty();
+        }
+        List<MenuVoteCount> counts = List.of(values.get("candidateIds").toString().split(","))
+                .stream()
+                .filter(candidateId -> !candidateId.isBlank())
+                .map(UUID::fromString)
+                .map(candidateId -> new MenuVoteCount(
+                        candidateId,
+                        fieldNumber(values, "count:" + candidateId + ":GO"),
+                        fieldNumber(values, "count:" + candidateId + ":MAYBE"),
+                        fieldNumber(values, "count:" + candidateId + ":NO"),
+                        fieldNumber(values, "count:" + candidateId + ":RESPONDENTS")
+                ))
+                .toList();
+        return Optional.of(new MenuVoteState(
+                MenuVoteState.Status.valueOf(values.get("status").toString()),
+                Instant.ofEpochMilli(Long.parseLong(values.get("deadlineEpochMillis").toString())),
+                counts
+        ));
+    }
+
+    /** {@inheritDoc} */
+    @Override
     public MenuVoteCloseResult closeAndGetSnapshot(UUID voteSessionId) {
         return closeAndGetSnapshot(voteSessionId, false);
     }
@@ -274,6 +305,12 @@ public class RedisMenuVoteRepository implements MenuVoteRepository {
             return number.intValue();
         }
         return Integer.parseInt(value.toString());
+    }
+
+    /** Hash 집계 필드가 아직 생성되지 않은 후보는 0표로 변환한다. */
+    private static int fieldNumber(Map<Object, Object> values, String field) {
+        Object value = values.get(field);
+        return value == null ? 0 : Integer.parseInt(value.toString());
     }
 
     /** Script 본문과 반환 타입을 함께 설정한 Redis Script를 생성한다. */

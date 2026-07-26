@@ -18,6 +18,10 @@ import com.gm.core.domain.vote.candidate.model.FinalMenuVoteResult;
 import com.gm.core.domain.vote.candidate.model.VoteCandidate;
 import com.gm.core.domain.vote.candidate.repository.FinalMenuVoteRepository;
 import com.gm.core.domain.vote.candidate.repository.VoteCandidateRepository;
+import com.gm.core.domain.vote.event.FinalMenuSelectedData;
+import com.gm.core.domain.vote.event.VoteEventType;
+import com.gm.core.domain.vote.event.VoteSocketEvent;
+import com.gm.core.domain.vote.event.VoteSocketEventPublisher;
 import com.gm.core.domain.vote.session.exception.VoteSessionErrorCode;
 import com.gm.core.domain.vote.session.exception.VoteSessionException;
 import com.gm.core.domain.vote.session.model.VoteSession;
@@ -36,6 +40,7 @@ public class FinalMenuSelectionService {
     private final GroupRepository groupRepository;
     private final GroupService groupService;
     private final AfterCommitExecutor afterCommitExecutor;
+    private final VoteSocketEventPublisher voteSocketEventPublisher;
 
     /** 두 후보일 때 활성 그룹원의 Redis 최종 투표를 제출한다. */
     @Transactional
@@ -64,6 +69,14 @@ public class FinalMenuSelectionService {
         );
         if (result.status() == FinalMenuVoteResult.Status.SELECTED) {
             selectLocked(session, result.selectedCandidateId());
+        } else {
+            finalMenuVoteRepository.findState(voteSessionId).ifPresent(state ->
+                    voteSocketEventPublisher.publish(VoteSocketEvent.now(
+                            VoteEventType.FINAL_MENU_VOTE_UPDATED,
+                            voteSessionId,
+                            state
+                    ))
+            );
         }
         return result;
     }
@@ -122,7 +135,6 @@ public class FinalMenuSelectionService {
         VoteSession session = voteSessionRepository.findByIdForUpdate(voteSessionId)
                 .orElseThrow(() -> new VoteSessionException(VoteSessionErrorCode.SESSION_NOT_FOUND));
         if (session.voteSessionStatus() == VoteSessionStatus.RESTAURANT_SEARCHING) {
-            // DB 확정 뒤 Redis 정리만 실패한 재호출은 후보를 다시 선택하지 않는다.
             afterCommitExecutor.execute(() -> finalMenuVoteRepository.delete(voteSessionId));
             return;
         }
@@ -138,19 +150,31 @@ public class FinalMenuSelectionService {
     }
 
 
-    /** 잠긴 세션에서 후보 하나를 최종 선택하고 식당 검색 단계로 전환한다. */
     private VoteCandidate selectLocked(VoteSession session, UUID candidateId) {
         VoteCandidate selected = voteCandidateRepository.selectFinalCandidate(session.id(), candidateId);
         VoteSession next = session.changeStatus(VoteSessionStatus.RESTAURANT_SEARCHING);
         voteSessionRepository.updateStatus(session.id(), next.voteSessionStatus())
                 .orElseThrow(() -> new VoteSessionException(VoteSessionErrorCode.SESSION_NOT_FOUND));
-        // DB 후보 선택과 상태 변경이 커밋된 뒤에만 Redis 임시 투표를 지운다.
-        afterCommitExecutor.execute(() -> finalMenuVoteRepository.delete(session.id()));
+        afterCommitExecutor.execute(() -> {
+            // DB 커밋 이후에만 최종 확정을 외부에 알리고, 전송 뒤 Redis 임시 상태를 정리한다.
+            try {
+                voteSocketEventPublisher.publish(VoteSocketEvent.now(
+                        VoteEventType.FINAL_MENU_SELECTED,
+                        session.id(),
+                        new FinalMenuSelectedData(
+                                selected.id(),
+                                selected.menuId(),
+                                VoteSessionStatus.RESTAURANT_SEARCHING
+                        )
+                ));
+            } finally {
+                finalMenuVoteRepository.delete(session.id());
+            }
+        });
         return selected;
     }
 
 
-    /** 후보 잠금보다 세션 잠금을 먼저 얻고 경로의 그룹 소속까지 확인한다. */
     private VoteSession lockedSession(UUID groupId, UUID voteSessionId) {
         VoteSession session = voteSessionRepository.findByIdForUpdate(voteSessionId)
                 .orElseThrow(() -> new VoteSessionException(VoteSessionErrorCode.SESSION_NOT_FOUND));
@@ -158,14 +182,12 @@ public class FinalMenuSelectionService {
         return session;
     }
 
-    /** 다른 그룹의 세션 식별자를 사용한 요청을 찾을 수 없는 세션으로 처리한다. */
     private void requireGroup(VoteSession session, UUID groupId) {
         if (!groupId.equals(session.diningGroupId())) {
             throw new VoteSessionException(VoteSessionErrorCode.SESSION_NOT_FOUND);
         }
     }
 
-    /** 현재 활성 방장만 직접 선택과 재추천을 수행하도록 제한한다. */
     private void requireOwner(UUID groupId, UUID userId) {
         if (!groupRepository.isActiveOwner(groupId, userId)) {
             throw new GroupException(GroupErrorCode.NOT_GROUP_OWNER);

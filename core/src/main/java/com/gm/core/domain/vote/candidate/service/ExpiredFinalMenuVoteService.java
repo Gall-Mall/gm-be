@@ -9,6 +9,9 @@ import org.springframework.stereotype.Service;
 
 import com.gm.core.domain.vote.candidate.model.FinalMenuVoteCloseResult;
 import com.gm.core.domain.vote.candidate.repository.FinalMenuVoteRepository;
+import com.gm.core.domain.vote.event.VoteEventType;
+import com.gm.core.domain.vote.event.VoteSocketEvent;
+import com.gm.core.domain.vote.event.VoteSocketEventPublisher;
 
 /** Redis deadline 인덱스에서 만료된 두 후보 최종투표를 조회해 후속 결정을 수행한다. */
 @Service
@@ -20,6 +23,7 @@ public class ExpiredFinalMenuVoteService {
 
     private final FinalMenuVoteRepository finalMenuVoteRepository;
     private final FinalMenuSelectionService finalMenuSelectionService;
+    private final VoteSocketEventPublisher voteSocketEventPublisher;
 
     /**
      * 기준 시각까지 만료된 최종투표를 오래된 순서로 조회해 원자적으로 마감한다.
@@ -29,7 +33,6 @@ public class ExpiredFinalMenuVoteService {
      */
     public void finalizeExpired(Instant now) {
         for (var voteSessionId : finalMenuVoteRepository.findExpired(now, BATCH_SIZE)) {
-            // 한 세션의 오류가 같은 주기에 조회된 다음 세션 처리를 막지 않게 분리한다.
             try {
                 FinalMenuVoteCloseResult result = finalMenuVoteRepository.closeExpired(voteSessionId);
                 switch (result.status()) {
@@ -37,8 +40,17 @@ public class ExpiredFinalMenuVoteService {
                             voteSessionId,
                             result.selectedCandidateId()
                     );
-                    case OWNER_SELECTION_PENDING ->
-                            finalMenuVoteRepository.removeExpiration(voteSessionId);
+                    case OWNER_SELECTION_PENDING -> {
+                        // Redis Lua가 집계를 고정한 뒤의 상태를 보내므로 클라이언트는 방장 선택 대기로 전환할 수 있다.
+                        finalMenuVoteRepository.findState(voteSessionId).ifPresent(state ->
+                                voteSocketEventPublisher.publish(VoteSocketEvent.now(
+                                        VoteEventType.FINAL_MENU_VOTE_UPDATED,
+                                        voteSessionId,
+                                        state
+                                ))
+                        );
+                        finalMenuVoteRepository.removeExpiration(voteSessionId);
+                    }
                     case NOT_FOUND -> finalMenuVoteRepository.removeExpiration(voteSessionId);
                     case NOT_DUE -> {
                         // Sorted Set score와 Redis TIME의 경계 차이일 수 있으므로 다음 주기에 다시 확인한다.

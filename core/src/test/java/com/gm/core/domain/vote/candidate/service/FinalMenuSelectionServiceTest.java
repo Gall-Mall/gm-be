@@ -17,6 +17,8 @@ import com.gm.core.domain.vote.candidate.model.FinalMenuVoteResult;
 import com.gm.core.domain.vote.candidate.model.VoteCandidate;
 import com.gm.core.domain.vote.candidate.repository.FinalMenuVoteRepository;
 import com.gm.core.domain.vote.candidate.repository.VoteCandidateRepository;
+import com.gm.core.domain.vote.event.VoteSocketEventPublisher;
+import com.gm.core.domain.vote.event.VoteEventType;
 import com.gm.core.domain.vote.session.model.VoteSession;
 import com.gm.core.domain.vote.session.model.VoteSessionStatus;
 import com.gm.core.domain.vote.session.repository.VoteSessionRepository;
@@ -25,6 +27,7 @@ import com.gm.core.transaction.AfterCommitExecutor;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verifyNoInteractions;
 
@@ -37,6 +40,7 @@ class FinalMenuSelectionServiceTest {
     @Mock private GroupRepository groupRepository;
     @Mock private GroupService groupService;
     @Mock private AfterCommitExecutor afterCommitExecutor;
+    @Mock private VoteSocketEventPublisher voteSocketEventPublisher;
 
     @Test
     @DisplayName("두 후보 최종 투표는 전원 응답 전까지 Redis 결과만 반환한다")
@@ -88,10 +92,13 @@ class FinalMenuSelectionServiceTest {
         verify(voteSessionRepository).updateStatus(
                 sessionId, VoteSessionStatus.RESTAURANT_SEARCHING);
         verify(finalMenuVoteRepository, never()).findState(sessionId);
+        verifyNoInteractions(voteSocketEventPublisher);
         ArgumentCaptor<Runnable> callback = ArgumentCaptor.forClass(Runnable.class);
         verify(afterCommitExecutor).execute(callback.capture());
         callback.getValue().run();
-        verify(finalMenuVoteRepository).delete(sessionId);
+        verify(voteSocketEventPublisher).publish(argThat(event ->
+                event.eventType() == VoteEventType.FINAL_MENU_SELECTED
+                        && event.voteSessionId().equals(sessionId)));
     }
 
     @Test
@@ -159,7 +166,8 @@ class FinalMenuSelectionServiceTest {
                 finalMenuVoteRepository,
                 groupRepository,
                 groupService,
-                afterCommitExecutor
+                afterCommitExecutor,
+                voteSocketEventPublisher
         );
     }
 

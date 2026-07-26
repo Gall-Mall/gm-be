@@ -1,10 +1,12 @@
 package com.gm.core.domain.vote.candidate.repository;
 
+import java.util.Optional;
 import java.util.UUID;
 
 import com.gm.core.domain.vote.candidate.model.MenuVoteChoice;
 import com.gm.core.domain.vote.candidate.model.MenuVoteCloseResult;
 import com.gm.core.domain.vote.candidate.model.MenuVoteSession;
+import com.gm.core.domain.vote.candidate.model.MenuVoteState;
 import com.gm.core.domain.vote.candidate.model.MenuVoteSubmitResult;
 
 /**
@@ -39,6 +41,9 @@ public interface MenuVoteRepository {
             UUID userId,
             MenuVoteChoice choice
     );
+
+    /** 화면 재진입 시 사용할 투표 진행 상태, deadline, 후보별 최신 집계를 반환한다. */
+    Optional<MenuVoteState> findState(UUID voteSessionId);
 
     /**
      * 세션을 닫고 후보별 최종 집계 스냅샷을 반환한다.

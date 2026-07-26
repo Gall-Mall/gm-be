@@ -55,6 +55,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // 네이버 OAuth2 로그인 시작 및 콜백 요청 허용
                         .requestMatchers("/api/auth/oauth/**", "/login/**").permitAll()
+                        .requestMatchers("/ws", "/ws/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/token", "/api/auth/token/refresh").permitAll()
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/logout").authenticated()

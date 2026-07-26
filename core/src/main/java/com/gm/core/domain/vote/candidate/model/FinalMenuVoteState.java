@@ -12,7 +12,6 @@ public record FinalMenuVoteState(
         int respondedCount,
         UUID selectedCandidateId
 ) {
-    /** 조회 이후 Redis 집계 목록이 외부에서 바뀌지 않게 복사한다. */
     public FinalMenuVoteState {
         counts = counts == null ? List.of() : List.copyOf(counts);
     }

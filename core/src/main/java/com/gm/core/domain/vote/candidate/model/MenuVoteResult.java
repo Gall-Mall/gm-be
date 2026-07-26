@@ -2,6 +2,8 @@ package com.gm.core.domain.vote.candidate.model;
 
 import org.springframework.util.Assert;
 
+import com.gm.core.domain.vote.candidate.model.VoteCandidateResult;
+
 /**
  * 후보별 최종 집계와 정책 판정 결과이다.
  *

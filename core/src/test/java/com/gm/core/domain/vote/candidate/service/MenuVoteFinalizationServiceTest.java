@@ -22,6 +22,8 @@ import com.gm.core.domain.vote.candidate.model.VoteCandidateResult;
 import com.gm.core.domain.vote.candidate.repository.MenuVoteRepository;
 import com.gm.core.domain.vote.candidate.repository.FinalMenuVoteRepository;
 import com.gm.core.domain.vote.candidate.repository.VoteCandidateRepository;
+import com.gm.core.domain.vote.event.VoteEventType;
+import com.gm.core.domain.vote.event.VoteSocketEventPublisher;
 import com.gm.core.domain.vote.session.model.VoteSession;
 import com.gm.core.domain.vote.session.model.VoteSessionStatus;
 import com.gm.core.domain.vote.session.repository.VoteSessionRepository;
@@ -30,6 +32,7 @@ import com.gm.core.transaction.AfterCommitExecutor;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
@@ -46,6 +49,7 @@ class MenuVoteFinalizationServiceTest {
     @Mock private GroupRepository groupRepository;
     @Mock private AfterCommitExecutor afterCommitExecutor;
     @Mock private FinalMenuVoteRepository finalMenuVoteRepository;
+    @Mock private VoteSocketEventPublisher voteSocketEventPublisher;
 
     @Test
     @DisplayName("Redis 고정 스냅샷을 판정해 DB에 저장하고 MENU_SELECTION으로 전환한다")
@@ -82,6 +86,9 @@ class MenuVoteFinalizationServiceTest {
         order.verify(voteCandidateRepository).saveMenuVoteResults(voteSessionId, expected);
         order.verify(voteSessionRepository).updateStatus(voteSessionId, VoteSessionStatus.MENU_SELECTION);
         order.verify(afterCommitExecutor).execute(org.mockito.ArgumentMatchers.any(Runnable.class));
+        verify(voteSocketEventPublisher).publish(argThat(event ->
+                event.eventType() == VoteEventType.MENU_VOTE_CLOSED
+                        && event.voteSessionId().equals(voteSessionId)));
     }
 
     @Test
@@ -207,7 +214,8 @@ class MenuVoteFinalizationServiceTest {
                 groupRepository,
                 new MenuVoteResultPolicy(),
                 afterCommitExecutor,
-                finalMenuVoteRepository
+                finalMenuVoteRepository,
+                voteSocketEventPublisher
         );
     }
 

@@ -21,6 +21,10 @@ import com.gm.core.domain.vote.candidate.model.VoteCandidateResult;
 import com.gm.core.domain.vote.candidate.repository.MenuVoteRepository;
 import com.gm.core.domain.vote.candidate.repository.FinalMenuVoteRepository;
 import com.gm.core.domain.vote.candidate.repository.VoteCandidateRepository;
+import com.gm.core.domain.vote.event.MenuVoteClosedData;
+import com.gm.core.domain.vote.event.VoteEventType;
+import com.gm.core.domain.vote.event.VoteSocketEvent;
+import com.gm.core.domain.vote.event.VoteSocketEventPublisher;
 import com.gm.core.domain.vote.session.exception.VoteSessionErrorCode;
 import com.gm.core.domain.vote.session.exception.VoteSessionException;
 import com.gm.core.domain.vote.session.model.VoteSession;
@@ -45,6 +49,7 @@ public class MenuVoteFinalizationService {
     private final MenuVoteResultPolicy resultPolicy;
     private final AfterCommitExecutor afterCommitExecutor;
     private final FinalMenuVoteRepository finalMenuVoteRepository;
+    private final VoteSocketEventPublisher voteSocketEventPublisher;
 
     /**
      * Redis 투표를 원자적으로 닫고 후보별 최종 집계와 판정 결과를 저장한다.
@@ -147,7 +152,7 @@ public class MenuVoteFinalizationService {
         VoteSession finalized = session.changeStatus(nextStatus);
         voteSessionRepository.updateStatus(voteSessionId, finalized.voteSessionStatus())
                 .orElseThrow(() -> new VoteSessionException(VoteSessionErrorCode.SESSION_NOT_FOUND));
-        scheduleRedisCleanup(voteSessionId);
+        scheduleRedisCleanupAndClosedEvent(voteSessionId, saved, finalized.voteSessionStatus());
         scheduleFinalVoteInitialization(session, remainingCandidateIds);
         return saved;
     }
@@ -193,7 +198,25 @@ public class MenuVoteFinalizationService {
         afterCommitExecutor.execute(() -> menuVoteRepository.delete(voteSessionId));
     }
 
-    /** 정책 판정 뒤 최종 선택 대상으로 남은 후보 식별자만 반환한다. */
+    /** DB 결과 커밋 뒤 Redis 스냅샷을 지우고 1차 투표 마감 이벤트를 전송한다. */
+    private void scheduleRedisCleanupAndClosedEvent(
+            UUID voteSessionId,
+            List<MenuVoteResult> results,
+            VoteSessionStatus sessionStatus
+    ) {
+        afterCommitExecutor.execute(() -> {
+            try {
+                voteSocketEventPublisher.publish(VoteSocketEvent.now(
+                        VoteEventType.MENU_VOTE_CLOSED,
+                        voteSessionId,
+                        new MenuVoteClosedData(results, sessionStatus)
+                ));
+            } finally {
+                menuVoteRepository.delete(voteSessionId);
+            }
+        });
+    }
+
     private List<UUID> remainingCandidateIds(List<MenuVoteResult> results) {
         return results.stream()
                 .filter(result -> result.result() == VoteCandidateResult.CONFIRMED

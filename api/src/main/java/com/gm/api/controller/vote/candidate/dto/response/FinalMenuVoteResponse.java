@@ -11,7 +11,6 @@ public record FinalMenuVoteResponse(
         UUID selectedCandidateId,
         List<UUID> tiedCandidateIds
 ) {
-    /** 최종 투표 처리 결과를 상태별 API 응답으로 변환한다. */
     public static FinalMenuVoteResponse from(FinalMenuVoteResult result) {
         return new FinalMenuVoteResponse(
                 result.status(),

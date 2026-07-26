@@ -15,6 +15,9 @@ import com.gm.core.domain.vote.candidate.model.MenuVoteChoice;
 import com.gm.core.domain.vote.candidate.model.MenuVoteSubmitResult;
 import com.gm.core.domain.vote.candidate.model.MenuVoteSubmission;
 import com.gm.core.domain.vote.candidate.repository.MenuVoteRepository;
+import com.gm.core.domain.vote.event.VoteEventType;
+import com.gm.core.domain.vote.event.VoteSocketEvent;
+import com.gm.core.domain.vote.event.VoteSocketEventPublisher;
 import com.gm.core.domain.vote.session.exception.VoteSessionErrorCode;
 import com.gm.core.domain.vote.session.exception.VoteSessionException;
 import com.gm.core.domain.vote.session.model.VoteSession;
@@ -32,6 +35,7 @@ public class MenuVoteService {
     private final GroupService groupService;
     private final VoteSessionRepository voteSessionRepository;
     private final MenuVoteRepository menuVoteRepository;
+    private final VoteSocketEventPublisher voteSocketEventPublisher;
 
     /**
      * 메뉴 투표 중인 세션의 후보에 사용자의 선택을 반영한다.
@@ -71,7 +75,14 @@ public class MenuVoteService {
 
         MenuVoteSubmitResult result = menuVoteRepository.submit(voteSessionId, candidateId, userId, choice);
         return switch (result.status()) {
-            case SUCCESS -> result.submission();
+            case SUCCESS -> {
+                voteSocketEventPublisher.publish(VoteSocketEvent.now(
+                        VoteEventType.MENU_VOTE_UPDATED,
+                        voteSessionId,
+                        result.submission()
+                ));
+                yield result.submission();
+            }
             case CANDIDATE_NOT_FOUND ->
                     throw new VoteCandidateException(VoteCandidateErrorCode.CANDIDATE_NOT_FOUND);
             case VOTE_CLOSED ->

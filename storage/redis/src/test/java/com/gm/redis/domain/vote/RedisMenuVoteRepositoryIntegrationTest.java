@@ -164,6 +164,23 @@ class RedisMenuVoteRepositoryIntegrationTest {
     }
 
     @Test
+    @DisplayName("재접속 상태 조회는 OPEN 상태, deadline과 후보별 최신 집계를 반환한다")
+    void findState_returnsLatestOpenSnapshot() {
+        UUID sessionId = UUID.randomUUID();
+        UUID candidateId = UUID.randomUUID();
+        repository.initialize(session(sessionId, List.of(candidateId)));
+        repository.submit(sessionId, candidateId, UUID.randomUUID(), MenuVoteChoice.GO);
+
+        var state = repository.findState(sessionId).orElseThrow();
+
+        assertThat(state.status()).isEqualTo(
+                com.gm.core.domain.vote.candidate.model.MenuVoteState.Status.OPEN);
+        assertThat(state.deadline()).isAfter(java.time.Instant.now());
+        assertThat(state.counts()).containsExactly(
+                new MenuVoteCount(candidateId, 1, 0, 0, 1));
+    }
+
+    @Test
     @DisplayName("세션에 소속되지 않은 후보의 투표를 원자 연산 안에서 거절한다")
     void submit_rejectsCandidateOutsideSession() {
         UUID sessionId = UUID.randomUUID();
@@ -249,8 +266,8 @@ class RedisMenuVoteRepositoryIntegrationTest {
     }
 
     @Test
-    @DisplayName("Redis 세션 Hash가 없으면 스냅샷 유실 상태를 반환한다")
-    void close_whenSessionHashIsMissing_returnsSnapshotNotFound() {
+    @DisplayName("Redis 세션 스냅샷이 없으면 유실 상태를 반환한다")
+    void close_withoutSessionHash_returnsSnapshotNotFound() {
         assertThat(repository.closeAndGetSnapshot(UUID.randomUUID()).status())
                 .isEqualTo(MenuVoteCloseResult.Status.SNAPSHOT_NOT_FOUND);
     }

@@ -17,6 +17,7 @@ import com.gm.core.domain.vote.candidate.model.VoteCandidateResult;
 import com.gm.core.domain.vote.candidate.repository.FinalMenuVoteRepository;
 import com.gm.core.domain.vote.candidate.repository.MenuVoteRepository;
 import com.gm.core.domain.vote.candidate.repository.VoteCandidateRepository;
+import com.gm.core.domain.vote.event.VoteSocketEventPublisher;
 import com.gm.core.domain.vote.session.model.VoteSession;
 import com.gm.core.domain.vote.session.model.VoteSessionStatus;
 import com.gm.core.domain.vote.session.repository.VoteSessionRepository;
@@ -95,7 +96,8 @@ class MenuVotePostFinalizationPolicyTest {
                 groupRepository,
                 resultPolicy,
                 afterCommitExecutor,
-                finalRepository
+                finalRepository,
+                mock(VoteSocketEventPublisher.class)
         );
         return new Fixture(
                 sessionRepository,

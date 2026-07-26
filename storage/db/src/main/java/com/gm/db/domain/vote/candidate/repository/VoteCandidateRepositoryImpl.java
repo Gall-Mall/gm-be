@@ -41,7 +41,6 @@ public class VoteCandidateRepositoryImpl implements VoteCandidateRepository {
     private final VoteCandidateMapper voteCandidateMapper;
     private final MenuVoteCandidateMapper menuVoteCandidateMapper;
 
-    /** {@inheritDoc} */
     @Override
     public List<VoteCandidate> saveNewCandidates(List<VoteCandidate> candidates) {
         List<VoteCandidateEntity> entities = candidates.stream()
@@ -52,7 +51,6 @@ public class VoteCandidateRepositoryImpl implements VoteCandidateRepository {
                 .toList();
     }
 
-    /** {@inheritDoc} */
     @Override
     public List<MenuVoteCandidate> findAllByVoteSessionId(UUID voteSessionId) {
         return voteCandidateJpaRepository
@@ -62,7 +60,6 @@ public class VoteCandidateRepositoryImpl implements VoteCandidateRepository {
                 .toList();
     }
 
-    /** {@inheritDoc} */
     @Override
     public Optional<VoteCandidate> findSelectedCandidate(UUID voteSessionId) {
         return voteCandidateJpaRepository.findFirstByVoteSessionIdAndSelectedTrue(voteSessionId)
@@ -118,7 +115,6 @@ public class VoteCandidateRepositoryImpl implements VoteCandidateRepository {
                 .toList();
     }
 
-    /** {@inheritDoc} */
     @Override
     public List<UUID> findRemainingCandidateIdsForUpdate(UUID voteSessionId) {
         return voteCandidateJpaRepository.findAllByVoteSessionIdForUpdate(voteSessionId).stream()
@@ -128,7 +124,6 @@ public class VoteCandidateRepositoryImpl implements VoteCandidateRepository {
                 .toList();
     }
 
-    /** {@inheritDoc} */
     @Override
     public VoteCandidate selectFinalCandidate(UUID voteSessionId, UUID candidateId) {
         List<VoteCandidateEntity> candidates = voteCandidateJpaRepository
@@ -140,13 +135,11 @@ public class VoteCandidateRepositoryImpl implements VoteCandidateRepository {
                 .findFirst()
                 .orElseThrow(() -> new VoteCandidateException(
                         VoteCandidateErrorCode.FINAL_MENU_SELECTION_NOT_ALLOWED));
-        // 같은 잠금 범위에서 기존 선택을 모두 해제한 뒤 대상 하나만 선택한다.
         candidates.forEach(candidate -> candidate.updateSelected(candidate == selected));
         voteCandidateJpaRepository.flush();
         return voteCandidateMapper.toDomain(selected);
     }
 
-    /** 후보와 메뉴·카테고리 정보를 합쳐 화면 조회 모델로 변환한다. */
     private MenuVoteCandidate toMenuVoteCandidate(VoteCandidateEntity candidate) {
         MenuEntity menu = menuJpaRepository.findById(candidate.getMenuId())
                 .orElseThrow(() -> new IllegalStateException(

@@ -11,6 +11,7 @@ import com.gm.core.domain.vote.candidate.model.MenuVoteSession;
 import com.gm.core.domain.vote.candidate.model.RecommendedMenuCandidate;
 import com.gm.core.domain.vote.candidate.repository.MenuVoteRepository;
 import com.gm.core.domain.vote.candidate.repository.VoteCandidateRepository;
+import com.gm.core.domain.vote.candidate.service.MenuVotePolicy;
 import com.gm.core.domain.vote.session.service.VoteSessionService;
 import com.gm.core.transaction.AfterCommitExecutor;
 

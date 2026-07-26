@@ -21,6 +21,7 @@ import com.gm.core.domain.vote.candidate.model.VoteCandidate;
 import com.gm.core.domain.vote.candidate.model.VoteCandidateResult;
 import com.gm.core.domain.vote.candidate.repository.VoteCandidateRepository;
 import com.gm.core.domain.vote.candidate.repository.MenuVoteRepository;
+import com.gm.core.domain.vote.candidate.service.MenuVotePolicy;
 import com.gm.core.domain.vote.session.exception.VoteSessionErrorCode;
 import com.gm.core.domain.vote.session.exception.VoteSessionException;
 import com.gm.core.domain.vote.session.model.VoteSession;
