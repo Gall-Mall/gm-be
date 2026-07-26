@@ -3,7 +3,8 @@ package com.gm.api.controller.user.dto.response;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-import com.gm.core.domain.history.model.PreviousHistoryRecord;
+import com.gm.core.domain.history.model.PreviousHistoryDetail;
+import com.gm.core.domain.history.model.PreviousVoteSessionHistory;
 
 public record PreviousHistoryDetailResponse(
         UUID groupId,
@@ -19,25 +20,26 @@ public record PreviousHistoryDetailResponse(
         int goCount,
         int maybeCount,
         int noCount,
-        LocalDateTime createdAt
+        LocalDateTime completedAt
 ) {
 
-    public static PreviousHistoryDetailResponse from(PreviousHistoryRecord record) {
+    public static PreviousHistoryDetailResponse from(PreviousHistoryDetail detail) {
+        PreviousVoteSessionHistory voteSession = detail.voteSession();
         return new PreviousHistoryDetailResponse(
-                record.groupId(),
-                record.groupName(),
-                record.voteSessionId(),
-                record.restaurantName(),
-                record.url(),
-                record.address(),
-                record.latitude(),
-                record.longitude(),
-                record.distanceM(),
-                record.externalPlaceId(),
-                record.goCount(),
-                record.maybeCount(),
-                record.noCount(),
-                record.restaurantCreatedAt()
+                detail.groupId(),
+                detail.groupName(),
+                voteSession.voteSessionId(),
+                voteSession.name(),
+                voteSession.url(),
+                voteSession.address(),
+                voteSession.latitude(),
+                voteSession.longitude(),
+                voteSession.distanceM(),
+                voteSession.externalPlaceId(),
+                voteSession.goCount(),
+                voteSession.maybeCount(),
+                voteSession.noCount(),
+                voteSession.completedAt()
         );
     }
 }

@@ -55,4 +55,11 @@ public class StoreEntity extends BaseEntity {
         this.externalPlaceId = externalPlaceId;
         this.provider = provider;
     }
+
+    /**
+     * 이 식당을 세션의 최종 식당으로 확정한다.
+     */
+    public void selectAsFinalRestaurant() {
+        this.selected = true;
+    }
 }

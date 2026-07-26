@@ -18,7 +18,7 @@ public record PreviousVoteSessionHistory(
         int goCount,
         int maybeCount,
         int noCount,
-        LocalDateTime createdAt
+        LocalDateTime completedAt
 ) {
 
     public static PreviousVoteSessionHistory from(PreviousHistoryRecord record) {
@@ -34,7 +34,7 @@ public record PreviousVoteSessionHistory(
                 record.goCount(),
                 record.maybeCount(),
                 record.noCount(),
-                record.restaurantCreatedAt()
+                record.completedAt()
         );
     }
 }

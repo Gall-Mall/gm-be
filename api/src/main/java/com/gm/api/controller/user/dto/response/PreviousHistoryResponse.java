@@ -48,7 +48,7 @@ public record PreviousHistoryResponse(
             int goCount,
             int maybeCount,
             int noCount,
-            LocalDateTime createdAt
+            LocalDateTime completedAt
     ) {
 
         private static PreviousVoteSessionResponse from(PreviousVoteSessionHistory history) {
@@ -64,7 +64,7 @@ public record PreviousHistoryResponse(
                     history.goCount(),
                     history.maybeCount(),
                     history.noCount(),
-                    history.createdAt()
+                    history.completedAt()
             );
         }
     }

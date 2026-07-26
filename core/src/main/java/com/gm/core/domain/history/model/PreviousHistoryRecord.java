@@ -19,7 +19,7 @@ import java.util.UUID;
  * @param goCount 최종 선택 메뉴의 갈래 응답 수
  * @param maybeCount 최종 선택 메뉴의 애매 응답 수
  * @param noCount 최종 선택 메뉴의 말래 응답 수
- * @param restaurantCreatedAt 선택된 식당 정보 생성 시각
+ * @param completedAt 투표 세션 완료 시각
  */
 public record PreviousHistoryRecord(
         UUID groupId,
@@ -35,6 +35,6 @@ public record PreviousHistoryRecord(
         int goCount,
         int maybeCount,
         int noCount,
-        LocalDateTime restaurantCreatedAt
+        LocalDateTime completedAt
 ) {
 }
