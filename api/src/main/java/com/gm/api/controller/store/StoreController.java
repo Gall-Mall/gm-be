@@ -16,8 +16,6 @@ import org.springframework.web.bind.annotation.RestController;
 import com.gm.api.common.response.ResponseEnvelope;
 import com.gm.api.controller.store.dto.request.StoreSearchRequest;
 import com.gm.core.domain.store.StoreSearchService;
-import com.gm.core.event.EventPublisher;
-import com.gm.core.event.payload.StoreSearchRequested;
 
 /**
  * 외부 장소 검색과 투표 세션별 추천 식당 저장 API를 제공한다.
@@ -28,7 +26,6 @@ import com.gm.core.event.payload.StoreSearchRequested;
 public class StoreController {
 
     private final StoreSearchService storeSearchService;
-    private final EventPublisher eventPublisher;
 
     /**
      * 지정한 좌표 주변의 음식점 검색을 요청한다.
@@ -44,16 +41,13 @@ public class StoreController {
             @AuthenticationPrincipal CustomUserPrincipal principal,
             @Valid @RequestBody StoreSearchRequest request
     ) {
-        // 검증 실패를 요청자가 즉시 알 수 있도록 발행 전에 확인한다.
-        storeSearchService.validateSearchable(principal.getUserId(), request.voteSessionId());
-
-        eventPublisher.publish(new StoreSearchRequested(
+        storeSearchService.requestSearch(
                 principal.getUserId(),
                 request.voteSessionId(),
                 request.keyword(),
                 request.toCoordinate(),
                 request.radiusM()
-        ));
+        );
 
         return ResponseEnvelope.success(null);
     }

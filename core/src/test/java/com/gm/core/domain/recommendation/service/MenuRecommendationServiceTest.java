@@ -12,6 +12,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.gm.core.domain.group.exception.GroupErrorCode;
@@ -32,6 +33,9 @@ import com.gm.core.domain.vote.session.exception.VoteSessionException;
 import com.gm.core.domain.vote.session.model.VoteSession;
 import com.gm.core.domain.vote.session.model.VoteSessionStatus;
 import com.gm.core.domain.vote.session.service.VoteSessionService;
+import com.gm.core.event.EventPublisher;
+import com.gm.core.event.payload.SurveyRequested;
+import com.gm.core.transaction.AfterCommitExecutor;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -67,6 +71,13 @@ class MenuRecommendationServiceTest {
     @Mock
     private MenuRepository menuRepository;
 
+    @Mock
+    private EventPublisher eventPublisher;
+
+    /** 트랜잭션이 없으면 즉시 실행되므로 실제 구현을 쓴다. */
+    @Spy
+    private AfterCommitExecutor afterCommitExecutor = new AfterCommitExecutor();
+
     @InjectMocks
     private MenuRecommendationService menuRecommendationService;
 
@@ -77,17 +88,26 @@ class MenuRecommendationServiceTest {
     // ---------- start ----------
 
     @Test
-    @DisplayName("방장이 선호 입력 단계에서 시작하면 추천 단계로 전이하고 그룹 ID를 반환한다")
-    void start_transitionsToRecommending() {
+    @DisplayName("방장이 선호 입력 단계에서 시작하면 추천 단계로 전이하고 요청 이벤트를 발행한다")
+    void start_transitionsAndPublishes() {
         givenSession(VoteSessionStatus.PREFERENCE_INPUT);
         givenRole(GroupMemberRole.OWNER);
 
-        UUID result = menuRecommendationService.start(ownerId, voteSessionId);
+        menuRecommendationService.start(ownerId, voteSessionId);
 
-        assertThat(result).isEqualTo(groupId);
         // 전이를 여기서 해야 같은 요청이 두 번 들어와도 두 번째가 상태 검증에 걸린다.
         verify(voteSessionService)
                 .changeVoteSessionStatus(voteSessionId, VoteSessionStatus.MENU_RECOMMENDING);
+        verify(eventPublisher).publish(new SurveyRequested(groupId, voteSessionId));
+    }
+
+    @Test
+    @DisplayName("실패한 세션은 FAILED로 표시해 새 세션을 만들게 한다")
+    void markFailed_transitionsToFailed() {
+        menuRecommendationService.markFailed(voteSessionId);
+
+        verify(voteSessionService)
+                .changeVoteSessionStatus(voteSessionId, VoteSessionStatus.FAILED);
     }
 
     @Test
@@ -102,6 +122,7 @@ class MenuRecommendationServiceTest {
 
         verify(voteSessionService, org.mockito.Mockito.never())
                 .changeVoteSessionStatus(any(), any());
+        verifyNoInteractions(eventPublisher);
     }
 
     @Test
@@ -123,6 +144,7 @@ class MenuRecommendationServiceTest {
     @Test
     @DisplayName("AI 큐레이션 순서대로 노출 순서를 매겨 후보를 저장한다")
     void generate_savesCuratedCandidatesInOrder() {
+        givenMatchingSession();
         UUID first = UUID.randomUUID();
         UUID second = UUID.randomUUID();
         givenScored(List.of(first, second));
@@ -148,6 +170,7 @@ class MenuRecommendationServiceTest {
     @Test
     @DisplayName("AI가 후보를 못 고르면 결정론 상위 순서로 대체한다")
     void generate_fallsBackToDeterministicOrderWhenCurationIsEmpty() {
+        givenMatchingSession();
         UUID first = UUID.randomUUID();
         UUID second = UUID.randomUUID();
         givenScored(List.of(first, second));
@@ -167,6 +190,7 @@ class MenuRecommendationServiceTest {
     @Test
     @DisplayName("대체 후보도 최종 후보 수를 넘기지 않는다")
     void generate_fallbackRespectsFinalCandidateLimit() {
+        givenMatchingSession();
         List<UUID> menuIds = IntStream.range(0, 15).mapToObj(i -> UUID.randomUUID()).toList();
         givenScored(menuIds);
         givenMenuMaster(menuIds.stream()
@@ -183,6 +207,7 @@ class MenuRecommendationServiceTest {
     @Test
     @DisplayName("마스터에 없는 메뉴는 AI 후보 풀에서 제외한다")
     void generate_dropsMenusMissingFromMaster() {
+        givenMatchingSession();
         UUID known = UUID.randomUUID();
         UUID unknown = UUID.randomUUID();
         givenScored(List.of(known, unknown));
@@ -202,6 +227,7 @@ class MenuRecommendationServiceTest {
     @Test
     @DisplayName("추천할 메뉴가 없으면 후보를 저장하지 않는다")
     void generate_rejectsWhenNoCandidate() {
+        givenMatchingSession();
         given(recommendationService.recommend(eq(groupId), any(), anyInt())).willReturn(List.of());
 
         assertThatThrownBy(() -> menuRecommendationService.generate(groupId, voteSessionId))
@@ -224,6 +250,11 @@ class MenuRecommendationServiceTest {
     private void givenRole(GroupMemberRole role) {
         given(groupService.findGroupDetail(groupId, ownerId))
                 .willReturn(new GroupDetail(null, role));
+    }
+
+    /** generate는 세션의 groupId와 payload의 groupId를 대조한다. */
+    private void givenMatchingSession() {
+        givenSession(VoteSessionStatus.MENU_RECOMMENDING);
     }
 
     private void givenScored(List<UUID> menuIds) {

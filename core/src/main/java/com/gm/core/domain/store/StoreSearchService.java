@@ -13,6 +13,8 @@ import com.gm.core.domain.vote.session.exception.VoteSessionException;
 import com.gm.core.domain.vote.session.model.VoteSession;
 import com.gm.core.domain.vote.session.model.VoteSessionStatus;
 import com.gm.core.domain.vote.session.service.VoteSessionService;
+import com.gm.core.event.EventPublisher;
+import com.gm.core.event.payload.StoreSearchRequested;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,18 +34,25 @@ public class StoreSearchService {
     private final StoreRepository storeRepository;
     private final VoteSessionService voteSessionService;
     private final GroupService groupService;
+    private final EventPublisher eventPublisher;
 
     /**
-     * 검색을 요청할 수 있는 상태인지 확인한다.
+     * 검색을 요청한다. 검증 후 검색 요청 이벤트를 발행한다.
      *
-     * <p>비동기 처리 전에 동기로 호출해야 한다. 리스너에서 검증하면 예외가 DLQ로 갈 뿐
-     * 요청자는 아무 응답도 받지 못한다.</p>
+     * <p>검증을 발행 전에 해야 권한·상태 오류가 요청자에게 전달된다.
+     * 리스너에서 검증하면 예외가 DLQ로 갈 뿐 요청자는 아무 응답도 받지 못한다.</p>
      *
      * @throws GroupException 요청자가 그룹장이 아닌 경우
      * @throws VoteSessionException 세션이 없거나 식당 검색 단계가 아닌 경우
      */
     @Transactional(readOnly = true)
-    public void validateSearchable(UUID userId, UUID voteSessionId) {
+    public void requestSearch(UUID userId, UUID voteSessionId, String keyword, Coordinate center, int radius) {
+        validateSearchable(userId, voteSessionId);
+        // 이 경로에는 DB 쓰기가 없어 롤백될 것이 없으므로 바로 발행한다.
+        eventPublisher.publish(new StoreSearchRequested(userId, voteSessionId, keyword, center, radius));
+    }
+
+    private void validateSearchable(UUID userId, UUID voteSessionId) {
         VoteSession voteSession = voteSessionService.findVoteSession(voteSessionId);
         GroupDetail groupDetail = groupService.findGroupDetail(voteSession.diningGroupId(), userId);
 
@@ -65,8 +74,9 @@ public class StoreSearchService {
      */
     @Transactional
     public List<Store> searchAndSave(UUID voteSessionId, String keyword, Coordinate center, int radius) {
-        // 요청 시점과 처리 시점 사이에 상태가 바뀔 수 있어 한 번 더 확인한다.
-        VoteSession voteSession = voteSessionService.findVoteSession(voteSessionId);
+        // 잠그고 읽어야 두 컨슈머가 같은 상태를 보고 각각 지도 API를 호출하는 것을 막는다.
+        // 요청 시점과 처리 시점 사이에 상태가 바뀔 수도 있어 여기서 다시 확인한다.
+        VoteSession voteSession = voteSessionService.findVoteSessionForUpdate(voteSessionId);
         if (voteSession.voteSessionStatus() != VoteSessionStatus.RESTAURANT_SEARCHING) {
             throw new VoteSessionException(VoteSessionErrorCode.INVALID_SESSION_STATUS);
         }

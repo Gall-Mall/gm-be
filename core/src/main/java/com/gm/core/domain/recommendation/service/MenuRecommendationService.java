@@ -31,6 +31,9 @@ import com.gm.core.domain.vote.session.exception.VoteSessionException;
 import com.gm.core.domain.vote.session.model.VoteSession;
 import com.gm.core.domain.vote.session.model.VoteSessionStatus;
 import com.gm.core.domain.vote.session.service.VoteSessionService;
+import com.gm.core.event.EventPublisher;
+import com.gm.core.event.payload.SurveyRequested;
+import com.gm.core.transaction.AfterCommitExecutor;
 
 /**
  * 메뉴 추천은 AI 호출이 있어 MQ로 비동기 처리한다.
@@ -47,6 +50,14 @@ public class MenuRecommendationService {
     /** 투표 화면에 올릴 최종 후보 수. */
     private static final int FINAL_CANDIDATE_COUNT = 10;
 
+    /**
+     * 추천 이유 최대 길이. vote_candidate.description 컬럼과 맞춘다.
+     *
+     * <p>AI 응답 길이는 통제할 수 없다. 그대로 저장하면 멤버가 자유텍스트를 길게 채워
+     * 저장 실패를 유도할 수 있고, 재시도마다 유료 호출이 반복된 뒤 세션이 막힌다.</p>
+     */
+    private static final int MAX_DESCRIPTION_LENGTH = 255;
+
     private final GroupService groupService;
     private final VoteSessionService voteSessionService;
     private final RecommendationService recommendationService;
@@ -54,18 +65,17 @@ public class MenuRecommendationService {
     private final MenuCandidateService menuCandidateService;
     private final RecommendationRepository recommendationRepository;
     private final MenuRepository menuRepository;
+    private final EventPublisher eventPublisher;
+    private final AfterCommitExecutor afterCommitExecutor;
 
     /**
-     * 방장이 추천을 시작한다. 검증 후 세션을 추천 단계로 넘긴다.
+     * 방장이 추천을 시작한다. 검증 후 세션을 추천 단계로 넘기고 추천 요청 이벤트를 발행한다.
      *
-     * <p>발행은 이 메서드가 하지 않는다. 커밋 후에 발행해야 하므로 호출자가 담당한다.</p>
-     *
-     * @return 추천 대상 그룹 식별자
      * @throws GroupException 요청자가 그룹장이 아닌 경우
      * @throws VoteSessionException 세션이 없거나 선호 입력 단계가 아닌 경우
      */
     @Transactional
-    public UUID start(UUID userId, UUID voteSessionId) {
+    public void start(UUID userId, UUID voteSessionId) {
         VoteSession voteSession = voteSessionService.findVoteSession(voteSessionId);
         UUID groupId = voteSession.diningGroupId();
         GroupDetail groupDetail = groupService.findGroupDetail(groupId, userId);
@@ -80,7 +90,21 @@ public class MenuRecommendationService {
 
         // 여기서 전이해야 같은 요청이 두 번 들어와도 두 번째는 상태 검증에 걸린다.
         voteSessionService.changeVoteSessionStatus(voteSessionId, VoteSessionStatus.MENU_RECOMMENDING);
-        return groupId;
+
+        // 커밋 전에 발행하면 롤백된 요청의 이벤트가 나간다.
+        afterCommitExecutor.execute(() ->
+                eventPublisher.publish(new SurveyRequested(groupId, voteSessionId)));
+    }
+
+    /**
+     * 추천 처리가 끝내 실패했을 때 세션을 실패로 표시한다.
+     *
+     * <p>MENU_RECOMMENDING에서 되돌아갈 상태가 없어, 표시하지 않으면 세션이 영구히 막힌다.
+     * 실패한 세션은 재사용하지 않고 새 세션을 만든다.</p>
+     */
+    @Transactional
+    public void markFailed(UUID voteSessionId) {
+        voteSessionService.changeVoteSessionStatus(voteSessionId, VoteSessionStatus.FAILED);
     }
 
     /**
@@ -90,6 +114,12 @@ public class MenuRecommendationService {
      */
     @Transactional
     public void generate(UUID groupId, UUID voteSessionId) {
+        // 메시지의 groupId를 그대로 믿으면 다른 그룹의 선호 정보가 이 세션 추천에 섞인다.
+        VoteSession voteSession = voteSessionService.findVoteSession(voteSessionId);
+        if (!groupId.equals(voteSession.diningGroupId())) {
+            throw new VoteSessionException(VoteSessionErrorCode.SESSION_NOT_FOUND);
+        }
+
         List<ScoredMenu> scored = recommendationService.recommend(groupId, Set.of(), CANDIDATE_POOL_SIZE);
         if (scored.isEmpty()) {
             throw new VoteSessionException(VoteSessionErrorCode.INVALID_SESSION_STATUS);
@@ -138,8 +168,16 @@ public class MenuRecommendationService {
     private List<RecommendedMenuCandidate> toCandidates(List<CuratedCandidate> curated) {
         return IntStream.range(0, curated.size())
                 .mapToObj(i -> new RecommendedMenuCandidate(
-                        curated.get(i).menuId(), i + 1, curated.get(i).description()))
+                        curated.get(i).menuId(), i + 1, truncate(curated.get(i).description())))
                 .toList();
+    }
+
+    private String truncate(String description) {
+        if (description == null || description.length() <= MAX_DESCRIPTION_LENGTH) {
+            return description;
+        }
+        log.warn("[recommendation] 추천 이유가 길어 잘라 저장한다: {}자", description.length());
+        return description.substring(0, MAX_DESCRIPTION_LENGTH);
     }
 
     private List<RecommendedMenuCandidate> fallbackCandidates(Map<UUID, String> candidatesByMenuId) {

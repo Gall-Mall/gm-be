@@ -22,9 +22,6 @@ import com.gm.api.security.CustomUserPrincipal;
 import com.gm.core.domain.recommendation.service.MenuRecommendationService;
 import com.gm.core.domain.vote.session.model.VoteSession;
 import com.gm.core.domain.vote.session.service.VoteSessionService;
-import com.gm.core.event.EventPublisher;
-import com.gm.core.event.payload.SurveyRequested;
-import com.gm.core.transaction.AfterCommitExecutor;
 
 /**
  * 투표 세션 생성 API를 제공한다.
@@ -36,8 +33,6 @@ public class VoteSessionController {
 
     private final VoteSessionService voteSessionService;
     private final MenuRecommendationService menuRecommendationService;
-    private final EventPublisher eventPublisher;
-    private final AfterCommitExecutor afterCommitExecutor;
 
     /**
      * 수동 투표 세션을 생성한다.
@@ -80,11 +75,7 @@ public class VoteSessionController {
             @AuthenticationPrincipal CustomUserPrincipal principal,
             @PathVariable UUID voteSessionId
     ) {
-        UUID diningGroupId = menuRecommendationService.start(principal.getUserId(), voteSessionId);
-
-        // 상태 전이가 커밋된 뒤에 발행해야 롤백된 요청의 이벤트가 나가지 않는다.
-        afterCommitExecutor.execute(() ->
-                eventPublisher.publish(new SurveyRequested(diningGroupId, voteSessionId)));
+        menuRecommendationService.start(principal.getUserId(), voteSessionId);
 
         return ResponseEnvelope.success(null);
     }

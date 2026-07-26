@@ -72,6 +72,18 @@ public class VoteSessionService {
     }
 
     /**
+     * 세션을 잠근 채 조회한다. 비동기 처리에서 상태 확인과 전이 사이를 보호한다.
+     *
+     * @param voteSessionId 투표 세션 식별자
+     * @return 잠긴 투표 세션
+     */
+    public VoteSession findVoteSessionForUpdate(UUID voteSessionId) {
+        return voteSessionRepository.findByIdForUpdate(voteSessionId)
+                .orElseThrow(() ->
+                        new VoteSessionException(VoteSessionErrorCode.SESSION_NOT_FOUND));
+    }
+
+    /**
      * 투표 상태를 변경한다.
      *
      * @param voteSessionId 변경할 투표 세션 식별자

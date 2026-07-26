@@ -289,6 +289,20 @@ CREATE TABLE `recommended_restaurant` (
   CONSTRAINT `CK_rr_lng` CHECK (`longitude` BETWEEN -180 AND 180)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='세션별 식당 API 스냅샷';
 
+-- ---------------------------------------------------------------------
+-- 메시지 멱등 처리 (inbox)
+-- ---------------------------------------------------------------------
+-- 브로커가 같은 메시지를 재전달해도 한 번만 처리되도록, 처리 기록을
+-- 비즈니스 트랜잭션과 같은 트랜잭션에 남긴다.
+-- eventId는 발행 시점에 생성된 UUID 문자열이며 도메인 FK가 아니다.
+CREATE TABLE `processed_events` (
+  `event_id`     CHAR(36)    NOT NULL COMMENT '이벤트 식별자(EventEnvelope.eventId)',
+  `processed_at` DATETIME(6) NOT NULL COMMENT '처리 완료 일시',
+  PRIMARY KEY (`event_id`),
+  KEY `IX_processed_events_processed_at` (`processed_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='처리 완료한 이벤트 기록';
+-- 정리: DELETE FROM processed_events WHERE processed_at < NOW() - INTERVAL 30 DAY;
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- =====================================================================
@@ -300,7 +314,8 @@ SET FOREIGN_KEY_CHECKS = 1;
 -- =====================================================================
 
 -- =====================================================================
--- 변경 
+-- 변경
+-- 2026-07-26: 메시지 멱등 처리를 위한 processed_events 테이블 추가
 -- 2026-07-23: user_category_preference 테이블 preference enum 값 exclude -> dislike 변경
 -- 2026-07-23: User 테이블에 exclude_food_text 추가
 -- 2026-07-21: user_menu_preference, user_category_preference 테이블 컬럼 weight -> preference(ENUM타입) 변경
