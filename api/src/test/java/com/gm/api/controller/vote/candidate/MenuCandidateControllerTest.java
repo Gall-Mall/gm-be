@@ -23,6 +23,7 @@ import com.gm.core.domain.vote.candidate.model.VoteCandidateResult;
 import com.gm.core.domain.vote.candidate.service.MenuCandidateService;
 import com.gm.core.domain.vote.candidate.service.MenuVoteFinalizationService;
 import com.gm.core.domain.vote.candidate.service.MenuVoteService;
+import com.gm.core.domain.vote.candidate.service.FinalMenuSelectionService;
 
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
@@ -40,7 +41,8 @@ class MenuCandidateControllerTest {
         MenuCandidateController controller = new MenuCandidateController(
                 menuCandidateService,
                 mock(MenuVoteService.class),
-                mock(MenuVoteFinalizationService.class)
+                mock(MenuVoteFinalizationService.class),
+                mock(FinalMenuSelectionService.class)
         );
         MockMvc mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
@@ -114,7 +116,8 @@ class MenuCandidateControllerTest {
         MenuCandidateController controller = new MenuCandidateController(
                 menuCandidateService,
                 menuVoteService,
-                mock(MenuVoteFinalizationService.class)
+                mock(MenuVoteFinalizationService.class),
+                mock(FinalMenuSelectionService.class)
         );
         MockMvc mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
@@ -179,7 +182,8 @@ class MenuCandidateControllerTest {
         MenuCandidateController controller = new MenuCandidateController(
                 mock(MenuCandidateService.class),
                 mock(MenuVoteService.class),
-                finalizationService
+                finalizationService,
+                mock(FinalMenuSelectionService.class)
         );
         MockMvc mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())

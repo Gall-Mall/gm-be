@@ -11,7 +11,7 @@ import org.springframework.stereotype.Service;
 import com.gm.core.domain.vote.session.service.VoteSessionService;
 
 /**
- * DB에 기록된 {@code MENU_VOTING} 시작 시각을 기준으로 1시간이 지난 투표를 마감한다.
+ * DB에 기록된 {@code MENU_VOTING} 시작 시각을 기준으로 30분이 지난 투표를 마감한다.
  *
  * <p>한 번에 처리할 개수를 제한하고 세션별 실패를 분리해, 특정 세션의 장애가
  * 다음 만료 세션의 처리를 막지 않도록 한다.</p>
@@ -30,7 +30,7 @@ public class ExpiredMenuVoteFinalizationService {
      * 현재 시각 기준으로 만료된 세션을 오래된 순서로 최대 100개 마감한다.
      *
      * <p>마감에 실패한 세션은 성공 건수에 포함하지 않고 다음 세션을 계속 처리한다.
-     * 재시도 가능한 세션이 {@code MENU_VOTING} 상태로 남아 있으면 다음 실행에서 다시 시도된다.</p>
+     * 재시도할 수 있는 세션이 {@code MENU_VOTING} 상태로 남아 있으면 다음 실행에서 다시 시도된다.</p>
      *
      * @param now 이번 실행에서 사용할 현재 시각
      * @return 마감 서비스가 정상적으로 끝난 세션 수

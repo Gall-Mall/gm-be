@@ -102,4 +102,9 @@ public class VoteCandidateEntity extends BaseEntity {
         this.resultStatus = result;
     }
 
+    /** 동일 세션의 단일 최종 메뉴 불변식을 적용하기 위해 선택 여부를 변경한다. */
+    public void updateSelected(boolean selected) {
+        this.selected = selected;
+    }
+
 }

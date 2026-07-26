@@ -73,7 +73,8 @@ public enum VoteSessionStatus {
                     || nextStatus == RESTAURANT_SEARCHING
                     || nextStatus == CANCELLED
                     || nextStatus == FAILED;
-            case MENU_SELECTION -> nextStatus == RESTAURANT_SEARCHING
+            case MENU_SELECTION -> nextStatus == MENU_RECOMMENDING
+                    || nextStatus == RESTAURANT_SEARCHING
                     || nextStatus == CANCELLED
                     || nextStatus == FAILED;
             case RESTAURANT_SEARCHING -> nextStatus == RESTAURANT_SELECTION

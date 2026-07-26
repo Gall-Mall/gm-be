@@ -25,7 +25,7 @@ class ExpiredMenuVoteFinalizationServiceTest {
     @Mock private MenuVoteFinalizationService menuVoteFinalizationService;
 
     @Test
-    @DisplayName("DB startedAt 기준 1시간 만료 세션을 오래된 순서로 제한 마감한다")
+    @DisplayName("DB startedAt 기준 30분 만료 세션을 오래된 순서로 제한 마감한다")
     void finalizeExpiredVotes_closesDatabaseSelectedBatch() {
         UUID oldest = UUID.randomUUID();
         UUID next = UUID.randomUUID();
@@ -33,8 +33,7 @@ class ExpiredMenuVoteFinalizationServiceTest {
         given(voteSessionService.findExpiredMenuVoting(
                 now.minus(MenuVotePolicy.VOTING_DURATION),
                 100
-        ))
-                .willReturn(List.of(oldest, next));
+        )).willReturn(List.of(oldest, next));
 
         service().finalizeExpiredVotes(now);
 
@@ -52,8 +51,7 @@ class ExpiredMenuVoteFinalizationServiceTest {
         given(voteSessionService.findExpiredMenuVoting(
                 now.minus(MenuVotePolicy.VOTING_DURATION),
                 100
-        ))
-                .willReturn(List.of(failed, healthy));
+        )).willReturn(List.of(failed, healthy));
         doThrow(new IllegalStateException("temporary failure"))
                 .when(menuVoteFinalizationService).finalizeVote(failed);
 

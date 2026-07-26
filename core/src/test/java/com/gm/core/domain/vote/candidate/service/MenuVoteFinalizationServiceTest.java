@@ -20,6 +20,7 @@ import com.gm.core.domain.vote.candidate.model.MenuVoteCount;
 import com.gm.core.domain.vote.candidate.model.MenuVoteResult;
 import com.gm.core.domain.vote.candidate.model.VoteCandidateResult;
 import com.gm.core.domain.vote.candidate.repository.MenuVoteRepository;
+import com.gm.core.domain.vote.candidate.repository.FinalMenuVoteRepository;
 import com.gm.core.domain.vote.candidate.repository.VoteCandidateRepository;
 import com.gm.core.domain.vote.session.model.VoteSession;
 import com.gm.core.domain.vote.session.model.VoteSessionStatus;
@@ -44,6 +45,7 @@ class MenuVoteFinalizationServiceTest {
     @Mock private MenuVoteRepository menuVoteRepository;
     @Mock private GroupRepository groupRepository;
     @Mock private AfterCommitExecutor afterCommitExecutor;
+    @Mock private FinalMenuVoteRepository finalMenuVoteRepository;
 
     @Test
     @DisplayName("Redis 고정 스냅샷을 판정해 DB에 저장하고 MENU_SELECTION으로 전환한다")
@@ -63,6 +65,10 @@ class MenuVoteFinalizationServiceTest {
                 .willReturn(expected);
         given(voteSessionRepository.updateStatus(voteSessionId, VoteSessionStatus.MENU_SELECTION))
                 .willReturn(Optional.of(session(voteSessionId, VoteSessionStatus.MENU_SELECTION)));
+        doAnswer(invocation -> {
+            invocation.<Runnable>getArgument(0).run();
+            return null;
+        }).when(afterCommitExecutor).execute(org.mockito.ArgumentMatchers.any(Runnable.class));
 
         assertThat(service().finalizeVote(voteSessionId)).isEqualTo(expected);
 
@@ -102,7 +108,7 @@ class MenuVoteFinalizationServiceTest {
     }
 
     @Test
-    @DisplayName("Redis 스냅샷이 유실되면 세션을 FAILED로 전환한다")
+    @DisplayName("Redis 마감 스냅샷이 없으면 세션을 FAILED로 전환한다")
     void finalizeVote_whenSnapshotIsMissing_marksSessionAsFailed() {
         UUID voteSessionId = UUID.randomUUID();
         given(voteSessionRepository.findByIdForUpdate(voteSessionId))
@@ -118,7 +124,11 @@ class MenuVoteFinalizationServiceTest {
                                 .isEqualTo(VoteCandidateErrorCode.VOTE_SNAPSHOT_NOT_FOUND));
 
         verify(voteSessionRepository).updateStatus(voteSessionId, VoteSessionStatus.FAILED);
-        verifyNoInteractions(voteCandidateRepository, afterCommitExecutor);
+        verify(voteCandidateRepository, never()).saveMenuVoteResults(
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.anyList()
+        );
+        verifyNoInteractions(afterCommitExecutor);
     }
 
     @Test
@@ -196,7 +206,8 @@ class MenuVoteFinalizationServiceTest {
                 menuVoteRepository,
                 groupRepository,
                 new MenuVoteResultPolicy(),
-                afterCommitExecutor
+                afterCommitExecutor,
+                finalMenuVoteRepository
         );
     }
 

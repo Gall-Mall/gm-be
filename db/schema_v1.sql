@@ -241,6 +241,8 @@ CREATE TABLE `vote_candidate` (
   `menu_id`          BINARY(16)      NOT NULL COMMENT '메뉴 식별자',
   `display_order`    INT           NOT NULL COMMENT '후보 노출 순서',
   `selected`         BOOLEAN       NOT NULL DEFAULT FALSE COMMENT '최종 메뉴 선택 여부',
+  `selected_session_id` BINARY(16) GENERATED ALWAYS AS
+      (IF(`selected`, `vote_session_id`, NULL)) STORED COMMENT '세션당 단일 선택 제약용',
   `go_count`         INT           NULL     COMMENT '갈래 투표 수',
   `maybe_count`      INT           NULL     COMMENT '애매하긴해 투표 수',
   `no_count`         INT           NULL     COMMENT '말래 투표 수',
@@ -252,6 +254,7 @@ CREATE TABLE `vote_candidate` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `UK_vote_candidate_session_menu` (`vote_session_id`, `menu_id`),
   UNIQUE KEY `UK_vote_candidate_session_order` (`vote_session_id`, `display_order`),
+  UNIQUE KEY `UK_vote_candidate_one_selected` (`selected_session_id`),
   KEY `IX_vote_candidate_session` (`vote_session_id`),
   KEY `IX_vote_candidate_menu` (`menu_id`),
   CONSTRAINT `FK_vote_candidate_session`
@@ -315,6 +318,7 @@ SET FOREIGN_KEY_CHECKS = 1;
 
 -- =====================================================================
 -- 변경
+-- 2026-07-26: 동시 선택 요청에도 세션별 최종 메뉴가 하나만 저장되도록 생성 컬럼과 UNIQUE 제약을 추가
 -- 2026-07-26: 메시지 멱등 처리를 위한 processed_events 테이블 추가
 -- 2026-07-23: user_category_preference 테이블 preference enum 값 exclude -> dislike 변경
 -- 2026-07-23: User 테이블에 exclude_food_text 추가

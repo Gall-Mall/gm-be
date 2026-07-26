@@ -23,7 +23,7 @@ public class MenuVoteFinalizationScheduler {
     private final ExpiredMenuVoteFinalizationService expiredMenuVoteFinalizationService;
 
     /**
-     * 설정된 간격마다 현재 시각 기준으로 1시간이 지난 메뉴 투표를 마감한다.
+     * 설정된 간격마다 현재 시각 기준으로 30분이 지난 메뉴 투표를 마감한다.
      *
      * <p>개별 세션의 실패는 마감 서비스에서 분리해 처리하므로 같은 배치의
      * 다음 세션은 계속 진행된다. 실패한 세션은 DB 상태가 {@code MENU_VOTING}으로

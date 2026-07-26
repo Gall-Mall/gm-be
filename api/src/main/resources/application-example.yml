@@ -126,6 +126,14 @@ gm:
   vote:
     # 이전 마감 작업이 끝난 뒤 다음 만료 투표 조회까지 기다릴 고정 지연 시간
     menu-finalization-interval: ${MENU_VOTE_FINALIZATION_INTERVAL:PT1M}
+    # 두 후보 최종 투표 제한 시간과 만료 투표 조회 주기
+    final-vote-duration: ${FINAL_MENU_VOTE_DURATION:PT30M}
+    final-vote-expiration-interval: ${FINAL_MENU_VOTE_EXPIRATION_INTERVAL:PT1M}
+    redis:
+      # 진행 중인 1차·최종 투표와 마감 복구용 스냅샷 보관 시간
+      ttl: ${GM_VOTE_REDIS_TTL:PT2H}
+      closed-recovery-ttl: ${GM_VOTE_REDIS_CLOSED_RECOVERY_TTL:PT24H}
+      final-vote-ttl: ${FINAL_MENU_VOTE_REDIS_TTL:PT2H}
 
 app:
   invite:

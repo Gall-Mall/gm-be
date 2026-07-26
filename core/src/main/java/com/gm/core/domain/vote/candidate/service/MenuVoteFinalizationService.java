@@ -17,7 +17,9 @@ import com.gm.core.domain.vote.candidate.exception.VoteCandidateException;
 import com.gm.core.domain.vote.candidate.model.MenuVoteCloseResult;
 import com.gm.core.domain.vote.candidate.model.MenuVoteCount;
 import com.gm.core.domain.vote.candidate.model.MenuVoteResult;
+import com.gm.core.domain.vote.candidate.model.VoteCandidateResult;
 import com.gm.core.domain.vote.candidate.repository.MenuVoteRepository;
+import com.gm.core.domain.vote.candidate.repository.FinalMenuVoteRepository;
 import com.gm.core.domain.vote.candidate.repository.VoteCandidateRepository;
 import com.gm.core.domain.vote.session.exception.VoteSessionErrorCode;
 import com.gm.core.domain.vote.session.exception.VoteSessionException;
@@ -42,6 +44,7 @@ public class MenuVoteFinalizationService {
     private final GroupRepository groupRepository;
     private final MenuVoteResultPolicy resultPolicy;
     private final AfterCommitExecutor afterCommitExecutor;
+    private final FinalMenuVoteRepository finalMenuVoteRepository;
 
     /**
      * Redis 투표를 원자적으로 닫고 후보별 최종 집계와 판정 결과를 저장한다.
@@ -105,6 +108,7 @@ public class MenuVoteFinalizationService {
             // DB 저장까지 끝난 재호출은 결과를 다시 쓰지 않고 남은 Redis 정리만 재시도한다.
             List<MenuVoteResult> stored = voteCandidateRepository.findMenuVoteResults(voteSessionId);
             scheduleRedisCleanup(voteSessionId);
+            scheduleFinalVoteInitialization(session, remainingCandidateIds(stored));
             return stored;
         }
         if (session.voteSessionStatus() != VoteSessionStatus.MENU_VOTING) {
@@ -136,10 +140,15 @@ public class MenuVoteFinalizationService {
                 decisions
         );
 
-        VoteSession finalized = session.changeStatus(VoteSessionStatus.MENU_SELECTION);
+        List<UUID> remainingCandidateIds = remainingCandidateIds(saved);
+        VoteSessionStatus nextStatus = remainingCandidateIds.isEmpty()
+                ? VoteSessionStatus.MENU_RECOMMENDING
+                : VoteSessionStatus.MENU_SELECTION;
+        VoteSession finalized = session.changeStatus(nextStatus);
         voteSessionRepository.updateStatus(voteSessionId, finalized.voteSessionStatus())
                 .orElseThrow(() -> new VoteSessionException(VoteSessionErrorCode.SESSION_NOT_FOUND));
         scheduleRedisCleanup(voteSessionId);
+        scheduleFinalVoteInitialization(session, remainingCandidateIds);
         return saved;
     }
 
@@ -157,7 +166,7 @@ public class MenuVoteFinalizationService {
         }
     }
 
-    /** Redis 마감 결과를 스냅샷으로 변환하고 유실된 세션은 재조회 대상에서 제외한다. */
+    /** Redis 마감 결과를 스냅샷으로 변환하고 유실된 집계는 실패 상태로 종료한다. */
     private List<MenuVoteCount> snapshotOrThrow(
             UUID voteSessionId,
             VoteSession session,
@@ -171,7 +180,9 @@ public class MenuVoteFinalizationService {
             case SNAPSHOT_NOT_FOUND -> {
                 VoteSession failed = session.changeStatus(VoteSessionStatus.FAILED);
                 voteSessionRepository.updateStatus(voteSessionId, failed.voteSessionStatus())
-                        .orElseThrow(() -> new VoteSessionException(VoteSessionErrorCode.SESSION_NOT_FOUND));
+                        .orElseThrow(() -> new VoteSessionException(
+                                VoteSessionErrorCode.SESSION_NOT_FOUND
+                        ));
                 throw new VoteCandidateException(VoteCandidateErrorCode.VOTE_SNAPSHOT_NOT_FOUND);
             }
         };
@@ -180,5 +191,29 @@ public class MenuVoteFinalizationService {
     /** DB 결과가 실제 커밋된 뒤에만 복구용 Redis 스냅샷을 삭제한다. */
     private void scheduleRedisCleanup(UUID voteSessionId) {
         afterCommitExecutor.execute(() -> menuVoteRepository.delete(voteSessionId));
+    }
+
+    /** 정책 판정 뒤 최종 선택 대상으로 남은 후보 식별자만 반환한다. */
+    private List<UUID> remainingCandidateIds(List<MenuVoteResult> results) {
+        return results.stream()
+                .filter(result -> result.result() == VoteCandidateResult.CONFIRMED
+                        || result.result() == VoteCandidateResult.KEPT)
+                .map(result -> result.count().candidateId())
+                .toList();
+    }
+
+    /** 커밋 이후 초기화에 실패해도 마감 재호출로 두 후보 최종 투표를 복구할 수 있게 한다. */
+    private void scheduleFinalVoteInitialization(VoteSession session, List<UUID> candidateIds) {
+        if (candidateIds.size() != 2) {
+            return;
+        }
+        int eligibleVoterCount = groupRepository.findById(session.diningGroupId())
+                .orElseThrow(() -> new GroupException(GroupErrorCode.GROUP_NOT_FOUND))
+                .memberCount();
+        afterCommitExecutor.execute(() -> finalMenuVoteRepository.initialize(
+                session.id(),
+                candidateIds,
+                eligibleVoterCount
+        ));
     }
 }

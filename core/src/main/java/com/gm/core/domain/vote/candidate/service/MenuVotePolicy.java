@@ -8,7 +8,7 @@ import java.time.Duration;
 public final class MenuVotePolicy {
 
     /** Redis 마감 시각과 DB 만료 조회에 함께 사용하는 투표 가능 시간. */
-    public static final Duration VOTING_DURATION = Duration.ofHours(1);
+    public static final Duration VOTING_DURATION = Duration.ofMinutes(30);
 
     private MenuVotePolicy() {
     }

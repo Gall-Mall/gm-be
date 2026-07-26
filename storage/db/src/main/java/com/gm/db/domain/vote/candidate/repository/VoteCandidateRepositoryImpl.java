@@ -3,6 +3,7 @@ package com.gm.db.domain.vote.candidate.repository;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -11,10 +12,13 @@ import lombok.RequiredArgsConstructor;
 
 import org.springframework.stereotype.Repository;
 
+import com.gm.core.domain.vote.candidate.exception.VoteCandidateErrorCode;
+import com.gm.core.domain.vote.candidate.exception.VoteCandidateException;
 import com.gm.core.domain.vote.candidate.model.MenuVoteCandidate;
 import com.gm.core.domain.vote.candidate.model.MenuVoteCount;
 import com.gm.core.domain.vote.candidate.model.MenuVoteResult;
 import com.gm.core.domain.vote.candidate.model.VoteCandidate;
+import com.gm.core.domain.vote.candidate.model.VoteCandidateResult;
 import com.gm.core.domain.vote.candidate.repository.VoteCandidateRepository;
 import com.gm.db.domain.menu.category.entity.FoodCategoryEntity;
 import com.gm.db.domain.menu.category.repository.FoodCategoryJpaRepository;
@@ -37,6 +41,7 @@ public class VoteCandidateRepositoryImpl implements VoteCandidateRepository {
     private final VoteCandidateMapper voteCandidateMapper;
     private final MenuVoteCandidateMapper menuVoteCandidateMapper;
 
+    /** {@inheritDoc} */
     @Override
     public List<VoteCandidate> saveNewCandidates(List<VoteCandidate> candidates) {
         List<VoteCandidateEntity> entities = candidates.stream()
@@ -47,6 +52,7 @@ public class VoteCandidateRepositoryImpl implements VoteCandidateRepository {
                 .toList();
     }
 
+    /** {@inheritDoc} */
     @Override
     public List<MenuVoteCandidate> findAllByVoteSessionId(UUID voteSessionId) {
         return voteCandidateJpaRepository
@@ -54,6 +60,13 @@ public class VoteCandidateRepositoryImpl implements VoteCandidateRepository {
                 .stream()
                 .map(this::toMenuVoteCandidate)
                 .toList();
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Optional<VoteCandidate> findSelectedCandidate(UUID voteSessionId) {
+        return voteCandidateJpaRepository.findFirstByVoteSessionIdAndSelectedTrue(voteSessionId)
+                .map(voteCandidateMapper::toDomain);
     }
 
     /** {@inheritDoc} */
@@ -105,7 +118,35 @@ public class VoteCandidateRepositoryImpl implements VoteCandidateRepository {
                 .toList();
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public List<UUID> findRemainingCandidateIdsForUpdate(UUID voteSessionId) {
+        return voteCandidateJpaRepository.findAllByVoteSessionIdForUpdate(voteSessionId).stream()
+                .filter(candidate -> candidate.getResultStatus() == VoteCandidateResult.CONFIRMED
+                        || candidate.getResultStatus() == VoteCandidateResult.KEPT)
+                .map(VoteCandidateEntity::getId)
+                .toList();
+    }
 
+    /** {@inheritDoc} */
+    @Override
+    public VoteCandidate selectFinalCandidate(UUID voteSessionId, UUID candidateId) {
+        List<VoteCandidateEntity> candidates = voteCandidateJpaRepository
+                .findAllByVoteSessionIdForUpdate(voteSessionId);
+        VoteCandidateEntity selected = candidates.stream()
+                .filter(candidate -> candidate.getId().equals(candidateId))
+                .filter(candidate -> candidate.getResultStatus() == VoteCandidateResult.CONFIRMED
+                        || candidate.getResultStatus() == VoteCandidateResult.KEPT)
+                .findFirst()
+                .orElseThrow(() -> new VoteCandidateException(
+                        VoteCandidateErrorCode.FINAL_MENU_SELECTION_NOT_ALLOWED));
+        // 같은 잠금 범위에서 기존 선택을 모두 해제한 뒤 대상 하나만 선택한다.
+        candidates.forEach(candidate -> candidate.updateSelected(candidate == selected));
+        voteCandidateJpaRepository.flush();
+        return voteCandidateMapper.toDomain(selected);
+    }
+
+    /** 후보와 메뉴·카테고리 정보를 합쳐 화면 조회 모델로 변환한다. */
     private MenuVoteCandidate toMenuVoteCandidate(VoteCandidateEntity candidate) {
         MenuEntity menu = menuJpaRepository.findById(candidate.getMenuId())
                 .orElseThrow(() -> new IllegalStateException(

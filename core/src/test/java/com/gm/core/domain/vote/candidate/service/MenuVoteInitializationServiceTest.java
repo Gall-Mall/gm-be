@@ -1,6 +1,5 @@
 package com.gm.core.domain.vote.candidate.service;
 
-import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
 
@@ -24,8 +23,8 @@ import static org.mockito.Mockito.verify;
 class MenuVoteInitializationServiceTest {
 
     @Test
-    @DisplayName("추천 DB 트랜잭션 커밋 뒤 Redis 메뉴 투표를 정확히 1시간으로 연다")
-    void completeRecommendation_initializesRedisAfterCommitForOneHour() {
+    @DisplayName("추천 DB 트랜잭션 커밋 뒤 Redis 메뉴 투표를 공통 30분 정책으로 연다")
+    void completeRecommendation_initializesRedisAfterCommitForVotingDuration() {
         GroupService groupService = mock(GroupService.class);
         VoteSessionService voteSessionService = mock(VoteSessionService.class);
         VoteCandidateRepository candidateRepository = mock(VoteCandidateRepository.class);
@@ -57,7 +56,7 @@ class MenuVoteInitializationServiceTest {
         verify(menuVoteRepository).initialize(new MenuVoteSession(
                 voteSessionId,
                 List.of(candidateId),
-                Duration.ofHours(1)
+                MenuVotePolicy.VOTING_DURATION
         ));
     }
 
