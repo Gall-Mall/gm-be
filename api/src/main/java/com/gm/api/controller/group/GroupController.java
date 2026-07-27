@@ -11,6 +11,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -114,5 +115,23 @@ public class GroupController {
     ) {
         Group group = groupService.update(groupId, principal.getUserId(), request.toGroupUpdate());
         return ResponseEnvelope.success(GroupResponse.from(group));
+    }
+
+    /**
+     * 그룹 삭제 (GROUP-005)
+     *
+     * <p>그룹과 딸린 멤버십·투표 세션·후보·추천 식당을 함께 삭제한다. 그룹장만 삭제할 수 있으며
+     * 되돌릴 수 없다.</p>
+     *
+     * @param principal 요청 회원 (인증 주체)
+     * @param groupId 삭제할 그룹 식별자
+     */
+    @DeleteMapping("/{groupId}")
+    public ResponseEnvelope<Void> delete(
+            @AuthenticationPrincipal CustomUserPrincipal principal,
+            @PathVariable UUID groupId
+    ) {
+        groupService.delete(groupId, principal.getUserId());
+        return ResponseEnvelope.success(null);
     }
 }

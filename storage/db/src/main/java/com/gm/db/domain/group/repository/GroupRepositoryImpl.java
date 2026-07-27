@@ -157,6 +157,21 @@ public class GroupRepositoryImpl implements GroupRepository {
         return groupMapper.toDomainModel(saved, (int) activeMemberCount);
     }
 
+    /**
+     * 그룹 행을 삭제한다. 멤버십·투표 세션 이하 데이터는 스키마의 {@code ON DELETE CASCADE}가
+     * 함께 정리한다.
+     *
+     * <p>삭제 대상 조회에 쓰기 잠금을 건다. 잠그지 않으면 동시에 들어온 가입 처리
+     * ({@link #addActiveMember})가 이미 지워진 그룹에 멤버를 붙이려다 FK 오류로 실패한다.</p>
+     */
+    @Override
+    public void deleteById(UUID groupId) {
+        DiningGroupEntity group = groupJpaRepository.findByIdForUpdate(groupId)
+                .orElseThrow(() -> new GroupException(GroupErrorCode.GROUP_NOT_FOUND));
+
+        groupJpaRepository.delete(group);
+    }
+
     private void assertHasCapacity(UUID groupId, int maxMemberCount) {
         long activeMemberCount = groupMemberJpaRepository
                 .countByDiningGroupIdAndStatus(groupId, GroupMemberStatus.ACTIVE);

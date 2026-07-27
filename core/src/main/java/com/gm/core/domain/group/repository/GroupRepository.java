@@ -107,4 +107,16 @@ public interface GroupRepository {
      *         {@code GROUP_CAPACITY_BELOW_ACTIVE_MEMBERS}
      */
     Group update(UUID groupId, GroupUpdate groupUpdate);
+
+    /**
+     * groupId에 해당하는 그룹을 삭제한다.
+     *
+     * <p>그룹에 딸린 멤버십·투표 세션·후보·추천 식당은 DB의 {@code ON DELETE CASCADE}로 함께
+     * 삭제된다. 권한 확인은 호출자(서비스)가 담당한다.</p>
+     *
+     * @param groupId 삭제할 그룹 식별자
+     * @throws com.gm.core.domain.group.exception.GroupException groupId에 해당하는 그룹이 없으면
+     *         {@code GROUP_NOT_FOUND}
+     */
+    void deleteById(UUID groupId);
 }

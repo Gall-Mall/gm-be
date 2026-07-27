@@ -117,4 +117,28 @@ public class GroupService {
 
         return groupRepository.update(groupId, groupUpdate);
     }
+
+    /**
+     * 그룹을 삭제한다. 그룹장만 수행할 수 있다.
+     *
+     * <p>그룹에 딸린 멤버십·투표 세션·후보·추천 식당은 함께 삭제된다. 되돌릴 수 없다.</p>
+     *
+     * @param groupId 삭제할 그룹 식별자
+     * @param requesterUserId 삭제를 요청한 회원 식별자
+     * @throws GroupException groupId에 해당하는 그룹이 없어 {@code GROUP-001} 오류가 발생하는 경우
+     * @throws GroupException 요청 회원이 활성 방장 멤버가 아니어서 {@code GROUP-006} 오류가
+     *         발생하는 경우
+     */
+    @Transactional
+    public void delete(UUID groupId, UUID requesterUserId) {
+        log.info("그룹 삭제: groupId: {}, requesterUserId: {}", groupId, requesterUserId);
+        if (!groupRepository.existsById(groupId)) {
+            throw new GroupException(GroupErrorCode.GROUP_NOT_FOUND);
+        }
+        if (!groupRepository.isActiveOwner(groupId, requesterUserId)) {
+            throw new GroupException(GroupErrorCode.NOT_GROUP_OWNER);
+        }
+
+        groupRepository.deleteById(groupId);
+    }
 }

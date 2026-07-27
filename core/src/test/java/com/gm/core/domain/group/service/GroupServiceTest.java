@@ -30,6 +30,7 @@ import com.gm.core.domain.group.repository.GroupRepository;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -296,5 +297,54 @@ class GroupServiceTest {
                 .isInstanceOf(GroupException.class)
                 .satisfies(exception -> assertThat(((GroupException) exception).getErrorCode().getCode())
                         .isEqualTo("GROUP-006"));
+    }
+
+    @Test
+    @DisplayName("활성 방장 멤버가 요청하면 그룹을 삭제한다")
+    void delete_delegatesToRepository_whenRequesterIsActiveOwner() {
+        groupService = new GroupService(groupRepository);
+
+        UUID groupId = UUID.randomUUID();
+        UUID ownerUserId = UUID.randomUUID();
+        given(groupRepository.existsById(groupId)).willReturn(true);
+        given(groupRepository.isActiveOwner(groupId, ownerUserId)).willReturn(true);
+
+        groupService.delete(groupId, ownerUserId);
+
+        verify(groupRepository).deleteById(groupId);
+    }
+
+    @Test
+    @DisplayName("삭제 시 groupId에 해당하는 그룹이 없으면 GROUP-001 오류를 던진다")
+    void delete_throwsGroupNotFound_whenGroupDoesNotExist() {
+        groupService = new GroupService(groupRepository);
+
+        UUID groupId = UUID.randomUUID();
+        UUID requesterUserId = UUID.randomUUID();
+        given(groupRepository.existsById(groupId)).willReturn(false);
+
+        assertThatThrownBy(() -> groupService.delete(groupId, requesterUserId))
+                .isInstanceOf(GroupException.class)
+                .satisfies(exception -> assertThat(((GroupException) exception).getErrorCode().getCode())
+                        .isEqualTo("GROUP-001"));
+        verify(groupRepository, never()).deleteById(groupId);
+    }
+
+    @Test
+    @DisplayName("삭제 요청 회원이 활성 방장 멤버가 아니면 GROUP-006 오류를 던지고 삭제하지 않는다")
+    void delete_throwsNotGroupOwner_whenRequesterIsNotActiveOwner() {
+        groupService = new GroupService(groupRepository);
+
+        UUID groupId = UUID.randomUUID();
+        UUID requesterUserId = UUID.randomUUID();
+        given(groupRepository.existsById(groupId)).willReturn(true);
+        given(groupRepository.isActiveOwner(groupId, requesterUserId)).willReturn(false);
+
+        assertThatThrownBy(() -> groupService.delete(groupId, requesterUserId))
+                .isInstanceOf(GroupException.class)
+                .satisfies(exception -> assertThat(((GroupException) exception).getErrorCode().getCode())
+                        .isEqualTo("GROUP-006"));
+        // 일반 멤버 요청으로 그룹이 지워지면 복구 수단이 없다. 삭제 미호출을 명시적으로 검증한다.
+        verify(groupRepository, never()).deleteById(groupId);
     }
 }
