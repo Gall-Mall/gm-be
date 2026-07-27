@@ -28,6 +28,14 @@ public interface VoteSessionJpaRepository extends JpaRepository<VoteSessionEntit
     Optional<VoteSessionEntity> findByIdForUpdate(@Param("id") UUID id);
 
     /**
+     * 그룹의 종료 상태를 제외한 최신 투표 세션을 조회한다.
+     */
+    Optional<VoteSessionEntity> findFirstByDiningGroupIdAndVoteSessionStatusNotInOrderByCreatedAtDesc(
+            UUID diningGroupId,
+            List<VoteSessionStatus> terminalStatuses
+    );
+
+    /**
      * 마감 기준 시각이 지난 메뉴 투표 세션을 오래된 순서로 제한 조회한다.
      *
      * @param status 조회할 세션 상태

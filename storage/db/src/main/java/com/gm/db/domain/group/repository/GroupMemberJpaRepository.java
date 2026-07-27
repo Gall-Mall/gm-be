@@ -1,9 +1,12 @@
 package com.gm.db.domain.group.repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import com.gm.core.domain.group.model.GroupMemberRole;
@@ -26,4 +29,24 @@ public interface GroupMemberJpaRepository extends JpaRepository<GroupMemberEntit
     /** 요청 회원이 해당 그룹의 특정 역할·상태 멤버인지 확인한다. 방장 전용 작업 권한 검사에 사용한다. */
     boolean existsByDiningGroupIdAndUserIdAndRoleAndStatus(
             UUID diningGroupId, UUID userId, GroupMemberRole role, GroupMemberStatus status);
+
+    /** 그룹의 활성 멤버와 사용자 표시 정보를 가입 순서대로 조회한다. */
+    @Query("""
+            select gm.id as groupMemberId,
+                   gm.userId as userId,
+                   coalesce(nullif(u.nickname, ''), u.name, '멤버') as name,
+                   coalesce(u.email, '') as email,
+                   gm.role as role,
+                   gm.status as status
+              from GroupMemberEntity gm
+              left join UserEntity u on u.id = gm.userId
+             where gm.diningGroupId = :groupId
+               and gm.status = :status
+             order by gm.joinedAt asc
+            """)
+    List<GroupMemberProfileProjection> findProfilesByGroupIdAndStatus(
+            @Param("groupId") UUID groupId,
+            @Param("status") GroupMemberStatus status
+    );
+
 }

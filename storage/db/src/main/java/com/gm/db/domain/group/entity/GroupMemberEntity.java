@@ -101,4 +101,21 @@ public class GroupMemberEntity extends BaseEntity {
         this.leftAt = null;
         this.role = GroupMemberRole.MEMBER;
     }
+
+    /**
+     * 멤버의 그룹 내 역할을 변경한다.
+     *
+     * @param role 새 역할
+     */
+    public void changeRole(GroupMemberRole role) {
+        this.role = role;
+    }
+
+    /**
+     * 일반 멤버를 강퇴 상태로 전환한다.
+     */
+    public void kick() {
+        this.status = GroupMemberStatus.KICKED;
+        this.leftAt = LocalDateTime.now();
+    }
 }

@@ -1,5 +1,6 @@
 package com.gm.db.domain.group.repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -16,6 +17,7 @@ import com.gm.core.domain.group.exception.GroupException;
 import com.gm.core.domain.group.model.Group;
 import com.gm.core.domain.group.model.GroupDetail;
 import com.gm.core.domain.group.model.GroupMember;
+import com.gm.core.domain.group.model.GroupMemberProfile;
 import com.gm.core.domain.group.model.GroupMemberRole;
 import com.gm.core.domain.group.model.GroupMemberStatus;
 import com.gm.core.domain.group.model.GroupUpdate;
@@ -124,6 +126,70 @@ public class GroupRepositoryImpl implements GroupRepository {
     public boolean isActiveOwner(UUID groupId, UUID userId) {
         return groupMemberJpaRepository.existsByDiningGroupIdAndUserIdAndRoleAndStatus(
                 groupId, userId, GroupMemberRole.OWNER, GroupMemberStatus.ACTIVE);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public List<GroupMemberProfile> findActiveMembers(UUID groupId) {
+        return groupMemberJpaRepository
+                .findProfilesByGroupIdAndStatus(groupId, GroupMemberStatus.ACTIVE)
+                .stream()
+                .map(profile -> new GroupMemberProfile(
+                        profile.getGroupMemberId(),
+                        profile.getUserId(),
+                        profile.getName(),
+                        profile.getEmail(),
+                        profile.getRole(),
+                        profile.getStatus()
+                ))
+                .toList();
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Optional<String> findActiveOwnerName(UUID groupId) {
+        return findActiveMembers(groupId).stream()
+                .filter(member -> member.role() == GroupMemberRole.OWNER)
+                .map(GroupMemberProfile::name)
+                .findFirst();
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void transferOwnership(UUID groupId, UUID currentOwnerUserId, UUID nextOwnerUserId) {
+        groupJpaRepository.findByIdForUpdate(groupId)
+                .orElseThrow(() -> new GroupException(GroupErrorCode.GROUP_NOT_FOUND));
+
+        GroupMemberEntity currentOwner = groupMemberJpaRepository
+                .findByDiningGroupIdAndUserId(groupId, currentOwnerUserId)
+                .filter(member -> member.getStatus() == GroupMemberStatus.ACTIVE
+                        && member.getRole() == GroupMemberRole.OWNER)
+                .orElseThrow(() -> new GroupException(GroupErrorCode.NOT_GROUP_OWNER));
+        GroupMemberEntity nextOwner = groupMemberJpaRepository
+                .findByDiningGroupIdAndUserId(groupId, nextOwnerUserId)
+                .filter(member -> member.getStatus() == GroupMemberStatus.ACTIVE)
+                .orElseThrow(() -> new GroupException(GroupErrorCode.GROUP_MEMBER_NOT_FOUND));
+
+        if (currentOwner.getUserId().equals(nextOwner.getUserId())) {
+            return;
+        }
+        currentOwner.changeRole(GroupMemberRole.MEMBER);
+        nextOwner.changeRole(GroupMemberRole.OWNER);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void kickMember(UUID groupId, UUID userId) {
+        groupJpaRepository.findByIdForUpdate(groupId)
+                .orElseThrow(() -> new GroupException(GroupErrorCode.GROUP_NOT_FOUND));
+        GroupMemberEntity member = groupMemberJpaRepository
+                .findByDiningGroupIdAndUserId(groupId, userId)
+                .filter(candidate -> candidate.getStatus() == GroupMemberStatus.ACTIVE)
+                .orElseThrow(() -> new GroupException(GroupErrorCode.GROUP_MEMBER_NOT_FOUND));
+        if (member.getRole() == GroupMemberRole.OWNER) {
+            throw new GroupException(GroupErrorCode.OWNER_CANNOT_BE_KICKED);
+        }
+        member.kick();
     }
 
     /**

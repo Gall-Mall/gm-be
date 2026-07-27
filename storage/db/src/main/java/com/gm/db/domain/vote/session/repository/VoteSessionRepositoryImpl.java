@@ -43,6 +43,21 @@ public class VoteSessionRepositoryImpl implements VoteSessionRepository {
 
     /** {@inheritDoc} */
     @Override
+    public Optional<VoteSession> findCurrentByGroupId(UUID diningGroupId) {
+        return voteSessionJpaRepository
+                .findFirstByDiningGroupIdAndVoteSessionStatusNotInOrderByCreatedAtDesc(
+                        diningGroupId,
+                        List.of(
+                                VoteSessionStatus.COMPLETED,
+                                VoteSessionStatus.CANCELLED,
+                                VoteSessionStatus.FAILED
+                        )
+                )
+                .map(voteSessionMapper::toDomain);
+    }
+
+    /** {@inheritDoc} */
+    @Override
     public Optional<VoteSession> findByIdForUpdate(UUID id) {
         return voteSessionJpaRepository.findByIdForUpdate(id)
                 .map(voteSessionMapper::toDomain);

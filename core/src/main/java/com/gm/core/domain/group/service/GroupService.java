@@ -1,5 +1,6 @@
 package com.gm.core.domain.group.service;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -16,6 +17,7 @@ import com.gm.core.domain.group.exception.GroupException;
 import com.gm.core.domain.group.model.Group;
 import com.gm.core.domain.group.model.GroupDetail;
 import com.gm.core.domain.group.model.GroupMember;
+import com.gm.core.domain.group.model.GroupMemberProfile;
 import com.gm.core.domain.group.model.GroupUpdate;
 import com.gm.core.domain.group.model.NewGroup;
 import com.gm.core.domain.group.repository.GroupRepository;
@@ -92,6 +94,45 @@ public class GroupService {
     }
 
     /**
+     * 요청 회원이 활성 그룹원인지 확인한 뒤 그룹의 활성 멤버 목록을 조회한다.
+     *
+     * @param groupId 조회할 그룹 식별자
+     * @param requesterUserId 요청 회원 식별자
+     * @return 사용자 표시 정보를 포함한 활성 멤버 목록
+     */
+    @Transactional(readOnly = true)
+    public List<GroupMemberProfile> findMembers(UUID groupId, UUID requesterUserId) {
+        findGroupDetail(groupId, requesterUserId);
+        return groupRepository.findActiveMembers(groupId);
+    }
+
+    /**
+     * 요청 회원이 현재 방장인지 확인한 뒤 대상 활성 멤버에게 방장을 위임한다.
+     *
+     * @param groupId 그룹 식별자
+     * @param requesterUserId 현재 방장 회원 식별자
+     * @param nextOwnerUserId 새 방장 회원 식별자
+     */
+    @Transactional
+    public void transferOwnership(UUID groupId, UUID requesterUserId, UUID nextOwnerUserId) {
+        validateOwner(groupId, requesterUserId);
+        groupRepository.transferOwnership(groupId, requesterUserId, nextOwnerUserId);
+    }
+
+    /**
+     * 요청 회원이 현재 방장인지 확인한 뒤 대상 일반 멤버를 강퇴한다.
+     *
+     * @param groupId 그룹 식별자
+     * @param requesterUserId 현재 방장 회원 식별자
+     * @param memberUserId 강퇴할 회원 식별자
+     */
+    @Transactional
+    public void kickMember(UUID groupId, UUID requesterUserId, UUID memberUserId) {
+        validateOwner(groupId, requesterUserId);
+        groupRepository.kickMember(groupId, memberUserId);
+    }
+
+    /**
      * 요청 회원이 groupId 그룹의 활성 방장 멤버인지 확인한 뒤 그룹 설정 전체를 groupUpdate
      * 내용으로 교체한다. 방장 여부는 {@code group_member}의 역할(role)·상태(status)를 기준으로
      * 판단한다(그룹의 {@code owner_user_id}는 참조하지 않는다).
@@ -140,5 +181,20 @@ public class GroupService {
         }
 
         groupRepository.deleteById(groupId);
+    }
+
+    /**
+     * 그룹 존재 여부와 요청 회원의 활성 방장 권한을 확인한다.
+     *
+     * @param groupId 그룹 식별자
+     * @param requesterUserId 요청 회원 식별자
+     */
+    private void validateOwner(UUID groupId, UUID requesterUserId) {
+        if (!groupRepository.existsById(groupId)) {
+            throw new GroupException(GroupErrorCode.GROUP_NOT_FOUND);
+        }
+        if (!groupRepository.isActiveOwner(groupId, requesterUserId)) {
+            throw new GroupException(GroupErrorCode.NOT_GROUP_OWNER);
+        }
     }
 }

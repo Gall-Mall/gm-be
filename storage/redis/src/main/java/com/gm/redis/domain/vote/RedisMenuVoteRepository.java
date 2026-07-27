@@ -3,6 +3,7 @@ package com.gm.redis.domain.vote;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -233,10 +234,12 @@ public class RedisMenuVoteRepository implements MenuVoteRepository {
         if (values.isEmpty()) {
             return Optional.empty();
         }
-        List<MenuVoteCount> counts = List.of(values.get("candidateIds").toString().split(","))
+        List<UUID> candidateIds = List.of(values.get("candidateIds").toString().split(","))
                 .stream()
                 .filter(candidateId -> !candidateId.isBlank())
                 .map(UUID::fromString)
+                .toList();
+        List<MenuVoteCount> counts = candidateIds.stream()
                 .map(candidateId -> new MenuVoteCount(
                         candidateId,
                         fieldNumber(values, "count:" + candidateId + ":GO"),
@@ -245,10 +248,24 @@ public class RedisMenuVoteRepository implements MenuVoteRepository {
                         fieldNumber(values, "count:" + candidateId + ":RESPONDENTS")
                 ))
                 .toList();
+        Map<UUID, Integer> responseCountsByUser = new HashMap<>();
+        values.keySet().stream()
+                .map(Object::toString)
+                .filter(field -> field.startsWith("vote:"))
+                .map(field -> field.split(":", 3))
+                .filter(parts -> parts.length == 3)
+                .map(parts -> UUID.fromString(parts[2]))
+                .forEach(userId -> responseCountsByUser.merge(userId, 1, Integer::sum));
+        List<UUID> completedUserIds = responseCountsByUser.entrySet().stream()
+                .filter(entry -> entry.getValue() == candidateIds.size())
+                .map(Map.Entry::getKey)
+                .sorted()
+                .toList();
         return Optional.of(new MenuVoteState(
                 MenuVoteState.Status.valueOf(values.get("status").toString()),
                 Instant.ofEpochMilli(Long.parseLong(values.get("deadlineEpochMillis").toString())),
-                counts
+                counts,
+                completedUserIds
         ));
     }
 

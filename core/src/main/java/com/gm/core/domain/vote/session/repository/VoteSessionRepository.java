@@ -30,6 +30,14 @@ public interface VoteSessionRepository {
     Optional<VoteSession> findById(UUID id);
 
     /**
+     * 그룹의 종료되지 않은 최신 투표 세션을 조회한다.
+     *
+     * @param diningGroupId 그룹 식별자
+     * @return 현재 진행 중인 최신 세션
+     */
+    Optional<VoteSession> findCurrentByGroupId(UUID diningGroupId);
+
+    /**
      * 처리가 끝날 때까지 세션을 잠근 채 조회한다.
      * 비동기 처리에서 상태 확인과 전이 사이에 다른 컨슈머가 끼어드는 것을 막는다.
      *

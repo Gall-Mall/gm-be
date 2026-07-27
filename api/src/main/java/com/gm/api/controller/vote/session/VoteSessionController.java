@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -58,6 +59,25 @@ public class VoteSessionController {
         );
 
         return ResponseEnvelope.success(VoteSessionResponse.from(voteSession));
+    }
+
+    /**
+     * 그룹의 현재 진행 중인 최신 투표 세션을 조회한다.
+     *
+     * @param principal 요청 회원
+     * @param groupId 그룹 식별자
+     * @return 현재 세션, 진행 중인 세션이 없으면 {@code null}
+     */
+    @GetMapping("/current")
+    public ResponseEnvelope<VoteSessionResponse> findCurrentVoteSession(
+            @AuthenticationPrincipal CustomUserPrincipal principal,
+            @PathVariable UUID groupId
+    ) {
+        VoteSessionResponse response = voteSessionService
+                .findCurrentVoteSession(groupId, principal.getUserId())
+                .map(VoteSessionResponse::from)
+                .orElse(null);
+        return ResponseEnvelope.success(response);
     }
 
     /**

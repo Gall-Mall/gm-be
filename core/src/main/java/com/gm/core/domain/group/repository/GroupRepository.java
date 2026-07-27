@@ -1,6 +1,7 @@
 package com.gm.core.domain.group.repository;
 
 import java.util.Optional;
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.data.domain.Page;
@@ -9,6 +10,7 @@ import org.springframework.data.domain.Pageable;
 import com.gm.core.domain.group.model.Group;
 import com.gm.core.domain.group.model.GroupDetail;
 import com.gm.core.domain.group.model.GroupMember;
+import com.gm.core.domain.group.model.GroupMemberProfile;
 import com.gm.core.domain.group.model.GroupUpdate;
 import com.gm.core.domain.group.model.NewGroup;
 
@@ -91,6 +93,39 @@ public interface GroupRepository {
      * @return 활성 방장 멤버이면 {@code true}
      */
     boolean isActiveOwner(UUID groupId, UUID userId);
+
+    /**
+     * 그룹의 활성 멤버를 가입 순서대로 조회한다.
+     *
+     * @param groupId 조회할 그룹 식별자
+     * @return 사용자 표시 정보를 포함한 활성 멤버 목록
+     */
+    List<GroupMemberProfile> findActiveMembers(UUID groupId);
+
+    /**
+     * 초대장에 표시할 현재 활성 방장 이름을 조회한다.
+     *
+     * @param groupId 조회할 그룹 식별자
+     * @return 방장 이름
+     */
+    Optional<String> findActiveOwnerName(UUID groupId);
+
+    /**
+     * 현재 방장 역할을 대상 활성 멤버에게 원자적으로 위임한다.
+     *
+     * @param groupId 그룹 식별자
+     * @param currentOwnerUserId 현재 방장 회원 식별자
+     * @param nextOwnerUserId 새 방장 회원 식별자
+     */
+    void transferOwnership(UUID groupId, UUID currentOwnerUserId, UUID nextOwnerUserId);
+
+    /**
+     * 일반 활성 멤버를 강퇴 상태로 전환한다.
+     *
+     * @param groupId 그룹 식별자
+     * @param userId 강퇴할 회원 식별자
+     */
+    void kickMember(UUID groupId, UUID userId);
 
     /**
      * groupId에 해당하는 그룹의 설정 전체를 groupUpdate 내용으로 교체한다.

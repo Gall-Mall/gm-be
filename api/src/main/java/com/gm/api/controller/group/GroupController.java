@@ -2,6 +2,7 @@ package com.gm.api.controller.group;
 
 import lombok.RequiredArgsConstructor;
 
+import java.util.List;
 import java.util.UUID;
 
 import jakarta.validation.Valid;
@@ -13,6 +14,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -24,8 +26,10 @@ import org.springframework.web.bind.annotation.RestController;
 import com.gm.api.common.response.PageResponse;
 import com.gm.api.common.response.ResponseEnvelope;
 import com.gm.api.controller.group.dto.request.GroupCreateRequest;
+import com.gm.api.controller.group.dto.request.GroupOwnerTransferRequest;
 import com.gm.api.controller.group.dto.request.GroupUpdateRequest;
 import com.gm.api.controller.group.dto.response.GroupDetailResponse;
+import com.gm.api.controller.group.dto.response.GroupMemberProfileResponse;
 import com.gm.api.controller.group.dto.response.GroupResponse;
 import com.gm.api.security.CustomUserPrincipal;
 import com.gm.core.domain.group.model.Group;
@@ -132,6 +136,62 @@ public class GroupController {
             @PathVariable UUID groupId
     ) {
         groupService.delete(groupId, principal.getUserId());
+        return ResponseEnvelope.success(null);
+    }
+
+    /**
+     * 그룹의 활성 멤버 목록을 조회한다.
+     *
+     * @param principal 요청 회원
+     * @param groupId 조회할 그룹 식별자
+     * @return 방장을 포함한 활성 멤버 목록
+     */
+    @GetMapping("/{groupId}/members")
+    public ResponseEnvelope<List<GroupMemberProfileResponse>> findMembers(
+            @AuthenticationPrincipal CustomUserPrincipal principal,
+            @PathVariable UUID groupId
+    ) {
+        List<GroupMemberProfileResponse> members = groupService
+                .findMembers(groupId, principal.getUserId())
+                .stream()
+                .map(GroupMemberProfileResponse::from)
+                .toList();
+        return ResponseEnvelope.success(members);
+    }
+
+    /**
+     * 현재 그룹장이 대상 활성 멤버에게 방장을 위임한다.
+     *
+     * @param principal 요청 회원
+     * @param groupId 그룹 식별자
+     * @param request 새 방장 회원 식별자
+     * @return 빈 성공 응답
+     */
+    @PatchMapping("/{groupId}/owner")
+    public ResponseEnvelope<Void> transferOwner(
+            @AuthenticationPrincipal CustomUserPrincipal principal,
+            @PathVariable UUID groupId,
+            @Valid @RequestBody GroupOwnerTransferRequest request
+    ) {
+        groupService.transferOwnership(groupId, principal.getUserId(), request.userId());
+        return ResponseEnvelope.success(null);
+    }
+
+    /**
+     * 현재 그룹장이 대상 일반 멤버를 강퇴한다.
+     *
+     * @param principal 요청 회원
+     * @param groupId 그룹 식별자
+     * @param userId 강퇴할 회원 식별자
+     * @return 빈 성공 응답
+     */
+    @DeleteMapping("/{groupId}/members/{userId}")
+    public ResponseEnvelope<Void> kickMember(
+            @AuthenticationPrincipal CustomUserPrincipal principal,
+            @PathVariable UUID groupId,
+            @PathVariable UUID userId
+    ) {
+        groupService.kickMember(groupId, principal.getUserId(), userId);
         return ResponseEnvelope.success(null);
     }
 }

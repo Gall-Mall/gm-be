@@ -82,6 +82,9 @@ public class InviteService {
                 inviteCode,
                 group.id(),
                 group.name(),
+                groupRepository.findActiveOwnerName(group.id()).orElse("방장"),
+                group.locationAddress(),
+                group.recommendationTime(),
                 group.memberCount(),
                 group.maxMemberCount(),
                 joinable

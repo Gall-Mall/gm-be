@@ -169,6 +169,9 @@ class InviteIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.inviteCode").value(inviteCode))
                 .andExpect(jsonPath("$.data.groupId").value(group.id().toString()))
+                .andExpect(jsonPath("$.data.ownerName").value("방장"))
+                .andExpect(jsonPath("$.data.locationAddress").value("서울특별시 강남구 테헤란로 123"))
+                .andExpect(jsonPath("$.data.recommendationTime").value("11:00"))
                 .andExpect(jsonPath("$.data.memberCount").value(1))
                 .andExpect(jsonPath("$.data.maxMemberCount").value(6))
                 .andExpect(jsonPath("$.data.joinable").value(true));

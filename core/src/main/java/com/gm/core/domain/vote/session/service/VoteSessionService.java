@@ -2,6 +2,7 @@ package com.gm.core.domain.vote.session.service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import lombok.RequiredArgsConstructor;
@@ -70,6 +71,19 @@ public class VoteSessionService {
         return voteSessionRepository.findById(voteSessionId)
                 .orElseThrow(() ->
                         new VoteSessionException(VoteSessionErrorCode.SESSION_NOT_FOUND));
+    }
+
+    /**
+     * 요청 회원이 활성 그룹원인지 확인한 뒤 그룹의 현재 진행 세션을 조회한다.
+     *
+     * @param groupId 그룹 식별자
+     * @param requestUserId 요청 회원 식별자
+     * @return 종료되지 않은 최신 세션
+     */
+    @Transactional(readOnly = true)
+    public Optional<VoteSession> findCurrentVoteSession(UUID groupId, UUID requestUserId) {
+        groupService.findGroupDetail(groupId, requestUserId);
+        return voteSessionRepository.findCurrentByGroupId(groupId);
     }
 
     /**

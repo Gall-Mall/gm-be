@@ -25,6 +25,8 @@ import com.gm.core.domain.user.model.UserStatus;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -518,6 +520,62 @@ class GroupIntegrationTest {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.code").value("COMMON-003"));
+    }
+
+    @Test
+    @DisplayName("활성 그룹 멤버는 방장을 포함한 멤버 목록을 조회할 수 있다")
+    void findMembers_asMember_returnsActiveMembers() throws Exception {
+        UUID ownerUserId = UUID.randomUUID();
+        UUID memberUserId = UUID.randomUUID();
+        UUID groupId = createGroupAndGetId(ownerUserId, REQUEST_BODY);
+        groupService.addMember(groupId, memberUserId);
+
+        mockMvc.perform(get("/api/groups/{groupId}/members", groupId)
+                        .with(authAs(memberUserId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(2))
+                .andExpect(jsonPath("$.data[?(@.userId == '" + ownerUserId + "')].role").value("OWNER"))
+                .andExpect(jsonPath("$.data[?(@.userId == '" + memberUserId + "')].role").value("MEMBER"));
+    }
+
+    @Test
+    @DisplayName("그룹장은 활성 멤버에게 방장을 위임할 수 있다")
+    void transferOwner_asOwner_changesMemberRoles() throws Exception {
+        UUID ownerUserId = UUID.randomUUID();
+        UUID memberUserId = UUID.randomUUID();
+        UUID groupId = createGroupAndGetId(ownerUserId, REQUEST_BODY);
+        groupService.addMember(groupId, memberUserId);
+
+        mockMvc.perform(patch("/api/groups/{groupId}/owner", groupId)
+                        .with(authAs(ownerUserId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"userId\":\"" + memberUserId + "\"}"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/groups/{groupId}/members", groupId)
+                        .with(authAs(memberUserId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[?(@.userId == '" + ownerUserId + "')].role").value("MEMBER"))
+                .andExpect(jsonPath("$.data[?(@.userId == '" + memberUserId + "')].role").value("OWNER"));
+    }
+
+    @Test
+    @DisplayName("그룹장은 일반 멤버를 강퇴할 수 있다")
+    void kickMember_asOwner_removesMemberFromActiveList() throws Exception {
+        UUID ownerUserId = UUID.randomUUID();
+        UUID memberUserId = UUID.randomUUID();
+        UUID groupId = createGroupAndGetId(ownerUserId, REQUEST_BODY);
+        groupService.addMember(groupId, memberUserId);
+
+        mockMvc.perform(delete("/api/groups/{groupId}/members/{userId}", groupId, memberUserId)
+                        .with(authAs(ownerUserId)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/groups/{groupId}/members", groupId)
+                        .with(authAs(ownerUserId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(1))
+                .andExpect(jsonPath("$.data[0].userId").value(ownerUserId.toString()));
     }
 
     private UUID createGroupAndGetId(UUID ownerUserId, String requestBody) throws Exception {

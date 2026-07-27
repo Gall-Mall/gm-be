@@ -74,6 +74,27 @@ class VoteSessionIntegrationTest {
     }
 
     @Test
+    @DisplayName("활성 그룹 멤버가 현재 투표 세션을 조회하면 최신 진행 세션을 반환한다")
+    void findCurrentVoteSession_asMember_returnsActiveSession() throws Exception {
+        VoteSession session = createVoteSession(groupId, memberUserId);
+
+        mockMvc.perform(get("/api/groups/{groupId}/vote-sessions/current", groupId)
+                        .with(authAs(memberUserId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.voteSessionId").value(session.id().toString()))
+                .andExpect(jsonPath("$.data.status").value("PREFERENCE_INPUT"));
+    }
+
+    @Test
+    @DisplayName("진행 중인 투표 세션이 없으면 현재 세션 조회는 null을 반환한다")
+    void findCurrentVoteSession_withoutActiveSession_returnsNull() throws Exception {
+        mockMvc.perform(get("/api/groups/{groupId}/vote-sessions/current", groupId)
+                        .with(authAs(memberUserId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").doesNotExist());
+    }
+
+    @Test
     @DisplayName("인증 없이 수동 투표 세션을 생성하면 401을 반환한다")
     void createManualVoteSession_withoutAuthentication_returnsUnauthorized() throws Exception {
         mockMvc.perform(post("/api/groups/{groupId}/vote-sessions", groupId)

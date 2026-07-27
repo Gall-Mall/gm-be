@@ -164,12 +164,17 @@ class RedisMenuVoteRepositoryIntegrationTest {
     }
 
     @Test
-    @DisplayName("재접속 상태 조회는 OPEN 상태, deadline과 후보별 최신 집계를 반환한다")
+    @DisplayName("재접속 상태 조회는 집계와 모든 후보에 응답한 사용자 목록을 반환한다")
     void findState_returnsLatestOpenSnapshot() {
         UUID sessionId = UUID.randomUUID();
-        UUID candidateId = UUID.randomUUID();
-        repository.initialize(session(sessionId, List.of(candidateId)));
-        repository.submit(sessionId, candidateId, UUID.randomUUID(), MenuVoteChoice.GO);
+        UUID firstCandidateId = UUID.randomUUID();
+        UUID secondCandidateId = UUID.randomUUID();
+        UUID completedUserId = UUID.randomUUID();
+        UUID partialUserId = UUID.randomUUID();
+        repository.initialize(session(sessionId, List.of(firstCandidateId, secondCandidateId)));
+        repository.submit(sessionId, firstCandidateId, completedUserId, MenuVoteChoice.GO);
+        repository.submit(sessionId, secondCandidateId, completedUserId, MenuVoteChoice.MAYBE);
+        repository.submit(sessionId, firstCandidateId, partialUserId, MenuVoteChoice.NO);
 
         var state = repository.findState(sessionId).orElseThrow();
 
@@ -177,7 +182,11 @@ class RedisMenuVoteRepositoryIntegrationTest {
                 com.gm.core.domain.vote.candidate.model.menuvote.MenuVoteState.Status.OPEN);
         assertThat(state.deadline()).isAfter(java.time.Instant.now());
         assertThat(state.counts()).containsExactly(
-                new MenuVoteCount(candidateId, 1, 0, 0, 1));
+                new MenuVoteCount(firstCandidateId, 1, 0, 1, 2),
+                new MenuVoteCount(secondCandidateId, 0, 1, 0, 1));
+        assertThat(state)
+                .extracting("completedUserIds")
+                .isEqualTo(List.of(completedUserId));
     }
 
     @Test
