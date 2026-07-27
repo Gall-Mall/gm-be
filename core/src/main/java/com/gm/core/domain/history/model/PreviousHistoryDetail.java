@@ -1,5 +1,6 @@
 package com.gm.core.domain.history.model;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -8,14 +9,19 @@ import java.util.UUID;
 public record PreviousHistoryDetail(
         UUID groupId,
         String groupName,
-        PreviousVoteSessionHistory voteSession
+        PreviousVoteSessionHistory voteSession,
+        List<PreviousMenuCandidateHistory> menuCandidates
 ) {
 
-    public static PreviousHistoryDetail from(PreviousHistoryRecord record) {
+    public static PreviousHistoryDetail from(
+            PreviousHistoryRecord record,
+            List<PreviousMenuCandidateHistory> menuCandidates
+    ) {
         return new PreviousHistoryDetail(
                 record.groupId(),
                 record.groupName(),
-                PreviousVoteSessionHistory.from(record)
+                PreviousVoteSessionHistory.from(record),
+                List.copyOf(menuCandidates)
         );
     }
 }

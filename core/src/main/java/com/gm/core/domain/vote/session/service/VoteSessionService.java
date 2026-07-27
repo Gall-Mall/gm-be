@@ -157,6 +157,23 @@ public class VoteSessionService {
     }
 
     /**
+     * 투표 세션을 완료 상태로 전환하고 완료 시각을 저장한다.
+     *
+     * @param voteSessionId 완료할 투표 세션 식별자
+     * @param completedAt 완료 시각
+     * @return 완료 상태로 변경된 투표 세션
+     * @throws VoteSessionException 세션이 없거나 완료 상태로 변경할 수 없는 경우
+     */
+    @Transactional
+    public VoteSession completeVoteSession(UUID voteSessionId, LocalDateTime completedAt) {
+        VoteSession voteSession = findVoteSession(voteSessionId);
+        voteSession.changeStatus(VoteSessionStatus.COMPLETED);
+        return voteSessionRepository.complete(voteSessionId, completedAt)
+                .orElseThrow(() ->
+                        new VoteSessionException(VoteSessionErrorCode.SESSION_NOT_FOUND));
+    }
+
+    /**
      * 지정한 투표 세션을 영구 삭제한다.
      *
      * <p>그룹장 권한 검증은 그룹 도메인 연동 시 추가한다.</p>

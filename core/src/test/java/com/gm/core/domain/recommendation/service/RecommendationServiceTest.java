@@ -131,4 +131,32 @@ class RecommendationServiceTest {
 
         assertThat(rankedIds(ranked)).containsExactly(제육, 김치찌개);   // 상위 2개만, 초밥 잘림
     }
+
+    @Test
+    void 같은_카테고리만_상위에_몰려도_다른_카테고리를_우선_섞는다() {
+        UUID 한식 = UUID.randomUUID(), 일식 = UUID.randomUUID(), 중식 = UUID.randomUUID();
+        UUID 한식1 = UUID.randomUUID(), 한식2 = UUID.randomUUID(), 한식3 = UUID.randomUUID();
+        UUID 한식4 = UUID.randomUUID(), 한식5 = UUID.randomUUID();
+        UUID 초밥 = UUID.randomUUID(), 짜장면 = UUID.randomUUID();
+
+        var menus = List.of(
+                menu(한식1, 한식, Set.of()),
+                menu(한식2, 한식, Set.of()),
+                menu(한식3, 한식, Set.of()),
+                menu(한식4, 한식, Set.of()),
+                menu(한식5, 한식, Set.of()),
+                menu(초밥, 일식, Set.of()),
+                menu(짜장면, 중식, Set.of())
+        );
+        var popularity = Map.of(
+                한식1, 7.0, 한식2, 6.0, 한식3, 5.0, 한식4, 4.0, 한식5, 3.0,
+                초밥, 2.0, 짜장면, 1.0
+        );
+
+        var ranked = service.scoreAndRank(
+                List.of(), menus, Map.of(), popularity, Set.of(), 5);
+
+        assertThat(rankedIds(ranked))
+                .containsExactly(한식1, 한식2, 한식3, 초밥, 짜장면);
+    }
 }

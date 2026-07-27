@@ -92,6 +92,29 @@ class MenuVoteFinalizationServiceTest {
     }
 
     @Test
+    @DisplayName("모든 후보가 제외되어도 방장이 재추천을 선택할 수 있도록 MENU_SELECTION으로 전환한다")
+    void finalizeVote_withNoRemainingCandidates_transitionsToMenuSelection() {
+        UUID voteSessionId = UUID.randomUUID();
+        MenuVoteCount rejected = new MenuVoteCount(UUID.randomUUID(), 0, 0, 1, 1);
+        List<MenuVoteResult> expected = List.of(
+                new MenuVoteResult(rejected, VoteCandidateResult.REJECTED)
+        );
+        given(voteSessionRepository.findByIdForUpdate(voteSessionId))
+                .willReturn(Optional.of(session(voteSessionId, VoteSessionStatus.MENU_VOTING)));
+        given(menuVoteRepository.closeAndGetSnapshot(voteSessionId))
+                .willReturn(MenuVoteCloseResult.success(List.of(rejected)));
+        given(voteCandidateRepository.saveMenuVoteResults(voteSessionId, expected))
+                .willReturn(expected);
+        given(voteSessionRepository.updateStatus(voteSessionId, VoteSessionStatus.MENU_SELECTION))
+                .willReturn(Optional.of(session(voteSessionId, VoteSessionStatus.MENU_SELECTION)));
+
+        assertThat(service().finalizeVote(voteSessionId)).isEqualTo(expected);
+
+        verify(voteSessionRepository).updateStatus(
+                voteSessionId, VoteSessionStatus.MENU_SELECTION);
+    }
+
+    @Test
     @DisplayName("DB 저장 실패 시 닫힌 Redis 스냅샷을 삭제하지 않는다")
     void finalizeVote_whenDatabaseFails_retainsClosedSnapshot() {
         UUID voteSessionId = UUID.randomUUID();

@@ -13,18 +13,22 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.gm.core.domain.group.repository.GroupRepository;
 import com.gm.core.domain.group.service.GroupService;
+import com.gm.core.domain.vote.candidate.exception.VoteCandidateException;
 import com.gm.core.domain.vote.candidate.model.finalmenu.FinalMenuVoteResult;
 import com.gm.core.domain.vote.candidate.model.menu.VoteCandidate;
 import com.gm.core.domain.vote.candidate.repository.finalmenu.FinalMenuVoteRepository;
 import com.gm.core.domain.vote.candidate.repository.menu.VoteCandidateRepository;
 import com.gm.core.domain.vote.event.VoteSocketEventPublisher;
 import com.gm.core.domain.vote.event.VoteEventType;
+import com.gm.core.event.EventPublisher;
+import com.gm.core.event.payload.SurveyRequested;
 import com.gm.core.domain.vote.session.model.VoteSession;
 import com.gm.core.domain.vote.session.model.VoteSessionStatus;
 import com.gm.core.domain.vote.session.repository.VoteSessionRepository;
 import com.gm.core.transaction.AfterCommitExecutor;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -41,6 +45,7 @@ class FinalMenuSelectionServiceTest {
     @Mock private GroupService groupService;
     @Mock private AfterCommitExecutor afterCommitExecutor;
     @Mock private VoteSocketEventPublisher voteSocketEventPublisher;
+    @Mock private EventPublisher eventPublisher;
 
     @Test
     @DisplayName("두 후보 최종 투표는 전원 응답 전까지 Redis 결과만 반환한다")
@@ -143,6 +148,78 @@ class FinalMenuSelectionServiceTest {
 
         verify(voteSessionRepository).updateStatus(
                 sessionId, VoteSessionStatus.MENU_RECOMMENDING);
+        ArgumentCaptor<Runnable> callback = ArgumentCaptor.forClass(Runnable.class);
+        verify(afterCommitExecutor).execute(callback.capture());
+        callback.getValue().run();
+        verify(eventPublisher).publish(new SurveyRequested(groupId, sessionId));
+    }
+
+    @Test
+    @DisplayName("후보가 모두 제외된 경우 방장이 재추천하면 MENU_RECOMMENDING으로 전환한다")
+    void reRecommendSingleCandidate_withNoCandidates_changesStatus() {
+        UUID groupId = UUID.randomUUID();
+        UUID sessionId = UUID.randomUUID();
+        UUID ownerId = UUID.randomUUID();
+        given(groupRepository.isActiveOwner(groupId, ownerId)).willReturn(true);
+        given(voteSessionRepository.findByIdForUpdate(sessionId)).willReturn(Optional.of(
+                session(sessionId, groupId, VoteSessionStatus.MENU_SELECTION)));
+        given(voteCandidateRepository.findRemainingCandidateIdsForUpdate(sessionId))
+                .willReturn(List.of());
+        given(voteSessionRepository.updateStatus(sessionId, VoteSessionStatus.MENU_RECOMMENDING))
+                .willReturn(Optional.of(session(
+                        sessionId, groupId, VoteSessionStatus.MENU_RECOMMENDING)));
+
+        service().reRecommendSingleCandidate(groupId, ownerId, sessionId);
+
+        verify(voteSessionRepository).updateStatus(
+                sessionId, VoteSessionStatus.MENU_RECOMMENDING);
+        ArgumentCaptor<Runnable> callback = ArgumentCaptor.forClass(Runnable.class);
+        verify(afterCommitExecutor).execute(callback.capture());
+        callback.getValue().run();
+        verify(eventPublisher).publish(new SurveyRequested(groupId, sessionId));
+    }
+
+    @Test
+    @DisplayName("이전 코드에서 추천 상태에 갇힌 후보 0개 세션은 추천 이벤트를 다시 발행한다")
+    void reRecommendSingleCandidate_recoversStuckEmptySession() {
+        UUID groupId = UUID.randomUUID();
+        UUID sessionId = UUID.randomUUID();
+        UUID ownerId = UUID.randomUUID();
+        given(groupRepository.isActiveOwner(groupId, ownerId)).willReturn(true);
+        given(voteSessionRepository.findByIdForUpdate(sessionId)).willReturn(Optional.of(
+                session(sessionId, groupId, VoteSessionStatus.MENU_RECOMMENDING)));
+        given(voteCandidateRepository.findRemainingCandidateIdsForUpdate(sessionId))
+                .willReturn(List.of());
+
+        service().reRecommendSingleCandidate(groupId, ownerId, sessionId);
+
+        verify(voteSessionRepository, never()).updateStatus(
+                sessionId, VoteSessionStatus.MENU_RECOMMENDING);
+        ArgumentCaptor<Runnable> callback = ArgumentCaptor.forClass(Runnable.class);
+        verify(afterCommitExecutor).execute(callback.capture());
+        callback.getValue().run();
+        verify(eventPublisher).publish(new SurveyRequested(groupId, sessionId));
+    }
+
+    @Test
+    @DisplayName("후보가 둘 이상이면 재추천할 수 없다")
+    void reRecommendSingleCandidate_withMultipleCandidates_throwsException() {
+        UUID groupId = UUID.randomUUID();
+        UUID sessionId = UUID.randomUUID();
+        UUID ownerId = UUID.randomUUID();
+        given(groupRepository.isActiveOwner(groupId, ownerId)).willReturn(true);
+        given(voteSessionRepository.findByIdForUpdate(sessionId)).willReturn(Optional.of(
+                session(sessionId, groupId, VoteSessionStatus.MENU_SELECTION)));
+        given(voteCandidateRepository.findRemainingCandidateIdsForUpdate(sessionId))
+                .willReturn(List.of(UUID.randomUUID(), UUID.randomUUID()));
+
+        assertThatThrownBy(() ->
+                service().reRecommendSingleCandidate(groupId, ownerId, sessionId))
+                .isInstanceOf(VoteCandidateException.class);
+
+        verify(voteSessionRepository, never()).updateStatus(
+                sessionId, VoteSessionStatus.MENU_RECOMMENDING);
+        verifyNoInteractions(afterCommitExecutor, eventPublisher);
     }
 
     @Test
@@ -167,7 +244,8 @@ class FinalMenuSelectionServiceTest {
                 groupRepository,
                 groupService,
                 afterCommitExecutor,
-                voteSocketEventPublisher
+                voteSocketEventPublisher,
+                eventPublisher
         );
     }
 

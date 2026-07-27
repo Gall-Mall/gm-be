@@ -146,10 +146,9 @@ public class MenuVoteFinalizationService {
         );
 
         List<UUID> remainingCandidateIds = remainingCandidateIds(saved);
-        VoteSessionStatus nextStatus = remainingCandidateIds.isEmpty()
-                ? VoteSessionStatus.MENU_RECOMMENDING
-                : VoteSessionStatus.MENU_SELECTION;
-        VoteSession finalized = session.changeStatus(nextStatus);
+        // 후보가 없어도 방장이 같은 화면에서 재추천 여부를 결정한다.
+        // 실제 추천 상태 전환과 이벤트 발행은 재추천 API 한 곳에서 담당한다.
+        VoteSession finalized = session.changeStatus(VoteSessionStatus.MENU_SELECTION);
         voteSessionRepository.updateStatus(voteSessionId, finalized.voteSessionStatus())
                 .orElseThrow(() -> new VoteSessionException(VoteSessionErrorCode.SESSION_NOT_FOUND));
         scheduleRedisCleanupAndClosedEvent(voteSessionId, saved, finalized.voteSessionStatus());

@@ -106,4 +106,19 @@ public class VoteSessionEntity extends BaseEntity {
         this.voteSessionStatus = VoteSessionStatus.CANCELLED;
         this.closedAt = cancelledAt;
     }
+
+    /**
+     * 투표 세션을 완료 상태로 전환하고 종료 시각을 기록한다.
+     *
+     * @param completedAt 완료 시각
+     * @throws VoteSessionException 현재 상태에서 완료 상태로 변경할 수 없는 경우
+     */
+    public void complete(LocalDateTime completedAt) {
+        if (!voteSessionStatus.canTransitionTo(VoteSessionStatus.COMPLETED)) {
+            throw new VoteSessionException(VoteSessionErrorCode.INVALID_SESSION_STATUS);
+        }
+
+        this.voteSessionStatus = VoteSessionStatus.COMPLETED;
+        this.closedAt = completedAt;
+    }
 }

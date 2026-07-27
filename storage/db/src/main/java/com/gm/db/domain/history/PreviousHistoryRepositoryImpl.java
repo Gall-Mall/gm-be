@@ -15,11 +15,13 @@ import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 
 import com.gm.core.domain.group.model.GroupMemberStatus;
+import com.gm.core.domain.history.model.PreviousMenuCandidateHistory;
 import com.gm.core.domain.history.model.PreviousHistoryRecord;
 import com.gm.core.domain.history.repository.PreviousHistoryRepository;
 import com.gm.core.domain.vote.session.model.VoteSessionStatus;
 import com.gm.db.domain.group.entity.QDiningGroupEntity;
 import com.gm.db.domain.group.entity.QGroupMemberEntity;
+import com.gm.db.domain.menu.menu.entity.QMenuEntity;
 import com.gm.db.domain.store.entity.QStoreEntity;
 import com.gm.db.domain.vote.candidate.entity.QVoteCandidateEntity;
 import com.gm.db.domain.vote.session.entity.QVoteSessionEntity;
@@ -39,6 +41,7 @@ public class PreviousHistoryRepositoryImpl implements PreviousHistoryRepository 
     private static final QStoreEntity RESTAURANT = QStoreEntity.storeEntity;
     private static final QVoteCandidateEntity VOTE_CANDIDATE =
             QVoteCandidateEntity.voteCandidateEntity;
+    private static final QMenuEntity MENU = QMenuEntity.menuEntity;
 
     private final JPAQueryFactory queryFactory;
 
@@ -59,6 +62,33 @@ public class PreviousHistoryRepositoryImpl implements PreviousHistoryRepository 
                         .where(VOTE_SESSION.id.eq(voteSessionId))
                         .fetchOne()
         );
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public List<PreviousMenuCandidateHistory> findMenuCandidatesByVoteSessionId(
+            UUID voteSessionId
+    ) {
+        return queryFactory
+                .select(Projections.constructor(
+                        PreviousMenuCandidateHistory.class,
+                        MENU.id,
+                        MENU.name,
+                        MENU.imageUrl,
+                        VOTE_CANDIDATE.displayOrder,
+                        VOTE_CANDIDATE.selected,
+                        VOTE_CANDIDATE.goCount.coalesce(0),
+                        VOTE_CANDIDATE.maybeCount.coalesce(0),
+                        VOTE_CANDIDATE.noCount.coalesce(0),
+                        VOTE_CANDIDATE.respondentCount.coalesce(0),
+                        VOTE_CANDIDATE.resultStatus
+                ))
+                .from(VOTE_CANDIDATE)
+                .join(MENU)
+                .on(MENU.id.eq(VOTE_CANDIDATE.menuId))
+                .where(VOTE_CANDIDATE.voteSessionId.eq(voteSessionId))
+                .orderBy(VOTE_CANDIDATE.displayOrder.asc(), VOTE_CANDIDATE.id.asc())
+                .fetch();
     }
 
     private JPAQuery<PreviousHistoryRecord> createHistoryQuery(UUID userId) {

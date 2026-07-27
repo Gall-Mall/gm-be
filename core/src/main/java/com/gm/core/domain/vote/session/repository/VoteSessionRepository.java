@@ -81,6 +81,18 @@ public interface VoteSessionRepository {
     );
 
     /**
+     * 투표 세션을 완료하고 종료 시각을 기록한다.
+     *
+     * @param voteSessionId 완료할 투표 세션 식별자
+     * @param completedAt 완료 시각
+     * @return 세션이 존재하면 완료된 세션, 없으면 빈 값
+     */
+    Optional<VoteSession> complete(
+            UUID voteSessionId,
+            LocalDateTime completedAt
+    );
+
+    /**
      * 식별자에 해당하는 투표 세션을 영구 삭제한다.
      *
      * @param voteSessionId 삭제할 투표 세션 식별자

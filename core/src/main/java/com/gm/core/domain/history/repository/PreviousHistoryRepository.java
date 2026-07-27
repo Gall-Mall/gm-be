@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import com.gm.core.domain.history.model.PreviousMenuCandidateHistory;
 import com.gm.core.domain.history.model.PreviousHistoryRecord;
 
 public interface PreviousHistoryRepository {
@@ -27,4 +28,12 @@ public interface PreviousHistoryRepository {
             UUID userId,
             UUID voteSessionId
     );
+
+    /**
+     * 완료 세션에 저장된 모든 메뉴 후보의 최종 집계를 노출 순서대로 조회한다.
+     *
+     * @param voteSessionId 조회할 완료 투표 세션 식별자
+     * @return 메뉴 후보별 최종 투표 집계 목록
+     */
+    List<PreviousMenuCandidateHistory> findMenuCandidatesByVoteSessionId(UUID voteSessionId);
 }

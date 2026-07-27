@@ -33,21 +33,21 @@ import static org.mockito.Mockito.verifyNoInteractions;
 class MenuVotePostFinalizationPolicyTest {
 
     @Test
-    @DisplayName("잔여 후보가 없으면 MENU_RECOMMENDING으로 즉시 전환한다")
-    void noRemainingCandidate_recommendsAgain() {
+    @DisplayName("잔여 후보가 없으면 방장의 재추천 선택을 위해 MENU_SELECTION으로 전환한다")
+    void noRemainingCandidate_waitsForOwnerSelection() {
         Fixture fixture = fixture();
         UUID candidateId = UUID.randomUUID();
         MenuVoteCount count = new MenuVoteCount(candidateId, 0, 0, 1, 1);
         MenuVoteResult rejected = new MenuVoteResult(count, VoteCandidateResult.REJECTED);
         fixture.prepare(List.of(count), List.of(rejected));
         given(fixture.voteSessionRepository.updateStatus(
-                fixture.sessionId, VoteSessionStatus.MENU_RECOMMENDING))
-                .willReturn(Optional.of(fixture.session(VoteSessionStatus.MENU_RECOMMENDING)));
+                fixture.sessionId, VoteSessionStatus.MENU_SELECTION))
+                .willReturn(Optional.of(fixture.session(VoteSessionStatus.MENU_SELECTION)));
 
         assertThat(fixture.service.finalizeVote(fixture.sessionId)).containsExactly(rejected);
 
         verify(fixture.voteSessionRepository).updateStatus(
-                fixture.sessionId, VoteSessionStatus.MENU_RECOMMENDING);
+                fixture.sessionId, VoteSessionStatus.MENU_SELECTION);
         verifyNoInteractions(fixture.finalMenuVoteRepository);
     }
 

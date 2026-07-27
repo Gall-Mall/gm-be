@@ -68,11 +68,15 @@ public class PreviousHistoryService {
         Assert.notNull(userId, "userId must not be null");
         Assert.notNull(voteSessionId, "voteSessionId must not be null");
 
-        return previousHistoryRepository
+        PreviousHistoryRecord record = previousHistoryRepository
                 .findPreviousHistoryByUserIdAndVoteSessionId(userId, voteSessionId)
-                .map(PreviousHistoryDetail::from)
                 .orElseThrow(() ->
                         new VoteSessionException(VoteSessionErrorCode.SESSION_NOT_FOUND));
+
+        return PreviousHistoryDetail.from(
+                record,
+                previousHistoryRepository.findMenuCandidatesByVoteSessionId(voteSessionId)
+        );
     }
 
     private record GroupKey(UUID groupId, String name) {

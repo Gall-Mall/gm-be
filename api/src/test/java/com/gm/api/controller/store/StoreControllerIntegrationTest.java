@@ -5,7 +5,9 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.queryParam;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -216,6 +218,82 @@ class StoreControllerIntegrationTest {
     }
 
     @Test
+    @DisplayName("활성 그룹원은 저장된 식당을 거리순으로 조회한다")
+    void findStores_asActiveMember_returnsPersistedStoresByDistance() throws Exception {
+        UUID memberUserId = UUID.randomUUID();
+        groupService.addMember(groupId, memberUserId);
+        kakaoMockServer.expectSuccess(KAKAO_RESULTS);
+        storeSearchService.searchAndSave(voteSessionId, "삼겹살", coordinate(), 1000);
+
+        mockMvc.perform(get(storeCollectionUri())
+                        .with(authAs(memberUserId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(4))
+                .andExpect(jsonPath("$.data[0].externalPlaceId").value("near-a"))
+                .andExpect(jsonPath("$.data[1].externalPlaceId").value("near-b"))
+                .andExpect(jsonPath("$.data[2].externalPlaceId").value("middle"))
+                .andExpect(jsonPath("$.data[3].externalPlaceId").value("far"));
+    }
+
+    @Test
+    @DisplayName("그룹장이 저장된 식당을 확정하면 세션을 완료한다")
+    void selectStore_asOwner_selectsRestaurantAndCompletesSession() throws Exception {
+        kakaoMockServer.expectSuccess(KAKAO_RESULTS);
+        storeSearchService.searchAndSave(voteSessionId, "삼겹살", coordinate(), 1000);
+
+        mockMvc.perform(put(storeCollectionUri() + "/near-a/selection")
+                        .with(authAs(ownerUserId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.externalPlaceId").value("near-a"))
+                .andExpect(jsonPath("$.data.name").value("가까운 식당 A"));
+
+        entityManager.flush();
+        entityManager.clear();
+        org.assertj.core.api.Assertions.assertThat(currentStatus())
+                .isEqualTo(VoteSessionStatus.COMPLETED);
+        org.assertj.core.api.Assertions.assertThat(
+                        voteSessionJpaRepository.findById(voteSessionId).orElseThrow().getClosedAt())
+                .isNotNull();
+        org.assertj.core.api.Assertions.assertThat(
+                        storeJpaRepository
+                                .findByVoteSessionIdAndExternalPlaceId(voteSessionId, "near-a")
+                                .orElseThrow()
+                                .getSelected())
+                .isTrue();
+    }
+
+    @Test
+    @DisplayName("일반 그룹원은 최종 식당을 확정할 수 없다")
+    void selectStore_asMember_returnsForbidden() throws Exception {
+        UUID memberUserId = UUID.randomUUID();
+        groupService.addMember(groupId, memberUserId);
+        kakaoMockServer.expectSuccess(KAKAO_RESULTS);
+        storeSearchService.searchAndSave(voteSessionId, "삼겹살", coordinate(), 1000);
+
+        mockMvc.perform(put(storeCollectionUri() + "/near-a/selection")
+                        .with(authAs(memberUserId)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("GROUP-006"));
+
+        org.assertj.core.api.Assertions.assertThat(currentStatus())
+                .isEqualTo(VoteSessionStatus.RESTAURANT_SELECTION);
+    }
+
+    @Test
+    @DisplayName("다른 그룹 경로로 투표 세션 식당을 조회할 수 없다")
+    void findStores_withMismatchedGroup_returnsSessionNotFound() throws Exception {
+        kakaoMockServer.expectSuccess(KAKAO_RESULTS);
+        storeSearchService.searchAndSave(voteSessionId, "삼겹살", coordinate(), 1000);
+        UUID otherGroupId = createGroup(ownerUserId).id();
+        String uri = "/api/groups/%s/vote-sessions/%s/stores"
+                .formatted(otherGroupId, voteSessionId);
+
+        mockMvc.perform(get(uri).with(authAs(ownerUserId)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("SESSION-001"));
+    }
+
+    @Test
     @DisplayName("투표 세션과 외부 장소 식별자로 식당을 최종 선택한다")
     void selectAsFinalRestaurant_updatesSelectedToTrue() {
         kakaoMockServer.expectSuccess(KAKAO_RESULTS);
@@ -390,6 +468,10 @@ class StoreControllerIntegrationTest {
 
     private String requestWithRadius(int radiusM) {
         return VALID_REQUEST.formatted(voteSessionId, radiusM);
+    }
+
+    private String storeCollectionUri() {
+        return "/api/groups/%s/vote-sessions/%s/stores".formatted(groupId, voteSessionId);
     }
 
     private VoteSession createRestaurantSearchingSession() {

@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 
 import com.gm.core.domain.vote.candidate.model.menuvote.MenuVoteCount;
 import com.gm.core.domain.vote.candidate.model.menuvote.MenuVoteResult;
+import com.gm.core.domain.vote.candidate.model.menu.VoteCandidate;
 import com.gm.core.domain.vote.candidate.model.menu.VoteCandidateResult;
 import com.gm.db.domain.menu.category.repository.FoodCategoryJpaRepository;
 import com.gm.db.domain.menu.menu.repository.MenuJpaRepository;
@@ -19,10 +20,47 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
 class VoteCandidateRepositoryImplTest {
+
+    @Test
+    @DisplayName("새 추천 후보를 저장할 때 같은 세션의 이전 라운드 후보를 교체한다")
+    void saveNewCandidates_replacesPreviousRoundCandidates() {
+        VoteCandidateJpaRepository jpaRepository = mock(VoteCandidateJpaRepository.class);
+        VoteCandidateMapper mapper = mock(VoteCandidateMapper.class);
+        UUID voteSessionId = UUID.randomUUID();
+        VoteCandidateEntity previous = mock(VoteCandidateEntity.class);
+        VoteCandidateEntity replacement = mock(VoteCandidateEntity.class);
+        VoteCandidate candidate = VoteCandidate.builder()
+                .voteSessionId(voteSessionId)
+                .menuId(UUID.randomUUID())
+                .displayOrder(1)
+                .build();
+        given(jpaRepository.findAllByVoteSessionIdOrderByDisplayOrderAsc(voteSessionId))
+                .willReturn(List.of(previous));
+        given(mapper.toEntity(candidate)).willReturn(replacement);
+        given(jpaRepository.saveAll(List.of(replacement))).willReturn(List.of(replacement));
+        given(mapper.toDomain(replacement)).willReturn(candidate);
+        VoteCandidateRepositoryImpl repository = new VoteCandidateRepositoryImpl(
+                jpaRepository,
+                mock(MenuJpaRepository.class),
+                mock(FoodCategoryJpaRepository.class),
+                mapper,
+                mock(MenuVoteCandidateMapper.class)
+        );
+
+        assertThat(repository.saveNewCandidates(List.of(candidate))).containsExactly(candidate);
+
+        var ordered = inOrder(jpaRepository);
+        ordered.verify(jpaRepository)
+                .findAllByVoteSessionIdOrderByDisplayOrderAsc(voteSessionId);
+        ordered.verify(jpaRepository).deleteAllInBatch(List.of(previous));
+        ordered.verify(jpaRepository).flush();
+        ordered.verify(jpaRepository).saveAll(List.of(replacement));
+    }
 
     @Test
     @DisplayName("세션의 모든 후보에 최종 집계와 판정을 반영한 뒤 flush한다")

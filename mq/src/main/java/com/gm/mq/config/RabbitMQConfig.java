@@ -2,6 +2,7 @@ package com.gm.mq.config;
 
 import org.springframework.amqp.core.DirectExchange;
 import org.springframework.amqp.core.TopicExchange;
+import org.springframework.amqp.support.converter.DefaultJacksonJavaTypeMapper;
 import org.springframework.amqp.support.converter.JacksonJsonMessageConverter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -27,6 +28,11 @@ public class RabbitMQConfig {
 
     @Bean
     public JacksonJsonMessageConverter messageConverter(){
-        return new JacksonJsonMessageConverter();
+        DefaultJacksonJavaTypeMapper typeMapper = new DefaultJacksonJavaTypeMapper();
+        typeMapper.setTrustedPackages("com.gm.mq.event");
+
+        JacksonJsonMessageConverter converter = new JacksonJsonMessageConverter();
+        converter.setJavaTypeMapper(typeMapper);
+        return converter;
     }
 }

@@ -100,6 +100,16 @@ public class VoteSessionRepositoryImpl implements VoteSessionRepository {
 
     /** {@inheritDoc} */
     @Override
+    public Optional<VoteSession> complete(UUID voteSessionId, LocalDateTime completedAt) {
+        return voteSessionJpaRepository.findById(voteSessionId)
+                .map(entity -> {
+                    entity.complete(completedAt);
+                    return voteSessionMapper.toDomain(entity);
+                });
+    }
+
+    /** {@inheritDoc} */
+    @Override
     public void deleteById(UUID voteSessionId) {
         voteSessionJpaRepository.deleteById(voteSessionId);
     }

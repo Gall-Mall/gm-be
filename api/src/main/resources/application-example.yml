@@ -123,6 +123,9 @@ auth:
     same-site: ${REFRESH_TOKEN_COOKIE_SAME_SITE:Lax}
 
 gm:
+  web:
+    # 쿠키와 Authorization 헤더를 사용할 프론트엔드 origin 목록(쉼표 구분)
+    allowed-origins: ${FRONTEND_ALLOWED_ORIGINS:http://localhost:5173}
   vote:
     # 이전 마감 작업이 끝난 뒤 다음 만료 투표 조회까지 기다릴 고정 지연 시간
     menu-finalization-interval: ${MENU_VOTE_FINALIZATION_INTERVAL:PT1M}

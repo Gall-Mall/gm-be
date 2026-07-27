@@ -1,7 +1,10 @@
 package com.gm.core.domain.recommendation.service;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -33,6 +36,7 @@ public class RecommendationService {
     private static final double R_SEL = 2.0;          // 최근 먹음 감점 강도
     private static final int W_DAYS = 14;             // 최근성 감쇠 윈도우
     private static final double BETA = 0.2;           // 인기 가중
+    private static final int PREFERRED_MAX_PER_CATEGORY = 3;
 
 
     /**
@@ -58,12 +62,54 @@ public class RecommendationService {
             Set<UUID> shown,
             int topN
     ){
-        return menus.stream()
+        List<ScoredMenu> ranked = menus.stream()
                 .filter(m -> isAllowed(m, members, shown))
                 .map(m -> new ScoredMenu(m.menuId(), score(m, members, recency, popularity)))
                 .sorted(Comparator.comparingDouble(ScoredMenu::score).reversed())
-                .limit(topN)
                 .toList();
+        Map<UUID, UUID> categoryByMenuId = new HashMap<>();
+        menus.forEach(menu -> categoryByMenuId.put(menu.menuId(), menu.categoryId()));
+        return diversifyCategories(ranked, categoryByMenuId, topN);
+    }
+
+    /**
+     * 점수순을 유지하면서 한 카테고리가 후보 풀을 독점하지 않도록 우선 분산한다.
+     * 카테고리 종류가 부족하면 두 번째 순회에서 남은 고득점 메뉴로 목표 수를 채운다.
+     */
+    private List<ScoredMenu> diversifyCategories(
+            List<ScoredMenu> ranked,
+            Map<UUID, UUID> categoryByMenuId,
+            int topN
+    ) {
+        if (topN <= 0 || ranked.isEmpty()) {
+            return List.of();
+        }
+        List<ScoredMenu> selected = new ArrayList<>(Math.min(topN, ranked.size()));
+        Set<UUID> selectedMenuIds = new HashSet<>();
+        Map<UUID, Integer> categoryCounts = new HashMap<>();
+
+        for (ScoredMenu menu : ranked) {
+            UUID categoryId = categoryByMenuId.get(menu.menuId());
+            if (categoryCounts.getOrDefault(categoryId, 0) >= PREFERRED_MAX_PER_CATEGORY) {
+                continue;
+            }
+            selected.add(menu);
+            selectedMenuIds.add(menu.menuId());
+            categoryCounts.merge(categoryId, 1, Integer::sum);
+            if (selected.size() >= topN) {
+                return List.copyOf(selected);
+            }
+        }
+
+        for (ScoredMenu menu : ranked) {
+            if (selectedMenuIds.add(menu.menuId())) {
+                selected.add(menu);
+                if (selected.size() >= topN) {
+                    break;
+                }
+            }
+        }
+        return List.copyOf(selected);
     }
 
     /**

@@ -44,6 +44,13 @@ public class VoteCandidateRepositoryImpl implements VoteCandidateRepository {
     /** {@inheritDoc} */
     @Override
     public List<VoteCandidate> saveNewCandidates(List<VoteCandidate> candidates) {
+        UUID voteSessionId = candidates.get(0).voteSessionId();
+        List<VoteCandidateEntity> previous = voteCandidateJpaRepository
+                .findAllByVoteSessionIdOrderByDisplayOrderAsc(voteSessionId);
+        if (!previous.isEmpty()) {
+            voteCandidateJpaRepository.deleteAllInBatch(previous);
+            voteCandidateJpaRepository.flush();
+        }
         List<VoteCandidateEntity> entities = candidates.stream()
                 .map(voteCandidateMapper::toEntity)
                 .toList();

@@ -128,7 +128,7 @@ public class MenuCandidateController {
         ));
     }
 
-    /** 후보가 하나만 남았을 때 활성 방장이 재추천을 선택한다. */
+    /** 후보가 없거나 하나만 남았을 때 활성 방장이 재추천을 선택한다. */
     @PutMapping("/re-recommend")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void reRecommendSingleCandidate(

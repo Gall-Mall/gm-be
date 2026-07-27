@@ -27,6 +27,9 @@ import com.gm.core.domain.recommendation.model.GroupSoftSignals;
 import com.gm.core.domain.recommendation.model.ScoredMenu;
 import com.gm.core.domain.recommendation.repository.RecommendationRepository;
 import com.gm.core.domain.vote.candidate.model.menu.RecommendedMenuCandidate;
+import com.gm.core.domain.vote.candidate.model.menu.MenuVoteCandidate;
+import com.gm.core.domain.vote.candidate.model.menu.VoteCandidateResult;
+import com.gm.core.domain.vote.candidate.repository.menu.VoteCandidateRepository;
 import com.gm.core.domain.vote.candidate.service.menu.MenuCandidateService;
 import com.gm.core.domain.vote.session.exception.VoteSessionErrorCode;
 import com.gm.core.domain.vote.session.exception.VoteSessionException;
@@ -70,6 +73,9 @@ class MenuRecommendationServiceTest {
 
     @Mock
     private MenuRepository menuRepository;
+
+    @Mock
+    private VoteCandidateRepository voteCandidateRepository;
 
     @Mock
     private EventPublisher eventPublisher;
@@ -168,6 +174,85 @@ class MenuRecommendationServiceTest {
     }
 
     @Test
+    @DisplayName("투표 세션의 오늘 키워드를 AI 큐레이션 신호의 최우선 항목으로 전달한다")
+    void generate_prependsVoteSessionKeywordsToCurationSignals() {
+        givenMatchingSession("매콤한, 국물", "면 요리");
+        UUID menuId = UUID.randomUUID();
+        givenScored(List.of(menuId));
+        givenMenuMaster(Map.of(menuId, "김치찌개"));
+        given(recommendationRepository.findSoftSignalsByGroupId(groupId))
+                .willReturn(new GroupSoftSignals(
+                        List.of(),
+                        List.of("든든한 음식"),
+                        List.of("날것")
+                ));
+        given(recommendationCurationService.curate(any(), anyList(), anyList(), anyList(), anyInt()))
+                .willReturn(List.of(new CuratedCandidate(menuId, "오늘의 매콤한 국물 취향 반영")));
+
+        menuRecommendationService.generate(groupId, voteSessionId);
+
+        verify(recommendationService).recommend(groupId, Set.of(), 250);
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<String>> preferenceCaptor = ArgumentCaptor.forClass(List.class);
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<String>> dislikeCaptor = ArgumentCaptor.forClass(List.class);
+        verify(recommendationCurationService).curate(
+                any(),
+                eq(List.of()),
+                preferenceCaptor.capture(),
+                dislikeCaptor.capture(),
+                eq(10)
+        );
+        assertThat(preferenceCaptor.getValue()).containsExactly(
+                "오늘의 핵심 선호: 매콤한, 국물",
+                "든든한 음식"
+        );
+        assertThat(dislikeCaptor.getValue()).containsExactly(
+                "오늘의 핵심 비선호: 면 요리",
+                "날것"
+        );
+    }
+
+    @Test
+    @DisplayName("재추천은 이전 라운드 메뉴를 결정론 후보에서 제외한다")
+    void generate_excludesPreviousRoundMenus() {
+        givenMatchingSession();
+        UUID previousMenuId = UUID.randomUUID();
+        UUID freshMenuId = UUID.randomUUID();
+        given(voteCandidateRepository.findAllByVoteSessionId(voteSessionId))
+                .willReturn(List.of(new MenuVoteCandidate(
+                        UUID.randomUUID(),
+                        voteSessionId,
+                        previousMenuId,
+                        UUID.randomUUID(),
+                        "이전 메뉴",
+                        "한식",
+                        null,
+                        1,
+                        0,
+                        0,
+                        1,
+                        1,
+                        VoteCandidateResult.KEPT,
+                        null
+                )));
+        given(recommendationService.recommend(
+                eq(groupId), any(), eq(250)))
+                .willReturn(List.of(new ScoredMenu(freshMenuId, 1.0)));
+        givenMenuMaster(Map.of(freshMenuId, "새 메뉴"));
+        givenSoftSignals();
+        given(recommendationCurationService.curate(any(), anyList(), anyList(), anyList(), anyInt()))
+                .willReturn(List.of(new CuratedCandidate(freshMenuId, "새로운 후보")));
+
+        menuRecommendationService.generate(groupId, voteSessionId);
+
+        verify(recommendationService).recommend(groupId, Set.of(previousMenuId), 250);
+        assertThat(captureSaved())
+                .extracting(RecommendedMenuCandidate::menuId)
+                .containsExactly(freshMenuId);
+    }
+
+    @Test
     @DisplayName("AI가 후보를 못 고르면 결정론 상위 순서로 대체한다")
     void generate_fallsBackToDeterministicOrderWhenCurationIsEmpty() {
         givenMatchingSession();
@@ -255,6 +340,17 @@ class MenuRecommendationServiceTest {
     /** generate는 세션의 groupId와 payload의 groupId를 대조한다. */
     private void givenMatchingSession() {
         givenSession(VoteSessionStatus.MENU_RECOMMENDING);
+    }
+
+    private void givenMatchingSession(String likeKeyword, String dislikeKeyword) {
+        given(voteSessionService.findVoteSession(voteSessionId)).willReturn(VoteSession.builder()
+                .id(voteSessionId)
+                .diningGroupId(groupId)
+                .voteSessionStatus(VoteSessionStatus.MENU_RECOMMENDING)
+                .title("점심 메뉴 투표")
+                .likeKeyword(likeKeyword)
+                .dislikeKeyword(dislikeKeyword)
+                .build());
     }
 
     private void givenScored(List<UUID> menuIds) {

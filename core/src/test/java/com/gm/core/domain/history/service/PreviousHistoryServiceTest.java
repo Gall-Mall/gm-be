@@ -15,7 +15,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.gm.core.domain.history.model.PreviousGroupHistory;
 import com.gm.core.domain.history.model.PreviousHistoryDetail;
 import com.gm.core.domain.history.model.PreviousHistoryRecord;
+import com.gm.core.domain.history.model.PreviousMenuCandidateHistory;
 import com.gm.core.domain.history.repository.PreviousHistoryRepository;
+import com.gm.core.domain.vote.candidate.model.menu.VoteCandidateResult;
 import com.gm.core.domain.vote.session.exception.VoteSessionErrorCode;
 import com.gm.core.domain.vote.session.exception.VoteSessionException;
 
@@ -120,6 +122,20 @@ class PreviousHistoryServiceTest {
         given(previousHistoryRepository
                 .findPreviousHistoryByUserIdAndVoteSessionId(userId, voteSessionId))
                 .willReturn(Optional.of(record));
+        PreviousMenuCandidateHistory candidate = new PreviousMenuCandidateHistory(
+                UUID.randomUUID(),
+                "불고기",
+                "https://example.com/bulgogi.jpg",
+                1,
+                true,
+                3,
+                1,
+                0,
+                4,
+                VoteCandidateResult.CONFIRMED
+        );
+        given(previousHistoryRepository.findMenuCandidatesByVoteSessionId(voteSessionId))
+                .willReturn(List.of(candidate));
 
         PreviousHistoryDetail result =
                 previousHistoryService.getPreviousHistoryDetail(userId, voteSessionId);
@@ -129,8 +145,10 @@ class PreviousHistoryServiceTest {
         assertThat(result.voteSession().voteSessionId()).isEqualTo(voteSessionId);
         assertThat(result.voteSession().name()).isEqualTo(record.restaurantName());
         assertThat(result.voteSession().completedAt()).isEqualTo(record.completedAt());
+        assertThat(result.menuCandidates()).containsExactly(candidate);
         verify(previousHistoryRepository)
                 .findPreviousHistoryByUserIdAndVoteSessionId(userId, voteSessionId);
+        verify(previousHistoryRepository).findMenuCandidatesByVoteSessionId(voteSessionId);
     }
 
     @Test

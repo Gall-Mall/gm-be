@@ -22,7 +22,7 @@ import com.gm.core.domain.group.model.GroupMemberStatus;
 import com.gm.core.domain.store.model.Provider;
 import com.gm.core.domain.user.model.User;
 import com.gm.core.domain.user.model.UserStatus;
-import com.gm.core.domain.vote.candidate.model.VoteCandidateResult;
+import com.gm.core.domain.vote.candidate.model.menu.VoteCandidateResult;
 import com.gm.core.domain.vote.session.model.VoteSessionStatus;
 import com.gm.db.domain.group.entity.DiningGroupEntity;
 import com.gm.db.domain.group.entity.GroupMemberEntity;
@@ -235,7 +235,9 @@ class PreviousHistoryIntegrationTest {
                 "detail-place",
                 120
         );
-        createCandidate(session.getId(), true, 3, 1, 0);
+        createCandidate(session.getId(), false, 1, 1, 1, "비빔밥", 1);
+        createCandidate(session.getId(), true, 3, 1, 0, "불고기", 2);
+        createCandidate(session.getId(), false, 0, 1, 3, "제육볶음", 3);
         setClosedAt(session.getId(), LocalDateTime.of(2026, 7, 25, 12, 0));
 
         mockMvc.perform(get(DETAIL_URI, session.getId()).with(authAs(userId)))
@@ -256,6 +258,17 @@ class PreviousHistoryIntegrationTest {
                 .andExpect(jsonPath("$.data.goCount").value(3))
                 .andExpect(jsonPath("$.data.maybeCount").value(1))
                 .andExpect(jsonPath("$.data.noCount").value(0))
+                .andExpect(jsonPath("$.data.menuCandidates.length()").value(3))
+                .andExpect(jsonPath("$.data.menuCandidates[0].name").value("비빔밥"))
+                .andExpect(jsonPath("$.data.menuCandidates[0].displayOrder").value(1))
+                .andExpect(jsonPath("$.data.menuCandidates[0].selected").value(false))
+                .andExpect(jsonPath("$.data.menuCandidates[0].goCount").value(1))
+                .andExpect(jsonPath("$.data.menuCandidates[0].maybeCount").value(1))
+                .andExpect(jsonPath("$.data.menuCandidates[0].noCount").value(1))
+                .andExpect(jsonPath("$.data.menuCandidates[1].name").value("불고기"))
+                .andExpect(jsonPath("$.data.menuCandidates[1].selected").value(true))
+                .andExpect(jsonPath("$.data.menuCandidates[1].respondentCount").value(4))
+                .andExpect(jsonPath("$.data.menuCandidates[2].name").value("제육볶음"))
                 .andExpect(jsonPath("$.data.completedAt").value("2026-07-25T12:00:00"));
     }
 
@@ -375,10 +388,50 @@ class PreviousHistoryIntegrationTest {
             int maybeCount,
             int noCount
     ) {
+        return createCandidate(
+                voteSessionId,
+                selected,
+                goCount,
+                maybeCount,
+                noCount,
+                "테스트 메뉴 " + UUID.randomUUID(),
+                1
+        );
+    }
+
+    private VoteCandidateEntity createCandidate(
+            UUID voteSessionId,
+            boolean selected,
+            int goCount,
+            int maybeCount,
+            int noCount,
+            String menuName,
+            int displayOrder
+    ) {
+        UUID categoryId = UUID.randomUUID();
+        UUID menuId = UUID.randomUUID();
+        LocalDateTime now = LocalDateTime.now();
+        jdbcTemplate.update(
+                "insert into food_category (id, name, created_at, updated_at) values (?, ?, ?, ?)",
+                categoryId,
+                "테스트 카테고리 " + categoryId,
+                Timestamp.valueOf(now),
+                Timestamp.valueOf(now)
+        );
+        jdbcTemplate.update(
+                "insert into menu (id, category_id, name, image_url, created_at, updated_at) "
+                        + "values (?, ?, ?, ?, ?, ?)",
+                menuId,
+                categoryId,
+                menuName,
+                "https://example.com/" + menuId + ".jpg",
+                Timestamp.valueOf(now),
+                Timestamp.valueOf(now)
+        );
         return voteCandidateJpaRepository.saveAndFlush(new VoteCandidateEntity(
                 voteSessionId,
-                UUID.randomUUID(),
-                1,
+                menuId,
+                displayOrder,
                 selected,
                 goCount,
                 maybeCount,

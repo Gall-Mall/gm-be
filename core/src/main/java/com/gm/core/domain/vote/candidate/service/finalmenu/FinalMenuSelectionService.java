@@ -27,6 +27,8 @@ import com.gm.core.domain.vote.session.exception.VoteSessionException;
 import com.gm.core.domain.vote.session.model.VoteSession;
 import com.gm.core.domain.vote.session.model.VoteSessionStatus;
 import com.gm.core.domain.vote.session.repository.VoteSessionRepository;
+import com.gm.core.event.EventPublisher;
+import com.gm.core.event.payload.SurveyRequested;
 import com.gm.core.transaction.AfterCommitExecutor;
 
 /** 1/2/3개 최종 후보를 확정하거나 재추천하는 후속 결정을 수행한다. */
@@ -41,6 +43,7 @@ public class FinalMenuSelectionService {
     private final GroupService groupService;
     private final AfterCommitExecutor afterCommitExecutor;
     private final VoteSocketEventPublisher voteSocketEventPublisher;
+    private final EventPublisher eventPublisher;
 
     /** 두 후보일 때 활성 그룹원의 Redis 최종 투표를 제출한다. */
     @Transactional
@@ -106,21 +109,30 @@ public class FinalMenuSelectionService {
         return selectLocked(session, candidateId);
     }
 
-    /** 후보가 하나만 남았을 때 활성 방장이 확정 대신 재추천을 선택한다. */
+    /** 후보가 없거나 하나만 남았을 때 활성 방장이 재추천을 선택한다. */
     @Transactional
     public void reRecommendSingleCandidate(UUID groupId, UUID ownerUserId, UUID voteSessionId) {
         requireOwner(groupId, ownerUserId);
         VoteSession session = lockedSession(groupId, voteSessionId);
         List<UUID> candidates = voteCandidateRepository
                 .findRemainingCandidateIdsForUpdate(voteSessionId);
-        if (session.voteSessionStatus() != VoteSessionStatus.MENU_SELECTION
-                || candidates.size() != 1) {
+        boolean newRequest = session.voteSessionStatus() == VoteSessionStatus.MENU_SELECTION
+                && candidates.size() <= 1;
+        boolean recoverStuckRequest =
+                session.voteSessionStatus() == VoteSessionStatus.MENU_RECOMMENDING
+                        && candidates.isEmpty();
+        if (!newRequest && !recoverStuckRequest) {
             throw new VoteCandidateException(
                     VoteCandidateErrorCode.FINAL_MENU_SELECTION_NOT_ALLOWED);
         }
-        VoteSession next = session.changeStatus(VoteSessionStatus.MENU_RECOMMENDING);
-        voteSessionRepository.updateStatus(voteSessionId, next.voteSessionStatus())
-                .orElseThrow(() -> new VoteSessionException(VoteSessionErrorCode.SESSION_NOT_FOUND));
+        if (newRequest) {
+            VoteSession next = session.changeStatus(VoteSessionStatus.MENU_RECOMMENDING);
+            voteSessionRepository.updateStatus(voteSessionId, next.voteSessionStatus())
+                    .orElseThrow(() ->
+                            new VoteSessionException(VoteSessionErrorCode.SESSION_NOT_FOUND));
+        }
+        afterCommitExecutor.execute(() ->
+                eventPublisher.publish(new SurveyRequested(groupId, voteSessionId)));
     }
 
     /**

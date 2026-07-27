@@ -1,5 +1,6 @@
 package com.gm.core.domain.recommendation.service;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,6 +26,7 @@ import com.gm.core.domain.recommendation.model.GroupSoftSignals;
 import com.gm.core.domain.recommendation.model.ScoredMenu;
 import com.gm.core.domain.recommendation.repository.RecommendationRepository;
 import com.gm.core.domain.vote.candidate.model.menu.RecommendedMenuCandidate;
+import com.gm.core.domain.vote.candidate.repository.menu.VoteCandidateRepository;
 import com.gm.core.domain.vote.candidate.service.menu.MenuCandidateService;
 import com.gm.core.domain.vote.session.exception.VoteSessionErrorCode;
 import com.gm.core.domain.vote.session.exception.VoteSessionException;
@@ -45,7 +47,7 @@ import com.gm.core.transaction.AfterCommitExecutor;
 public class MenuRecommendationService {
 
     /** 결정론 스코어링에서 AI에 넘길 후보 수. */
-    private static final int CANDIDATE_POOL_SIZE = 30;
+    private static final int CANDIDATE_POOL_SIZE = 250;
 
     /** 투표 화면에 올릴 최종 후보 수. */
     private static final int FINAL_CANDIDATE_COUNT = 10;
@@ -63,6 +65,7 @@ public class MenuRecommendationService {
     private final RecommendationService recommendationService;
     private final RecommendationCurationService recommendationCurationService;
     private final MenuCandidateService menuCandidateService;
+    private final VoteCandidateRepository voteCandidateRepository;
     private final RecommendationRepository recommendationRepository;
     private final MenuRepository menuRepository;
     private final EventPublisher eventPublisher;
@@ -120,7 +123,12 @@ public class MenuRecommendationService {
             throw new VoteSessionException(VoteSessionErrorCode.SESSION_NOT_FOUND);
         }
 
-        List<ScoredMenu> scored = recommendationService.recommend(groupId, Set.of(), CANDIDATE_POOL_SIZE);
+        Set<UUID> previousMenuIds = voteCandidateRepository.findAllByVoteSessionId(voteSessionId)
+                .stream()
+                .map(candidate -> candidate.menuId())
+                .collect(java.util.stream.Collectors.toSet());
+        List<ScoredMenu> scored = recommendationService.recommend(
+                groupId, previousMenuIds, CANDIDATE_POOL_SIZE);
         if (scored.isEmpty()) {
             throw new VoteSessionException(VoteSessionErrorCode.INVALID_SESSION_STATUS);
         }
@@ -131,8 +139,16 @@ public class MenuRecommendationService {
         List<CuratedCandidate> curated = recommendationCurationService.curate(
                 candidatesByMenuId,
                 signals.allergenTexts(),
-                signals.preferenceTexts(),
-                signals.excludeFoodTexts(),
+                prioritizedSignals(
+                        "오늘의 핵심 선호: ",
+                        voteSession.likeKeyword(),
+                        signals.preferenceTexts()
+                ),
+                prioritizedSignals(
+                        "오늘의 핵심 비선호: ",
+                        voteSession.dislikeKeyword(),
+                        signals.excludeFoodTexts()
+                ),
                 FINAL_CANDIDATE_COUNT
         );
 
@@ -188,5 +204,23 @@ public class MenuRecommendationService {
         return IntStream.range(0, menuIds.size())
                 .mapToObj(i -> new RecommendedMenuCandidate(menuIds.get(i), i + 1, null))
                 .toList();
+    }
+
+    /** 당일 투표 키워드를 기존 회원 신호보다 앞에 두고 명시적으로 표시한다. */
+    private List<String> prioritizedSignals(
+            String prefix,
+            String sessionKeyword,
+            List<String> memberSignals
+    ) {
+        List<String> result = new ArrayList<>();
+        if (sessionKeyword != null && !sessionKeyword.isBlank()) {
+            result.add(prefix + sessionKeyword.trim());
+        }
+        if (memberSignals != null) {
+            memberSignals.stream()
+                    .filter(signal -> signal != null && !signal.isBlank())
+                    .forEach(result::add);
+        }
+        return List.copyOf(result);
     }
 }
