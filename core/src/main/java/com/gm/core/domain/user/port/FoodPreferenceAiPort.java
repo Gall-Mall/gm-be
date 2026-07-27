@@ -3,6 +3,7 @@ package com.gm.core.domain.user.port;
 import java.util.List;
 
 import com.gm.core.domain.user.model.ExtractedFoodPreference;
+import com.gm.core.domain.user.model.FoodPreferencePolarity;
 
 /**
  * 자유텍스트 음식 취향 추출을 외부 AI에 위임하는 포트.
@@ -13,6 +14,15 @@ import com.gm.core.domain.user.model.ExtractedFoodPreference;
  */
 public interface FoodPreferenceAiPort {
 
-    /** 자유텍스트에서 음식 취향 키워드를 추출한다. menuNames는 정규화 기준으로 넘긴다. */
-    ExtractedFoodPreference extractFoodPreference(String freeText, List<String> menuNames);
+    /**
+     * 자유텍스트에서 음식 취향 키워드를 추출한다. menuNames는 정규화 기준으로 넘긴다.
+     *
+     * @param polarity 추출할 극성. 한 문장에 좋아함·싫어함이 섞여 있어도 이 극성에
+     *                 해당하는 키워드만 반환한다.
+     */
+    ExtractedFoodPreference extractFoodPreference(
+            String freeText,
+            List<String> menuNames,
+            FoodPreferencePolarity polarity
+    );
 }

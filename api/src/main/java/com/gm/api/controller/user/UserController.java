@@ -65,15 +65,16 @@ public class UserController {
     }
 
     /**
-     * 자유텍스트에서 음식 취향을 동기로 추출한다. (카테고리 매칭 + 잔여 텍스트)
-     * 좋아하는/싫어하는 입력칸 공용이며, 극성은 온보딩 제출에서 확정한다.
+     * 자유텍스트에서 음식 취향을 동기로 추출한다. (메뉴·카테고리 매칭 + 잔여 텍스트)
+     * 좋아하는/싫어하는 입력칸 공용이며, 요청의 polarity에 해당하는 취향만 추출한다.
      */
     @PostMapping("/me/food-preferences/analyze")
     public ResponseEnvelope<FoodPreferenceAnalyzeResponse> analyzeFoodPreference(
             @Valid @RequestBody FoodPreferenceAnalyzeRequest request
     ) {
         return ResponseEnvelope.success(
-                FoodPreferenceAnalyzeResponse.from(foodPreferenceExtractionService.extract(request.text()))
+                FoodPreferenceAnalyzeResponse.from(
+                        foodPreferenceExtractionService.extract(request.text(), request.polarity()))
         );
     }
 

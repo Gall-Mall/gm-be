@@ -14,6 +14,7 @@ import com.gm.core.domain.menu.repository.CategoryRepository;
 import com.gm.core.domain.menu.repository.MenuRepository;
 import com.gm.core.domain.user.model.ExtractedFoodPreference;
 import com.gm.core.domain.user.model.FoodPreferenceExtractionResult;
+import com.gm.core.domain.user.model.FoodPreferencePolarity;
 import com.gm.core.domain.user.port.FoodPreferenceAiPort;
 
 import lombok.RequiredArgsConstructor;
@@ -46,13 +47,17 @@ public class FoodPreferenceExtractionService {
 
     /**
      * 자유텍스트에서 음식 취향을 추출하고 메뉴·카테고리를 마스터와 매칭한다.
+     *
+     * @param polarity 어느 입력칸에서 온 요청인지. 한 문장에 좋아함·싫어함이 섞여도
+     *                 이 극성에 해당하는 키워드만 추출된다.
      */
-    public FoodPreferenceExtractionResult extract(String freeText) {
+    public FoodPreferenceExtractionResult extract(String freeText, FoodPreferencePolarity polarity) {
         List<Menu> master = menuRepository.findAll();
 
         ExtractedFoodPreference raw = foodPreferenceAiPort.extractFoodPreference(
                 freeText,
-                master.stream().map(Menu::name).toList()
+                master.stream().map(Menu::name).toList(),
+                polarity
         );
 
         Map<String, Menu> byNormalizedName = new LinkedHashMap<>();
