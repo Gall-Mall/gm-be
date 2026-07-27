@@ -73,8 +73,16 @@ public class RecommendationService {
     }
 
     /**
-     * 점수순을 유지하면서 한 카테고리가 후보 풀을 독점하지 않도록 우선 분산한다.
-     * 카테고리 종류가 부족하면 두 번째 순회에서 남은 고득점 메뉴로 목표 수를 채운다.
+     * 점수순을 유지하면서 한 카테고리가 후보 풀을 독점하지 않도록 분산한다.
+     *
+     * <p>카테고리당 상한을 {@code PREFERRED_MAX_PER_CATEGORY}부터 시작해 목표 수를 채울 때까지
+     * 1씩 올리며 반복 순회한다. 각 순회 안에서는 점수 내림차순을 그대로 지키므로 우선순위는
+     * 보존되고, 상한이 매 순회 한 칸씩만 열리므로 특정 카테고리가 남은 자리를 통째로 가져가지
+     * 못한다.</p>
+     *
+     * <p>예전에는 2차 순회에서 상한 없이 점수순으로 남은 자리를 채웠다. 그 결과 점수가 동점인
+     * 신규 그룹에서는 1차의 분산이 무의미해지고, 메뉴가 많은 카테고리가 후보의 절반을
+     * 차지했다.</p>
      */
     private List<ScoredMenu> diversifyCategories(
             List<ScoredMenu> ranked,
@@ -84,29 +92,26 @@ public class RecommendationService {
         if (topN <= 0 || ranked.isEmpty()) {
             return List.of();
         }
-        List<ScoredMenu> selected = new ArrayList<>(Math.min(topN, ranked.size()));
+        int target = Math.min(topN, ranked.size());
+        List<ScoredMenu> selected = new ArrayList<>(target);
         Set<UUID> selectedMenuIds = new HashSet<>();
         Map<UUID, Integer> categoryCounts = new HashMap<>();
 
-        for (ScoredMenu menu : ranked) {
-            UUID categoryId = categoryByMenuId.get(menu.menuId());
-            if (categoryCounts.getOrDefault(categoryId, 0) >= PREFERRED_MAX_PER_CATEGORY) {
-                continue;
-            }
-            selected.add(menu);
-            selectedMenuIds.add(menu.menuId());
-            categoryCounts.merge(categoryId, 1, Integer::sum);
-            if (selected.size() >= topN) {
-                return List.copyOf(selected);
-            }
-        }
-
-        for (ScoredMenu menu : ranked) {
-            if (selectedMenuIds.add(menu.menuId())) {
-                selected.add(menu);
-                if (selected.size() >= topN) {
+        for (int cap = PREFERRED_MAX_PER_CATEGORY; selected.size() < target; cap++) {
+            for (ScoredMenu menu : ranked) {
+                if (selected.size() >= target) {
                     break;
                 }
+                if (selectedMenuIds.contains(menu.menuId())) {
+                    continue;
+                }
+                UUID categoryId = categoryByMenuId.get(menu.menuId());
+                if (categoryCounts.getOrDefault(categoryId, 0) >= cap) {
+                    continue;
+                }
+                selected.add(menu);
+                selectedMenuIds.add(menu.menuId());
+                categoryCounts.merge(categoryId, 1, Integer::sum);
             }
         }
         return List.copyOf(selected);

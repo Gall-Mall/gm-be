@@ -21,6 +21,7 @@ import com.gm.core.domain.group.model.GroupDetail;
 import com.gm.core.domain.group.model.GroupMemberRole;
 import com.gm.core.domain.group.service.GroupService;
 import com.gm.core.domain.menu.model.Menu;
+import com.gm.core.domain.menu.repository.CategoryRepository;
 import com.gm.core.domain.menu.repository.MenuRepository;
 import com.gm.core.domain.recommendation.model.CuratedCandidate;
 import com.gm.core.domain.recommendation.model.GroupSoftSignals;
@@ -73,6 +74,9 @@ class MenuRecommendationServiceTest {
 
     @Mock
     private MenuRepository menuRepository;
+
+    @Mock
+    private CategoryRepository categoryRepository;
 
     @Mock
     private VoteCandidateRepository voteCandidateRepository;
@@ -191,7 +195,7 @@ class MenuRecommendationServiceTest {
 
         menuRecommendationService.generate(groupId, voteSessionId);
 
-        verify(recommendationService).recommend(groupId, Set.of(), 250);
+        verify(recommendationService).recommend(groupId, Set.of(), 50);
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<String>> preferenceCaptor = ArgumentCaptor.forClass(List.class);
         @SuppressWarnings("unchecked")
@@ -237,7 +241,7 @@ class MenuRecommendationServiceTest {
                         null
                 )));
         given(recommendationService.recommend(
-                eq(groupId), any(), eq(250)))
+                eq(groupId), any(), eq(50)))
                 .willReturn(List.of(new ScoredMenu(freshMenuId, 1.0)));
         givenMenuMaster(Map.of(freshMenuId, "새 메뉴"));
         givenSoftSignals();
@@ -246,7 +250,7 @@ class MenuRecommendationServiceTest {
 
         menuRecommendationService.generate(groupId, voteSessionId);
 
-        verify(recommendationService).recommend(groupId, Set.of(previousMenuId), 250);
+        verify(recommendationService).recommend(groupId, Set.of(previousMenuId), 50);
         assertThat(captureSaved())
                 .extracting(RecommendedMenuCandidate::menuId)
                 .containsExactly(freshMenuId);

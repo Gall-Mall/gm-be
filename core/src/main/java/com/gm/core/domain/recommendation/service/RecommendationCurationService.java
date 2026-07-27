@@ -69,6 +69,9 @@ public class RecommendationCurationService {
             }
         });
 
+        log.info("[curation] 결정론 후보 {}개 → 알레르기 필터 후 {}개 AI 전달",
+                candidatesByMenuId.size(), safePool.size());
+
         List<CuratedMenu> curated = menuCurationPort.curate(new MenuCurationCommand(
                 safePool.values().stream().toList(),
                 nullSafe(allergenExclusionTexts),
@@ -78,6 +81,7 @@ public class RecommendationCurationService {
         ));
 
         if (curated == null) {
+            log.warn("[curation] AI 응답이 비어 최종 후보 0개");
             return List.of();
         }
 
@@ -88,7 +92,12 @@ public class RecommendationCurationService {
                 continue;
             }
             UUID menuId = idByNormalizedName.get(normalize(menu.menuName()));
-            if (menuId == null || result.containsKey(menuId)) {
+            if (menuId == null) {
+                log.warn("[curation] 후보 목록에 없는 이름을 AI가 반환해 제외: {}", menu.menuName());
+                continue;
+            }
+            if (result.containsKey(menuId)) {
+                log.info("[curation] 중복 반환으로 제외: {}", menu.menuName());
                 continue;
             }
             result.put(menuId, new CuratedCandidate(menuId, menu.description()));
@@ -96,6 +105,8 @@ public class RecommendationCurationService {
                 break;
             }
         }
+
+        log.info("[curation] 화이트리스트 검증 통과 {}개 (AI 반환 {}개)", result.size(), curated.size());
         return List.copyOf(result.values());
     }
 

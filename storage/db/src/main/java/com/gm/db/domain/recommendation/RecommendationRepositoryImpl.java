@@ -171,10 +171,13 @@ public class RecommendationRepositoryImpl implements RecommendationRepository {
         QMenuAllergenEntity menuAllergen = QMenuAllergenEntity.menuAllergenEntity;
 
         // 알레르기 없는 메뉴도 포함하도록 함
+        // 이름순 정렬: 정렬을 생략하면 PK(=삽입) 순서로 돌아오는데, 마스터 시드가 카테고리별로
+        // 묶여 있어 점수 동점 시 stable sort가 한 카테고리를 앞에 몰아준다.
         List<Tuple> rows = queryFactory
                 .select(menu.id, menu.categoryId, menuAllergen.allergenId)
                 .from(menu)
                 .leftJoin(menuAllergen).on(menuAllergen.menuId.eq(menu.id))
+                .orderBy(menu.name.asc())
                 .fetch();
 
         Map<UUID, UUID> categoryByMenu = new LinkedHashMap<>();

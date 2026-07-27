@@ -159,4 +159,44 @@ class RecommendationServiceTest {
         assertThat(rankedIds(ranked))
                 .containsExactly(한식1, 한식2, 한식3, 초밥, 짜장면);
     }
+
+    @Test
+    void 점수가_모두_동점이어도_한_카테고리가_후보를_독점하지_않는다() {
+        // 신규 그룹은 선호·최근성·인기가 모두 비어 전 메뉴가 동점이 된다. 이때 카테고리별 메뉴 수가
+        // 다르면 많은 쪽이 후보를 통째로 가져가던 문제를 막는다.
+        UUID 한식 = UUID.randomUUID(), 일식 = UUID.randomUUID();
+        List<MenuInfo> menus = new java.util.ArrayList<>();
+        for (int i = 0; i < 20; i++) {
+            menus.add(menu(UUID.randomUUID(), 한식, Set.of()));
+        }
+        for (int i = 0; i < 20; i++) {
+            menus.add(menu(UUID.randomUUID(), 일식, Set.of()));
+        }
+
+        var ranked = service.scoreAndRank(List.of(), menus, Map.of(), Map.of(), Set.of(), 10);
+
+        Map<UUID, UUID> categoryByMenuId = menus.stream()
+                .collect(java.util.stream.Collectors.toMap(MenuInfo::menuId, MenuInfo::categoryId));
+        Map<UUID, Long> countByCategory = ranked.stream()
+                .collect(java.util.stream.Collectors.groupingBy(
+                        m -> categoryByMenuId.get(m.menuId()),
+                        java.util.stream.Collectors.counting()));
+
+        assertThat(ranked).hasSize(10);
+        assertThat(countByCategory).containsOnlyKeys(한식, 일식);
+        assertThat(countByCategory.values()).allMatch(count -> count == 5L);
+    }
+
+    @Test
+    void 카테고리가_하나뿐이면_상한에_막히지_않고_목표_수를_채운다() {
+        UUID 한식 = UUID.randomUUID();
+        List<MenuInfo> menus = new java.util.ArrayList<>();
+        for (int i = 0; i < 10; i++) {
+            menus.add(menu(UUID.randomUUID(), 한식, Set.of()));
+        }
+
+        var ranked = service.scoreAndRank(List.of(), menus, Map.of(), Map.of(), Set.of(), 7);
+
+        assertThat(ranked).hasSize(7);
+    }
 }

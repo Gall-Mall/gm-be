@@ -19,7 +19,9 @@ import com.gm.core.domain.group.exception.GroupException;
 import com.gm.core.domain.group.model.GroupDetail;
 import com.gm.core.domain.group.model.GroupMemberRole;
 import com.gm.core.domain.group.service.GroupService;
+import com.gm.core.domain.menu.model.Category;
 import com.gm.core.domain.menu.model.Menu;
+import com.gm.core.domain.menu.repository.CategoryRepository;
 import com.gm.core.domain.menu.repository.MenuRepository;
 import com.gm.core.domain.recommendation.model.CuratedCandidate;
 import com.gm.core.domain.recommendation.model.GroupSoftSignals;
@@ -46,8 +48,13 @@ import com.gm.core.transaction.AfterCommitExecutor;
 @RequiredArgsConstructor
 public class MenuRecommendationService {
 
-    /** 결정론 스코어링에서 AI에 넘길 후보 수. */
-    private static final int CANDIDATE_POOL_SIZE = 250;
+    /**
+     * 결정론 스코어링에서 AI에 넘길 후보 수.
+     *
+     * <p>전체 메뉴 수보다 크면 점수 하위 메뉴까지 전부 AI에 실려, 불호 카테고리 감점이
+     * 후보 선정에 아무 영향을 주지 못한다. 반드시 전체 메뉴 수보다 작게 유지한다.</p>
+     */
+    private static final int CANDIDATE_POOL_SIZE = 50;
 
     /** 투표 화면에 올릴 최종 후보 수. */
     private static final int FINAL_CANDIDATE_COUNT = 10;
@@ -68,6 +75,7 @@ public class MenuRecommendationService {
     private final VoteCandidateRepository voteCandidateRepository;
     private final RecommendationRepository recommendationRepository;
     private final MenuRepository menuRepository;
+    private final CategoryRepository categoryRepository;
     private final EventPublisher eventPublisher;
     private final AfterCommitExecutor afterCommitExecutor;
 
@@ -167,8 +175,10 @@ public class MenuRecommendationService {
     /** 점수 순서를 유지한 채 menuId를 이름으로 바꾼다. 마스터에 없는 id는 버린다. */
     private Map<UUID, String> nameCandidates(List<ScoredMenu> scored) {
         Map<UUID, String> nameById = new LinkedHashMap<>();
+        Map<UUID, UUID> categoryIdByMenuId = new LinkedHashMap<>();
         for (Menu menu : menuRepository.findAll()) {
             nameById.put(menu.id(), menu.name());
+            categoryIdByMenuId.put(menu.id(), menu.categoryId());
         }
 
         Map<UUID, String> candidates = new LinkedHashMap<>();
@@ -178,7 +188,39 @@ public class MenuRecommendationService {
                 candidates.put(menu.menuId(), name);
             }
         }
+
+        logRanking(scored, nameById, categoryIdByMenuId);
         return candidates;
+    }
+
+    /** 결정론 스코어링 결과를 순위·점수·카테고리와 함께 남긴다. AI에 무엇이 어떤 순서로 가는지 확인용. */
+    private void logRanking(
+            List<ScoredMenu> scored,
+            Map<UUID, String> nameById,
+            Map<UUID, UUID> categoryIdByMenuId
+    ) {
+        if (!log.isInfoEnabled()) {
+            return;
+        }
+        Map<UUID, String> categoryNameById = new LinkedHashMap<>();
+        for (Category category : categoryRepository.findAll()) {
+            categoryNameById.put(category.id(), category.name());
+        }
+
+        Map<String, Integer> countByCategory = new LinkedHashMap<>();
+        log.info("[recommendation] 결정론 스코어링 상위 {}개 (AI 전달 순서)", scored.size());
+        for (int i = 0; i < scored.size(); i++) {
+            ScoredMenu menu = scored.get(i);
+            String categoryName = categoryNameById.getOrDefault(
+                    categoryIdByMenuId.get(menu.menuId()), "(미분류)");
+            countByCategory.merge(categoryName, 1, Integer::sum);
+            log.info("[recommendation] {}위 {} [{}] score={}",
+                    i + 1,
+                    nameById.getOrDefault(menu.menuId(), "(이름없음)"),
+                    categoryName,
+                    String.format("%.4f", menu.score()));
+        }
+        log.info("[recommendation] 카테고리 분포: {}", countByCategory);
     }
 
     /** AI가 고른 후보에 노출 순서를 부여하고 저장 모델로 변환한다. */

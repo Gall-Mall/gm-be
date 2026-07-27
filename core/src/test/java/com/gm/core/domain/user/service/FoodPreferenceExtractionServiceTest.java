@@ -10,7 +10,9 @@ import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
 
+import com.gm.core.domain.menu.model.Category;
 import com.gm.core.domain.menu.model.Menu;
+import com.gm.core.domain.menu.repository.CategoryRepository;
 import com.gm.core.domain.menu.repository.MenuRepository;
 import com.gm.core.domain.user.model.ExtractedFoodPreference;
 import com.gm.core.domain.user.port.FoodPreferenceAiPort;
@@ -30,6 +32,26 @@ class FoodPreferenceExtractionServiceTest {
             new Menu(칼국수_ID, 카테고리_ID, "칼국수", null)
     );
 
+    private static final UUID 한식_ID = UUID.randomUUID();
+
+    // 카테고리 마스터
+    private static final List<Category> CATEGORY_MASTER = List.of(
+            new Category(카테고리_ID, "양식"),
+            new Category(한식_ID, "한식")
+    );
+
+    private static CategoryRepository fakeCategoryRepository() {
+        return new CategoryRepository() {
+            @Override public List<Category> findAll() { return CATEGORY_MASTER; }
+            @Override public Set<UUID> findExistingIds(Set<UUID> ids) {
+                return CATEGORY_MASTER.stream()
+                        .map(Category::id)
+                        .filter(ids::contains)
+                        .collect(Collectors.toUnmodifiableSet());
+            }
+        };
+    }
+
     private FoodPreferenceExtractionService serviceReturning(String... aiKeywords) {
         FoodPreferenceAiPort fakeAi = (text, menuNames) -> new ExtractedFoodPreference(Arrays.asList(aiKeywords));
         MenuRepository fakeRepo = new MenuRepository() {
@@ -42,7 +64,7 @@ class FoodPreferenceExtractionServiceTest {
                         .collect(Collectors.toUnmodifiableSet());
             }
         };
-        return new FoodPreferenceExtractionService(fakeAi, fakeRepo);
+        return new FoodPreferenceExtractionService(fakeAi, fakeRepo, fakeCategoryRepository());
     }
 
     private List<String> names(List<Menu> menus) {
@@ -143,6 +165,25 @@ class FoodPreferenceExtractionServiceTest {
     }
 
     @Test
+    void 카테고리_이름은_텍스트가_아니라_카테고리로_id까지_확정된다() {
+        // "한식 싫어요" → 텍스트로 흘리면 추천 스코어링의 카테고리 가중치가 적용되지 않는다.
+        var result = serviceReturning("한식").extract("한식은 좀 그래요");
+
+        assertThat(result.matchedCategories()).extracting(Category::id).containsExactly(한식_ID);
+        assertThat(result.matchedMenus()).isEmpty();
+        assertThat(result.unmatchedText()).isEmpty();
+    }
+
+    @Test
+    void 메뉴와_카테고리와_잔여취향이_섞이면_각각_분류된다() {
+        var result = serviceReturning("파스타", "한식", "매콤한 국물").extract("...");
+
+        assertThat(names(result.matchedMenus())).containsExactly("파스타");
+        assertThat(result.matchedCategories()).extracting(Category::name).containsExactly("한식");
+        assertThat(result.unmatchedText()).isEqualTo("매콤한 국물");
+    }
+
+    @Test
     void 매칭_메뉴는_개수_상한이_없다() {
         var result = serviceReturning("파스타", "칼국수").extract("...");
         assertThat(result.matchedMenus()).hasSize(2);
@@ -161,7 +202,7 @@ class FoodPreferenceExtractionServiceTest {
                         .collect(Collectors.toUnmodifiableSet());
             }
         };
-        var service = new FoodPreferenceExtractionService(nullAi, repo);
+        var service = new FoodPreferenceExtractionService(nullAi, repo, fakeCategoryRepository());
 
         var result = service.extract("...");
 

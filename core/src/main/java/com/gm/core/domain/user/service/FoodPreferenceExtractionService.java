@@ -8,7 +8,9 @@ import java.util.Objects;
 
 import org.springframework.stereotype.Service;
 
+import com.gm.core.domain.menu.model.Category;
 import com.gm.core.domain.menu.model.Menu;
+import com.gm.core.domain.menu.repository.CategoryRepository;
 import com.gm.core.domain.menu.repository.MenuRepository;
 import com.gm.core.domain.user.model.ExtractedFoodPreference;
 import com.gm.core.domain.user.model.FoodPreferenceExtractionResult;
@@ -21,7 +23,11 @@ import lombok.RequiredArgsConstructor;
  *
  * 흐름: 메뉴 마스터 조회 → [사용자입력 + 메뉴 이름 목록] AI 위임 → 화이트리스트 검증 →
  * 이름→UUID 매핑. 사용자가 말한 구체적 메뉴(파스타·칼국수)를 그대로 뽑고, 마스터에 매칭되면
- * 메뉴(id 확정), 아니면 취향 텍스트로 보존한다. 상위 카테고리로 일반화하지 않는다.
+ * 메뉴(id 확정)로 확정한다. 메뉴는 상위 카테고리로 일반화하지 않는다.
+ *
+ * <p>메뉴에 매칭되지 않은 키워드는 카테고리 마스터("한식", "중식" …)와 한 번 더 대조한다.
+ * 카테고리로 확정되면 user_category_preference에 id로 저장되어 추천 스코어링의 카테고리
+ * 가중치가 실제로 적용된다. 여기서도 안 걸리는 것만 자유텍스트로 보존한다.</p>
  */
 @Service
 @RequiredArgsConstructor
@@ -36,9 +42,10 @@ public class FoodPreferenceExtractionService {
 
     private final FoodPreferenceAiPort foodPreferenceAiPort;
     private final MenuRepository menuRepository;
+    private final CategoryRepository categoryRepository;
 
     /**
-     * 자유텍스트에서 음식 취향을 추출하고 메뉴를 마스터와 매칭한다.
+     * 자유텍스트에서 음식 취향을 추출하고 메뉴·카테고리를 마스터와 매칭한다.
      */
     public FoodPreferenceExtractionResult extract(String freeText) {
         List<Menu> master = menuRepository.findAll();
@@ -63,10 +70,25 @@ public class FoodPreferenceExtractionService {
                 .distinct()
                 .toList();
 
-        // 나머지 = 메뉴 미매칭 취향 → 텍스트로 보존. 개수 상한은 비매칭에만 적용한다.
+        // 메뉴에 없는 키워드를 카테고리 마스터와 대조한다. "한식"처럼 카테고리 단위로 말한 취향을
+        // 텍스트로 흘려보내면 추천 스코어링의 카테고리 가중치가 영영 적용되지 않는다.
+        Map<String, Category> categoryByNormalizedName = new LinkedHashMap<>();
+        for (Category category : categoryRepository.findAll()) {
+            categoryByNormalizedName.putIfAbsent(normalize(category.name()), category);
+        }
+
+        List<Category> matchedCategories = keywords.stream()
+                .filter(name -> !byNormalizedName.containsKey(normalize(name)))
+                .map(name -> categoryByNormalizedName.get(normalize(name)))
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+
+        // 나머지 = 메뉴·카테고리 모두 미매칭 → 텍스트로 보존. 개수 상한은 비매칭에만 적용한다.
         // 각 항목은 이미 콤마가 제거됐으므로 조인해도 경계가 안전하다. 최종 길이도 컬럼 상한으로 캡한다.
         List<String> unmatched = keywords.stream()
                 .filter(name -> !byNormalizedName.containsKey(normalize(name)))
+                .filter(name -> !categoryByNormalizedName.containsKey(normalize(name)))
                 .limit(MAX_UNMATCHED_COUNT)
                 .toList();
         String unmatchedText = String.join(", ", unmatched);
@@ -74,7 +96,7 @@ public class FoodPreferenceExtractionService {
             unmatchedText = unmatchedText.substring(0, MAX_TEXT_LENGTH);
         }
 
-        return new FoodPreferenceExtractionResult(matched, unmatchedText);
+        return new FoodPreferenceExtractionResult(matched, matchedCategories, unmatchedText);
     }
 
     /** 공백·대소문자 차이로 매칭이 어긋나지 않도록 이름을 정규화한다. */

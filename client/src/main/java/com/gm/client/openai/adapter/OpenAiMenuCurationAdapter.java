@@ -15,6 +15,7 @@ import com.gm.core.domain.recommendation.model.MenuCurationCommand;
 import com.gm.core.domain.recommendation.port.MenuCurationPort;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * OpenAI(JSON mode) 기반 메뉴 큐레이션 어댑터.
@@ -22,6 +23,7 @@ import lombok.RequiredArgsConstructor;
  * 결정론 후보 이름과 멤버 소프트 신호를 프롬프트에 실어, AI가 비표준 알레르기를 하드 제외하고
  * 그룹 취향·다양성을 고려해 최종 후보를 선정하도록 지시한다. AI는 후보 목록 안의 이름만 반환한다.
  */
+@Slf4j
 @RequiredArgsConstructor
 @Component
 public class OpenAiMenuCurationAdapter implements MenuCurationPort {
@@ -56,8 +58,24 @@ public class OpenAiMenuCurationAdapter implements MenuCurationPort {
     public List<CuratedMenu> curate(MenuCurationCommand command) {
         String systemPrompt = SYSTEM_PROMPT.formatted(command.maxCount());
         String userPrompt = buildUserPrompt(command);
+
+        log.info("[curation][AI 요청] 후보 {}개, 최대 {}개 선정 요청", command.candidateMenuNames().size(), command.maxCount());
+        log.info("[curation][AI 요청] 후보 목록: {}", command.candidateMenuNames());
+        log.info("[curation][AI 요청] 알레르기 제외: {}", command.allergenExclusionTexts());
+        log.info("[curation][AI 요청] 선호: {}", command.preferenceTexts());
+        log.info("[curation][AI 요청] 비선호: {}", command.excludeFoodTexts());
+        log.debug("[curation][AI 요청] user prompt 전문:\n{}", userPrompt);
+
         String content = openAiJsonClient.requestJson(systemPrompt, userPrompt, CURATION_MAX_TOKENS);
-        return parse(content).toDomain();
+        log.info("[curation][AI 응답] 원본 JSON: {}", content);
+
+        List<CuratedMenu> curated = parse(content).toDomain();
+        log.info("[curation][AI 응답] 파싱 결과 {}개: {}", curated.size(),
+                curated.stream().map(CuratedMenu::menuName).toList());
+        curated.forEach(menu ->
+                log.info("[curation][AI 응답] {} - {}", menu.menuName(), menu.description()));
+
+        return curated;
     }
 
     private String buildUserPrompt(MenuCurationCommand command) {
