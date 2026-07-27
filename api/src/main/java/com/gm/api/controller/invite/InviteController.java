@@ -2,6 +2,7 @@ package com.gm.api.controller.invite;
 
 import java.util.UUID;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -27,6 +28,7 @@ import com.gm.core.domain.invite.service.InviteService;
  * limiting이 사용자별로 의미를 가지려면 userId가 스푸핑 불가능해야 하기 때문이다.</p>
  */
 @RestController
+@Slf4j
 public class InviteController {
 
     private final InviteService inviteService;
@@ -60,6 +62,7 @@ public class InviteController {
             @PathVariable UUID groupId
     ) {
         String inviteCode = inviteService.create(groupId, principal.getUserId());
+        log.info("invite code is {}", inviteCode);
         return ResponseEnvelope.success(InviteCreateResponse.of(inviteCode, inviteBaseUrl));
     }
 
@@ -75,6 +78,7 @@ public class InviteController {
      */
     @GetMapping("/api/invites/{inviteCode}")
     public ResponseEnvelope<InviteInfoResponse> getInfo(@PathVariable String inviteCode) {
+        log.info("get invite code is {}", inviteCode);
         return ResponseEnvelope.success(InviteInfoResponse.from(inviteService.getInfo(inviteCode)));
     }
 
@@ -94,7 +98,9 @@ public class InviteController {
             @AuthenticationPrincipal CustomUserPrincipal principal,
             @PathVariable String inviteCode
     ) {
+        log.info("컨트롤러 들어옴");
         GroupMember member = inviteService.join(inviteCode, principal.getUserId());
+        log.info("member is {}", member);
         return ResponseEnvelope.success(GroupMemberResponse.from(member));
     }
 }

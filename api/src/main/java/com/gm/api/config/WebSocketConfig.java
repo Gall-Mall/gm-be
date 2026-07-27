@@ -1,7 +1,8 @@
 package com.gm.api.config;
 
-import lombok.RequiredArgsConstructor;
+import java.util.List;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
@@ -18,11 +19,22 @@ import com.gm.api.websocket.VoteStompSubscriptionInterceptor;
  */
 @Configuration
 @EnableWebSocketMessageBroker
-@RequiredArgsConstructor
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final VoteStompAuthenticationInterceptor authenticationInterceptor;
     private final VoteStompSubscriptionInterceptor subscriptionInterceptor;
+    private final List<String> allowedOrigins;
+
+    public WebSocketConfig(
+            VoteStompAuthenticationInterceptor authenticationInterceptor,
+            VoteStompSubscriptionInterceptor subscriptionInterceptor,
+            @Value("${gm.web.allowed-origins:http://localhost:5173}")
+            List<String> allowedOrigins
+    ) {
+        this.authenticationInterceptor = authenticationInterceptor;
+        this.subscriptionInterceptor = subscriptionInterceptor;
+        this.allowedOrigins = allowedOrigins;
+    }
 
     /**
      * 클라이언트가 STOMP 연결을 시작할 WebSocket handshake endpoint를 {@code /ws}로 등록한다.
@@ -32,7 +44,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
      */
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        registry.addEndpoint("/ws").setAllowedOriginPatterns("*");
+        registry.addEndpoint("/ws").setAllowedOrigins(allowedOrigins.toArray(String[]::new));
     }
 
     /**

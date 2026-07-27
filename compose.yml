@@ -93,6 +93,7 @@ services:
       RABBITMQ_USERNAME: ${RABBITMQ_USERNAME}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
       SERVER_PORT: 8080
+      SERVER_FORWARD_HEADERS_STRATEGY: framework
       # 스키마는 SQL로 관리한다. 앱이 테이블을 건드리지 않게 고정한다.
       JPA_DDL_AUTO: validate
       JWT_SECRET: ${JWT_SECRET:?set in .env}
@@ -103,9 +104,9 @@ services:
       INVITE_BASE_URL: ${INVITE_BASE_URL}
       OAUTH_ONBOARDING_REDIRECT_URI: ${OAUTH_ONBOARDING_REDIRECT_URI}
       OAUTH_HOME_REDIRECT_URI: ${OAUTH_HOME_REDIRECT_URI}
-      # 프론트가 Vercel(HTTPS)이라 크로스 사이트다. 이 값이 아니면 쿠키가 실리지 않는다.
+      # 프론트와 API가 같은 공개 HTTPS origin을 사용하므로 Lax 쿠키를 사용한다.
       REFRESH_TOKEN_COOKIE_SECURE: "true"
-      REFRESH_TOKEN_COOKIE_SAME_SITE: None
+      REFRESH_TOKEN_COOKIE_SAME_SITE: Lax
       JAVA_OPTS: ${JAVA_OPTS:--XX:MaxRAMPercentage=70 -XX:+UseSerialGC}
     healthcheck:
       # actuator 미의존. 서버가 HTTP 응답을 돌려주면(404 포함) 살아 있는 것으로 본다.

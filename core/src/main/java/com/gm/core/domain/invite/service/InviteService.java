@@ -99,6 +99,7 @@ public class InviteService {
      * @throws GroupException 그룹 정원이 가득 차 {@code GROUP-004} 오류가 발생하는 경우
      */
     public GroupMember join(String inviteCode, UUID userId) {
+        log.info("join함수 실행");
         UUID groupId = resolveGroupId(inviteCode);
         return groupService.addMember(groupId, userId)
                 .orElseThrow(() -> new InviteException(InviteErrorCode.ALREADY_MEMBER));
